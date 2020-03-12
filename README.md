@@ -41,6 +41,8 @@
 RFC | 名称 | 备注
 ---|---|---
 [3261](https://tools.ietf.org/html/rfc3261) | SIP: Session Initiation Protocol | SIP 协议
+[3264](https://tools.ietf.org/html/rfc3264) | An Offer/Answer Model with the Session Description Protocol (SDP) | SDP 关于邀请/响应的格式定义
+[4566](https://tools.ietf.org/html/rfc4566) | SDP: Session Description Protocol | SDP协议
 
 ### Connection
 RFC | 名称 | 备注
