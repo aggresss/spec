@@ -36,4 +36,57 @@
 
 ## RFC
 
-
+RFC版本号 | 名称 | 备注
+---|---|---
+[RFC 1889](https://tools.ietf.org/html/rfc1889) | RTP: A Transport Protocol for Real-Time Applications | 早期RTP协议，RTP v1
+[RFC 1890](https://tools.ietf.org/html/rfc1890) | RTP Profile for Audio and Video Conferences with Minimal Control | RTP的负载类型定义，对应于RTP v1
+[RFC 2198](https://tools.ietf.org/html/rfc2198) | RTP Payload for Redundant Audio Data | 发送音频冗余数据的机制，FEC的雏形
+[RFC 3550](https://tools.ietf.org/html/rfc3550) | RTP: A Transport Protocol for Real-Time Applications | 现用RTP协议，RTP v2
+[RFC 3551](https://tools.ietf.org/html/rfc3551) | RTP Profile for Audio and Video Conferences with Minimal Control | RTP的负载类型定义，对应于RTP v2
+[RFC 3611](https://tools.ietf.org/html/rfc3611) | RTP Control Protocol Extended Reports (RTCP XR) | RTCP的拓展报文即XR报文定义
+[RFC 3640](https://tools.ietf.org/html/rfc3640) | RTP Payload Format for Transport of MPEG-4 Elementary Streams | RTP负载为MPEG-4的格式定义
+[RFC 3711](https://tools.ietf.org/html/rfc3711) | The Secure Real-time Transport Protocol (SRTP) | RTP媒体流采用AES-128对称加密
+[RFC 3984](https://tools.ietf.org/html/rfc3984) | RTP Payload Format for H.264 Video | RTP负载为H264的格式定义，已被6184取代
+[RFC 4103](https://tools.ietf.org/html/rfc4103) | RTP Payload for Text Conversation | RTP负载为文本或者T.140的格式定义
+[RFC 4585](https://tools.ietf.org/html/rfc4585) | Extended RTP Profile for Real-time Transport Control Protocol (RTCP)-Based Feedback (RTP/AVPF) | NACK定义，通过实时的RTCP进行丢包重传
+[RFC 4587](https://tools.ietf.org/html/rfc4587) | RTP Payload Format for H.261 Video Streams | H261的负载定义
+[RFC 4588](https://tools.ietf.org/html/rfc4588) | RTP Retransmission Payload Format | RTP重传包的定义
+[RFC 4961](https://tools.ietf.org/html/rfc4961) | Symmetric RTP / RTP Control Protocol (RTCP) | 终端收发端口用同一个，叫做对称的RTP，便于DTLS加密
+[RFC 5104](https://tools.ietf.org/html/rfc5104) | Codec Control Messages in the RTP Audio-Visual Profile with Feedback (AVPF) | 基于4585实时RTCP消息，来控制音视频编码器的机制
+[RFC 5109](https://tools.ietf.org/html/rfc5109) | RTP Payload Format for Generic Forward Error Correction | Fec的通用规范。
+[RFC 5124](https://tools.ietf.org/html/rfc5124) | Extended Secure RTP Profile for Real-time Transport Control Protocol (RTCP)-Based Feedback (RTP/SAVPF) | SRTP的丢包重传
+[RFC 5285](https://tools.ietf.org/html/rfc5285) | A General Mechanism for RTP Header Extensions | RTP 扩展头定义，可以扩展1或2个字节，比如CSRC，已被8285协议替代
+[RFC 5450](https://tools.ietf.org/html/rfc5450) | Transmission Time Offsets in RTP Streams | 计算RTP的时间差，可以配合抖动计算
+[RFC 5484](https://tools.ietf.org/html/rfc5484) | Associating Time-Codes with RTP Streams | RTP和RTCP中时间格式的定义
+[RFC 5506](https://tools.ietf.org/html/rfc5506) | Support for Reduced-Size Real-Time Transport Control Protocol (RTCP): Opportunities and Consequences | RTCP压缩
+[RFC 5669](https://tools.ietf.org/html/rfc5669) | The SEED Cipher Algorithm and Its Use with the Secure Real-Time Transport Protocol (SRTP) | SRTP的对称加密算法的种子使用方法
+[RFC 5691](https://tools.ietf.org/html/rfc5691) | RTP Payload Format for Elementary Streams with MPEG Surround Multi-Channel Audio | 对于MPEG-4中有多路音频的RTP负载格式的定义
+[RFC 5760](https://tools.ietf.org/html/rfc5760) | RTP Control Protocol (RTCP) Extensions for Single-Source Multicast Sessions with Unicast Feedback | RTCP对于单一源进行多播的反馈机制
+[RFC 5761](https://tools.ietf.org/html/rfc5761) | Multiplexing RTP Data and Control Packets on a Single Port | RTP和RTCP在同一端口上传输
+[RFC 6051](https://tools.ietf.org/html/rfc6051) | Rapid Synchronisation of RTP Flows | 多RTP流的快速同步机制，适用于MCU的处理
+[RFC 6128](https://tools.ietf.org/html/rfc6128) | RTP Control Protocol (RTCP) Port for Source-Specific Multicast (SSM) Sessions | RTCP对于多播中特定源的反馈机制
+[RFC 6184](https://tools.ietf.org/html/rfc6184) | RTP Payload Format for H.264 Video | H264的负载定义
+[RFC 6188](https://tools.ietf.org/html/rfc6188) | The Use of AES-192 and AES-256 in Secure RTP | SRTP拓展定义AES192和AES256
+[RFC 6189](https://tools.ietf.org/html/rfc6189) | ZRTP: Media Path Key Agreement for Unicast Secure RTP | ZRTP的定义，非对称加密，用于密钥交换
+[RFC 6190](https://tools.ietf.org/html/rfc6190) | RTP Payload Format for Scalable Video Coding | H264-SVC的负载定义
+[RFC 6222](https://tools.ietf.org/html/rfc6222) | Guidelines for Choosing RTP Control Protocol (RTCP) Canonical Names (CNAMEs) | RTCP的CNAME的选定规则，可根据RFC 4122的UUID来选取
+[RFC 6798](https://tools.ietf.org/html/rfc6798) | RTP Control Protocol (RTCP) Extended Report (XR) Block for Packet Delay Variation Metric Reporting | RTCP的XR报文，关于数据包延迟变化度量报告的定义
+[RFC 6843](https://tools.ietf.org/html/rfc6843) | RTP Control Protocol (RTCP) Extended Report (XR) Block for Delay Metric Reporting | RTCP的XR报文，关于延迟指标报告的定义
+[RFC 6958](https://tools.ietf.org/html/rfc6958) | RTP Control Protocol (RTCP) Extended Report (XR) Block for Burst/Gap Loss Metric Reporting | RTCP的XR报文，关于突发/间隙损失度量报告的定义
+[RFC 7002](https://tools.ietf.org/html/rfc7002) | RTP Control Protocol (RTCP) Extended Report (XR) Block for Discard Count Metric Reporting | RTCP的XR报文，关于丢弃计数度量的定义
+[RFC 7003](https://tools.ietf.org/html/rfc7003) | RTP Control Protocol (RTCP) Extended Report (XR) Block for Burst/Gap Discard Metric Reporting | RTCP的XR报文，关于破裂/丢弃指标差距的定义
+[RFC 7097](https://tools.ietf.org/html/rfc7097) | RTP Control Protocol (RTCP) Extended Report (XR) for RLE of Discarded Packets | RTCP的XR报文，关于RLE丢弃的的定义
+[RFC 6904](https://tools.ietf.org/html/rfc6904) | Encryption of Header Extensions in the Secure Real-time Transport Protocol | SRTP的RTP头信息加密
+[RFC 7022](https://tools.ietf.org/html/rfc7022) | Guidelines for Choosing RTP Control Protocol (RTCP) Canonical Names (CNAMEs) | RTCP的CNAME的选定规则，修订6222
+[RFC 7160](https://tools.ietf.org/html/rfc7160) | Support for Multiple Clock Rates in an RTP Session | RTP中的码流采样率变化的处理规则，音频较常见
+[RFC 7164](https://tools.ietf.org/html/rfc7164) | RTP and Leap Seconds | RTP时间戳的校准机制
+[RFC 7201](https://tools.ietf.org/html/rfc7201) | Options for Securing RTP Sessions | RTP的安全机制的建议，什么时候用DTLS，SRTP，ZRTP或者RTP over TLS等
+[RFC 7202](https://tools.ietf.org/html/rfc7202) | Securing the RTP Framework: Why RTP Does Not Mandate a Single Media Security Solution | RTP的安全机制的补充说明
+[RFC 7656](https://tools.ietf.org/html/rfc7656) | A Taxonomy of Semantics and Mechanisms for Real-Time Transport Protocol (RTP) Sources | RTP在webrtc中的应用场景
+[RFC 7667](https://tools.ietf.org/html/rfc7667) | RTP Topologies | 在MCU等复杂系统中，RTP流的设计规范
+[RFC 7741](https://tools.ietf.org/html/rfc7741) | RTP Payload Format for VP8 Video | 负载为vp8的定义
+[RFC 7798](https://tools.ietf.org/html/rfc7798) | RTP Payload Format for High Efficiency Video Coding (HEVC) | 负载为HEVC的定义
+[RFC 8082](https://tools.ietf.org/html/rfc8082) | Using Codec Control Messages in the RTP Audio-Visual Profile with Feedback with Layered Codecs | 基于4585实时RTCP消息，来控制分层的音视频编码器的机制，对于5104协议的补充
+[RFC 8083](https://tools.ietf.org/html/rfc8083) | Multimedia Congestion Control: Circuit Breakers for Unicast RTP Sessions | RTP的拥塞处理之码流环回的处理
+[RFC 8108](https://tools.ietf.org/html/rfc8108) | Sending Multiple RTP Streams in a Single RTP Session | 单一会话，单一端口传输所有的RTP/RTCP码流，对现有RTP/RTCP机制的总结
+[RFC 8285](https://tools.ietf.org/html/rfc8285) | A General Mechanism for RTP Header Extensions | RTP 扩展头定义，可以同时扩展为1或2个字节
