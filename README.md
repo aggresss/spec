@@ -43,7 +43,7 @@ RFC | 名称 | 备注
 [2976](https://tools.ietf.org/html/rfc2976) | The SIP INFO Method | SIP INFO方法
 [3261](https://tools.ietf.org/html/rfc3261) | SIP: Session Initiation Protocol | SIP 协议
 [3265](https://tools.ietf.org/html/rfc3265) | Session Initiation Protocol (SIP)-Specific Event Notification | SIP 事件通知
-[3428](https://tools.ietf.org/html/rfc3428) ｜ Session Initiation Protocol (SIP) Extension for Instant Messaging | SIP 即时消息拓展
+[3428](https://tools.ietf.org/html/rfc3428) | Session Initiation Protocol (SIP) Extension for Instant Messaging | SIP 即时消息拓展
 [3264](https://tools.ietf.org/html/rfc3264) | An Offer/Answer Model with the Session Description Protocol (SDP) | SDP 关于邀请/响应的格式定义
 [4566](https://tools.ietf.org/html/rfc4566) | SDP: Session Description Protocol | SDP协议
 
