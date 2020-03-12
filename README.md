@@ -74,7 +74,7 @@ RFC | 名称 | 备注
 [3711](https://tools.ietf.org/html/rfc3711) | The Secure Real-time Transport Protocol (SRTP) | RTP媒体流采用AES-128对称加密
 [3984](https://tools.ietf.org/html/rfc3984) | RTP Payload Format for H.264 Video | RTP负载为H264的格式定义，已被6184取代
 [4103](https://tools.ietf.org/html/rfc4103) | RTP Payload for Text Conversation | RTP负载为文本或者T.140的格式定义
-[4571](https://tools.ietf.org/html/rfc4571) ｜ Framing Real-time Transport Protocol (RTP) and RTP Control Protocol (RTCP) Packets over Connection-Oriented Transport | 面向连接的传输数据包帧 RTP 和 RTCP 协议
+[4571](https://tools.ietf.org/html/rfc4571) | Framing Real-time Transport Protocol (RTP) and RTP Control Protocol (RTCP) Packets over Connection-Oriented Transport | 面向连接的传输数据包帧 RTP 和 RTCP 协议
 [4585](https://tools.ietf.org/html/rfc4585) | Extended RTP Profile for Real-time Transport Control Protocol (RTCP)-Based Feedback (RTP/AVPF) | NACK定义，通过实时的RTCP进行丢包重传
 [4587](https://tools.ietf.org/html/rfc4587) | RTP Payload Format for H.261 Video Streams | H261的负载定义
 [4588](https://tools.ietf.org/html/rfc4588) | RTP Retransmission Payload Format | RTP重传包的定义
