@@ -36,12 +36,12 @@
 
 ## RFC
 
-RFC版本号 | 名称 | 备注
+RFC | 名称 | 备注
 ---|---|---
-[RFC 1889](https://tools.ietf.org/html/rfc1889) | RTP: A Transport Protocol for Real-Time Applications | 早期RTP协议，RTP v1
-[RFC 1890](https://tools.ietf.org/html/rfc1890) | RTP Profile for Audio and Video Conferences with Minimal Control | RTP的负载类型定义，对应于RTP v1
-[RFC 2198](https://tools.ietf.org/html/rfc2198) | RTP Payload for Redundant Audio Data | 发送音频冗余数据的机制，FEC的雏形
-[RFC 3550](https://tools.ietf.org/html/rfc3550) | RTP: A Transport Protocol for Real-Time Applications | 现用RTP协议，RTP v2
+[RFC1889](https://tools.ietf.org/html/rfc1889) | RTP: A Transport Protocol for Real-Time Applications | 早期RTP协议，RTP v1
+[RFC1890](https://tools.ietf.org/html/rfc1890) | RTP Profile for Audio and Video Conferences with Minimal Control | RTP的负载类型定义，对应于RTP v1
+[RFC2198](https://tools.ietf.org/html/rfc2198) | RTP Payload for Redundant Audio Data | 发送音频冗余数据的机制，FEC的雏形
+[RFC3550](https://tools.ietf.org/html/rfc3550) | RTP: A Transport Protocol for Real-Time Applications | 现用RTP协议，RTP v2
 [RFC 3551](https://tools.ietf.org/html/rfc3551) | RTP Profile for Audio and Video Conferences with Minimal Control | RTP的负载类型定义，对应于RTP v2
 [RFC 3611](https://tools.ietf.org/html/rfc3611) | RTP Control Protocol Extended Reports (RTCP XR) | RTCP的拓展报文即XR报文定义
 [RFC 3640](https://tools.ietf.org/html/rfc3640) | RTP Payload Format for Transport of MPEG-4 Elementary Streams | RTP负载为MPEG-4的格式定义
