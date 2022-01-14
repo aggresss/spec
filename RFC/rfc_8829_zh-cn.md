@@ -46,11 +46,11 @@ JSEP 的一种变体是保留基本的面向会话描述的 API，但将生成 o
 
 自从 WebRTC 规范文档被批准以来，IETF 已经意识到指定 JSEP 的文档和指定 BUNDLE 的文档(该 RFC 和 [RFC8843])之间的不一致。这些文档不是为了达成一项决议而进一步推迟公布，而是按照最初批准的方式予以公布。IETF 打算重新启动这些工作，一旦有了解决方案，这些文档的修订版将会发布。
 
-具体的问题涉及到 "m=" 部分被指定为 "bundle-only"，将在本 RFC 4.1.1 节讨论。目前，JSEP 和 BUNDLE 之间存在分歧，这些规范和现有的浏览器实现之间也存在分歧:
+具体的问题涉及到 m-line 被指定为 "bundle-only"，将在本 RFC 4.1.1 节讨论。目前，JSEP 和 BUNDLE 之间存在分歧，这些规范和现有的浏览器实现之间也存在分歧:
 
-- JSEP 规定，"m=" 应该使用端口 0，并在初始 offer 中添加 "a=bundle-only" 属性，而不是在 answer 或后续 offer 中；
-- BUNDLE 规定，"m=" 部分应该像前面所描述的那样标记，但是是在所有的 offer 和 answer 中。
-- 当前大多数浏览器不标记任何端口为 0 的 "m="，而是为所有捆绑的 "m=" 使用相同的端口；其他则遵循 JSEP 定义。
+- JSEP 规定，m-line 应该使用端口 0，并在初始 offer 中添加 "a=bundle-only" 属性，而不是在 answer 或后续 offer 中；
+- BUNDLE 规定，m-line 应该像前面所描述的那样标记，但是是在所有的 offer 和 answer 中。
+- 当前大多数浏览器不标记任何端口为 0 的 m-line，而是为所有捆绑的 m-line 使用相同的端口；其他则遵循 JSEP 定义。
 
 ## 2. 术语
 
@@ -83,7 +83,7 @@ JSEP 没有指定特定的信令模型或状态机，除了一般需要以 [RFC3
 
 会话描述是否适用于本地或远端将影响该描述的含义。例如，发送给远端的编解码列表表明了本地方愿意接收的内容，当与远端支持的编解码集相交叉时，该列表指定了远程方应该发送的内容。然而，并不是所有的参数都遵循这一规则；有些参数是声明性的，远端必须接受或完全拒绝它们。这种参数的一个例子是 TLS 指纹 [RFC8122]，在 DTLS [RFC6347] 的上下文中使用；这些指纹是根据提供的本地证书计算的，不受协商的影响。
 
-此外，不同的 RFC 对 offer 和 answer 的格式提出了不同的条件。例如，offer 可以提出任意数量的 “m=” 部分(即，媒体描述如 [RFC4566]，5.14 节所述)，但 answer 必须包含与要约完全相同的数字。
+此外，不同的 RFC 对 offer 和 answer 的格式提出了不同的条件。例如，offer 可以提出任意数量的 m-line(即，媒体描述如 [RFC4566]，5.14 节所述)，但 answer 必须包含与要约完全相同的数字。
 
 最后，虽然确切的媒体参数只有在一个 offer 和一个 answer 交换之后才知道，但 offer 方可能会在收到 answer 之前收到 ICE 检查和可能的媒体(例如，在一个连接建立后的重新 offer)。在这种情况下，为了正确处理传入的媒体，offer 方的媒体处理程序必须在 answer 到达之前了解 offer 的细节。
 
@@ -161,34 +161,128 @@ JSEP 的会话描述使用会话描述协议(session Description Protocol, SDP)�
 
 #### 3.4.1. RtpTransceivers
 
-RtpTransceivers 允许应用程序控制与一个 “m=” section 相关联的 RTP media。每个 RtpTransceiver 有一个 RtpSender 和 一个RtpReceiver，应用程序可以使用它们来控制 RTP media 的发送和接收。应用程序也可以直接修改 RtpTransceiver，例如停止操作。
+RtpTransceivers 允许应用程序控制与一个 m-line 相关联的 RTP media。每个 RtpTransceiver 有一个 RtpSender 和 一个RtpReceiver，应用程序可以使用它们来控制 RTP media 的发送和接收。应用程序也可以直接修改 RtpTransceiver，例如停止操作。
 
-RtpTransceivers 通常与 "m=" section 是 1:1 的映射，尽管可能会有比 "m=" section 更多的 RtpTransceivers ，例如：当RtpTransceivers 被创建但还没有关联到"m=" section，或者如果 RtpTransceivers 已经停止并从 "m=" section 中分离。如果 RtpTransceiver 的 mid (media identification) 属性是非空的，则 RtpTransceiver 被认为与 “m=”section 相关联；否则它被认为是游离的。关联的 “m=” section 是在创建一个 offer 或应用一个远程 offer 时使用收发器和 “m=” section 索引之间的映射确定的。
+RtpTransceivers 通常与 m-line 是 1:1 的映射，尽管可能会有比 m-line 更多的 RtpTransceivers ，例如：当RtpTransceivers 被创建但还没有关联到 m-line，或者如果 RtpTransceivers 已经停止并从 m-line 中分离。如果 RtpTransceiver 的 mid (media identification) 属性是非空的，则 RtpTransceiver 被认为与 m-line 相关联；否则它被认为是游离的。关联的 m-line 是在创建一个 offer 或应用一个远程 offer 时使用收发器和 m-line 索引之间的映射确定的。
 
-一个 RtpTransceiver 从来不会与一个以上的 "m=" section 相关联，并且一旦会话描述被应用，一个 "m=" section 总是与一个 RtpTransceiver 相关联。然而，在某些情况下，当一个 “m=” section 被拒绝时，正如下面 5.2.2 节中讨论的那样，“m=” section 将被“回收”，RtpTransceiver 将与一个新的 MID 值相关联。
+一个 RtpTransceiver 从来不会与一个以上的 m-line 相关联，并且一旦会话描述被应用，一个 m-line 总是与一个 RtpTransceiver 相关联。然而，在某些情况下，当一个 m-line 被拒绝时，正如下面 5.2.2 节中讨论的那样，m-line 将被“回收”，RtpTransceiver 将与一个新的 MID 值相关联。
 
-RtpTransceivers 可以由应用程序显式创建，也可以通过调用 setRemoteDescription 来隐式创建，并提供一个新的 “m=” section。
+RtpTransceivers 可以由应用程序显式创建，也可以通过调用 setRemoteDescription 来隐式创建，并提供一个新的 m-line。
 
 #### 3.4.2. RtpSenders
 
-RtpSenders 允许应用程序控制 RTP 媒体的发送方式。RtpSender 在概念上负责由 “m=” section 描述输出的 RTP 流。这包括编码附加的 MediaStreamTrack，发送 RTP 媒体包，以及关联的 RTCP。
+RtpSenders 允许应用程序控制 RTP 媒体的发送方式。RtpSender 在概念上负责由 m-line 描述输出的 RTP 流。这包括编码附加的 MediaStreamTrack，发送 RTP 媒体包，以及关联的 RTCP。
 
 #### 3.4.3. RtpReceivers
 
-RtpReceivers 允许应用程序检查如何接收 RTP 媒体。RtpReceiver 在概念上负责传入的 RTP 流，由 “m=” section 描述。这包括处理接收到的RTP媒体包，解码传入的流以产生远程MediaStreamTrack，并为传入的 RTP 流生成和处理 RTCP。
+RtpReceivers 允许应用程序检查如何接收 RTP 媒体。RtpReceiver 在概念上负责传入的 RTP 流，由 m-line 描述。这包括处理接收到的RTP媒体包，解码传入的流以产生远程MediaStreamTrack，并为传入的 RTP 流生成和处理 RTCP。
 
 ### 3.5. ICE
 
 #### 3.5.1. ICE Gathering 概述
 
-JSEP 根据应用程序的需要收集 ICE candidates。ICE candidates 的收集被称为收集阶段，这是由添加一个新的或回收的 “m=” section 到本地会话描述或描述中新的 ICE 凭证触发的，表明 ICE 重启。新 ICE 凭据的使用可以由应用程序显式触发，也可以由 JSEP 实现隐式触发，以响应 ICE 配置中的更改。
+JSEP 根据应用程序的需要收集 ICE candidates。ICE candidates 的收集被称为收集阶段，这是由添加一个新的或回收的 m-line 到本地会话描述或描述中新的 ICE 凭证触发的，表明 ICE 重启。新 ICE 凭据的使用可以由应用程序显式触发，也可以由 JSEP 实现隐式触发，以响应 ICE 配置中的更改。
 
 当 ICE 配置发生变化，需要一个新的收集阶段时，就会设置一个 “needs-ice-restart” 标识。设置了这个标识后，调用 createOffer API 将生成新的 ICE 凭证。这个标识通过调用setLocalDescription API 来清除，该 API 带有来自 offer 或 answer 的新 ICE 凭证，即本地或远程发起的ICE重启。
 
 当一个新的收集阶段开始时，ICE 代理将通过状态更改事件通知应用程序正在进行收集。然后，当每个新的 ICE candidates 可用时，ICE 代理将通过一个 oniccandidate 事件通知应用程序；这些候选对象也将自动添加到当前或者挂起的本地会话描述中。最后，当收集完所有的 ICE candidates 后，将发送一个最后的 oniccandidate 事件，以表明收集过程已经完成。
 
-注意，收集阶段只收集 new/recycled/restaring 状态的 "m=" section 所需的候选；其他 “m=” section 继续使用它们现有的候选项。同样，如果一个 "m=" section 被绑定(通过一个成功的bundle 协商或者被标记为 bundle-only)，那么当且仅当它的 MID 项是一个 bundle 标签时，候选的 "m=" section 将被收集并交换，如 [RFC8843] 所述。
+注意，收集阶段只收集 new/recycled/restaring 状态的 m-line 所需的候选；其他 m-line 继续使用它们现有的候选项。同样，如果一个 m-line 被绑定(通过一个成功的bundle 协商或者被标记为 bundle-only)，那么当且仅当它的 MID 项是一个 bundle 标签时，候选的 m-line 将被收集并交换，如 [RFC8843] 所述。
 
+#### 3.5.2. ICE Candidate Trickling
 
+Candidate Trickling 是一种技术方案，通过它呼叫者可以在发出初始 offer 后，逐步地向被呼叫者提供 candidate；“Trickle ICE” 的语义在 [RFC8838] 中定义。这个过程允许被调用方开始对调用开始操作，并立即建立 ICE (可能还有 DTLS )连接，而不必等待调用方收集所有可能的候选连接。在启动调用之前没有执行收集的情况下，这将导致更快的媒体设置。
 
+JSEP 通过提供前文提到的 API 来支持可选的候选传入，这些 API 对 ICE 候选收集过程提供控制和反馈。支持 Trickle ICE 的应用程序可以立即发送初始 offer，并在收到新 candidate 的通知时发送单个 candidate；不支持此功能的应用程序可以简单地等待收集完成的指示，然后创建和发送携带所有 candidate 的 offer。
 
+在收到少量的 candidate 后，接收人将把他们提供给 ICE 代理。这将触发 ICE 代理开始使用新的远程候选连接检查。
+
+##### 3.5.2.1. ICE Candidate 格式
+
+在 JSEP中，ICE 候选对象被一个 iccandidate 对象抽象，与会话描述一样，内部表示使用 SDP 语法。
+
+候选的详细信息在 iccandidate 字段中指定，使用与 [RFC8839] 5.1 节中定义的 "candidate-attribute" 字段相同的 SDP 语法。注意，该字段不包含 "a=" 前缀，如下例所示:
+
+```text
+candidate:1 1 UDP 1694498815 192.0.2.33 10000 typ host
+```
+
+iccandidate 对象包含一个字段，用来指明它与哪个 ICE 用户名片段(ufrag)相关联，如 [RFC8839] 5.4 节中定义的那样。该值用于确定该 iccandidate 属于哪个会话描述(以及哪个收集阶段)，这有助于解决 ICE 重启时的歧义。如果这个字段在接收到的 iccandidate 中不存在(可能是在与非 JSEP 端点通信时)，则假定为最近接收到的会话描述。
+
+可以通过一个 m-line 索引或者 MID 这两种方式中的一种确认 iceCandidate 对象与 m-line 是相关联的，m-line 索引是一个从零开始的索引,索引 N 指的第 N + 1 m-line 的会话描述引用的这个 IceCandidate。 MID 是一个 “media stream identification” 的值，在[RFC5888] 第4章中定义，它提供了一种更健壮的方法来标识会话描述中的 m-line，使用关联的 RtpTransceiver 对象的MID(它可能是由应答者在与不支持 MID 属性的非 JSEP 端点交互时本地生成的，如下面 5.10 节所讨论的)。如果在接收到的 iccandidate 中有 MID 字段，它必须被用于识别;否则，将使用 m-line 索引。如上所述，实现时必须考虑到接收对象缺少某些字段的情况。
+
+#### 3.5.3. ICE Candidate 策略
+
+通常，在收集 ICE Candidate 对象时，JSEP 实现将收集初始候选对象的所有可能形式 —— host/server-reflexive/relay。但在某些情况下，出于隐私或相关考虑，应用程序可能希望对收集过程拥有更具体的控制。例如，可能希望只使用中继候选以尽可能少地泄漏位置信息(需要注意，这种选择会带来相应的操作成本)。为了实现这一点，JSEP 允许应用程序限制在会话中使用哪些 ICE Candidate。请注意，这个过滤是在任何限制的基础上应用的，如 [RFC8828] 中所讨论的，该实现可以强制选择哪些 IP 地址用于应用程序。
+
+在某些情况下，应用程序可能希望更改会话处于活动状态时使用的候选类型。一个主要的例子是，接受会话者最初可能希望只使用中继候选者，以避免将位置信息泄露给任意的呼叫者，一旦用户表示他们想接这个呼叫，就会更改为使用所有的 Candidate(为了降低操作成本)。对于这个场景，JSEP 实现必须允许在会话中期更改候选策略，这取决于前面提到的与本地策略的交互。
+
+为了管理 ICE Candidate 策略，JSEP 实现将在每个收集阶段开始时确定当前设置。然后，在收集阶段，实现不可以将当前策略不允许的候选对象公开给应用程序，使用它们作为连接检查的源，或者通过其他字段间接公开它们，例如其他 ICE Candidate 对象的 raddr/rport 属性。之后，如果应用程序指定了不同的策略，应用程序可以通过 ICE 重启来启动一个新的收集阶段并应用它。
+
+#### 3.5.4. ICE Candidate Pool
+
+JSEP 应用程序通常通过提供给 setLocalDescription 的信息通知 JSEP 实现开始收集 ICE，因为本地描述指示了需要的 ICE 组件的数量，以及必须为哪些候选组件收集。但是，为了加速应用程序提前知道要使用的 ICE 组件数量的情况，它可能会要求实现收集潜在的 ICE 候选组件池，以确保快速设置媒体。
+
+当 setLocalDescription 最终被调用并且 JSEP 实现准备收集所需的 ICE Candidate 时，它应该首先检查池中是否有可用的候选。如果候选池中有 Candidate，他们应该通过ICE Candidate 活动立即提交申请。如果池耗尽，要么是因为使用的 ICE 组件数量超过预期，要么是因为池没有足够的时间收集候选项，那么剩余的候选项将像往常一样收集。这只发生在第一次 offer/answer 交换，之后候选池被清空并且不再使用。
+
+这个概念有用的一个例子是，一个应用程序希望在将来的某个时间点收到一个传入的呼叫，并希望将建立连接所需的时间最小化，以避免剪切初始媒体。通过将候选对象预先聚集到池中，它可以在收到呼叫后几乎立即交换并开始从这些候选对象发送连接检查。不过请注意，通过保留这些预先收集的候选对象(只要需要它们，它们就会一直保持活跃)，应用程序将消耗它正在使用的 STUN/TURN 服务器上的资源。
+
+#### 3.5.5. ICE 版本
+
+虽然该规范在形式上依赖于 [RFC8445]，但在其发布时，大多数 WebRTC 实现都支持 [RFC5245] 中描述的 ICE 版本。在 [RFC8445] 中定义的 “ice2” 属性可以用来检测远程终端使用的版本，并提供从旧规范到新规范的平稳过渡。实现必须能够接受没有 "ice2" 属性的远程描述。
+
+### 3.6. 视频大小协商
+
+视频大小协商是接收端可以使用 "a=imageattr" SDP属性 [RFC6236] 来指示它能够接收的视频帧大小的过程。接收端可以对其视频解码能处理的内容有硬性限制，或者它可能有一些策略设置的最大值。通过在 "a=imageattr" 属性中指定这些限制，JSEP 端点可以尝试确保远程发送方以可接受的分辨率传输视频。然而，当与不支持此属性的非 JSEP 端点通信时，可能会超过任何信令限制，而 JSEP 实现必须合理地处理此限制，例如，丢弃视频。
+
+需要注意，某些编解码器支持传输宽高比不是1.0(即非正方形像素)的样本。JSEP 实现将不发送非正方形像素，但应该接收和渲染这样的视频与正确的宽高比。然而，样本宽高比对尺寸协商没有影响；无论是否正方形，所有尺寸都以像素为单位测量。
+
+#### 3.6.1. 创建 imageattr 属性
+
+接收器将首先结合任何已知的本地限制(例如，硬件解码器能力或本地策略)，以确定它可以接收的绝对最小和最大尺寸。如果没有已知的局部限制，"a=imageattr" 属性应该被省略。如果这些局部限制排除了接收任何视频，例如，不允许分辨率的简并情况下，"a=imageattr" 属性必须被省略，如果合适的话，m-line 必须被标记为 sendonly/inactive。
+
+否则，一个 "a=imageattr" 属性被创建为一个 "recv" 方向，并且由前面提到的交集形成的分辨率空间被用来指定它的最小和最大的 "x=" 和 "y=" 值。
+
+这里的规则表示一组单独的首选项，因此，"a=imageattr" 中 "q=" 值并不重要。应该设置为 "1.0"。
+
+"a=imageattr" 字段是特定于负载类型的。当所有支持的视频编解码器具有相同的功能时，建议使用通配符有效负载类型(*)的单一属性。然而，当受支持的视频编解码器有不同的限制时，必须为每种负载类型插入特定的 "a=imageattr" 属性。
+
+例如，考虑一个具有多格式视频解码器的系统，它能够解码从 48x48 到 720p 的任何分辨率。在这种情况下，实现将生成这个属性:
+
+```text
+ a=imageattr:* recv [x=[48:1280],y=[48:720],q=1.0]
+```
+
+这个声明表明接收器能够解码从 48x48 到 1280x720 像素分辨率的任何图像。
+
+#### 3.6.2. 解析 imageattr 属性
+
+[RFC6236] 将 "a=imageattr" 定义为一个建议的字段。这意味着它并不绝对限制发送方可以使用的视频格式，而是给出了首选值的指示。
+
+这个规范规定了更具体的行为。MediaStreamTrack 的视频分辨率被附加到一个 RtpSender，追踪编码的视频在同一或低分辨率(s)(“编码器分辨率”)，应用和远程描述引用发送方和包含有效的 "= imageattr recv" 属性,它必须遵循以下规则，以确保发送方不会传输超出属性中指定的大小标准的分辨率。只要属性在远程描述中仍然存在，就必须遵循这些规则，包括在 track 改变其分辨率或被不同 track 替换的情况下。
+
+根据 RtpSender 是如何配置的，它可能会产生一个特定分辨率的单一编码，或者，如果同时发送(3.7节)多个已经协商的编码，每个都有自己的特定分辨率。此外，根据配置的不同，每种编码都可以在需要时灵活地减少分辨率，或者锁定到特定的输出分辨率。
+
+对于由 RtpSender 产生的每个编码，远程描述中相应的 m-line 中的 "a=imageattr recv" 属性集将被处理，以确定应该传输什么。仅考虑引用为编码选择的媒体格式的属性；每个这样的属性都是单独计算的，从 "q=" 值最高的属性开始。如果多个属性具有相同的 "q=" 值，则按照它们在包含 "m=" 部分中出现的顺序计算它们。请注意，虽然 JSEP 端点每一种媒体格式最多包含一个 "a=imageattr recv"属性，但 JSEP 端点可以从非 JSEP 端点接收包含多个此类属性的 m-line 的会话描述。
+
+对于每个 "a=imageattr recv" 属性，应用以下规则。如果此处理成功，则相应地传输编码，并且不再考虑该编码的其他属性。否则，将按照前面提到的顺序计算下一个属性。如果所提供的所有属性都不能被成功处理，那么就不能传输编码，并且应该向应用程序抛出一个错误。
+
+- 将该属性的限制与编码器分辨率进行比较。只考虑以下提到的具体限制；任何其他值，比如图片的宽高比，都必须被忽略。当考虑生成旋转视频的 MediaStreamTrack 时，必须使用未旋转的分辨率进行检查。无论接收机是否支持执行接收侧旋转(例如，通过协调视频定向(CVO) [TS26.114])，这都是必需的，因为这大大简化了匹配逻辑。
+- 如果属性包含一个“sar=”(样本宽高比)值设置为“1.0”以外的值，表明接收者想要接收非正方形像素，这不能满足，属性绝对不能被使用。
+- 如果编码器的分辨率超过属性允许的最大大小，并且允许编码器调整其分辨率，编码器应该应用降尺度以满足限制。一定不要改变图片的宽高比的编码，忽略任何微小的差异，由于舍入。例如，如果编码器的分辨率是1280x720，而属性的最大指定值是640x480，那么预期的输出分辨率将是640x360。如果不能应用降尺度，则绝对不能使用该属性。
+- 如果编码器分辨率小于该属性允许的最小大小，则一定不要使用该属性;编码器一定不能应用升级。JSEP实现应该通过允许接收任意小的分辨率(可能通过回退到软件解码器)来避免这种情况。
+- 如果编码器分辨率在最大和最小尺寸范围内，则不需要任何操作。
+
+#### 3.7. Simulcast
+
+JSEP 支持 MediaStreamTrack 的 Simulcast 传输，其中媒体源的多个编码可以在一个 m-line 的上下文中传输。当前的 JSEP API 设计用于允许应用程序发送 Simulcast 媒体，但只接收单一编码。这允许在多用户场景中，每个发送客户端向服务器发送多个编码，然后服务器为每个接收客户端选择要转发的适当编码。
+
+应用程序通过在 RtpSender上配置多个编码来请求支持 Simulcast。在生成报价或答案时，这些编码通过相应的 m-line 上的 SDP 标记表示，如下所述。理解并愿意接收 Simulcast 的接收器也将包括 SDP 标记来表示他们的支持，而 JSEP 端点将使用这些标记来确定是否允许给定的 RtpSender 进行 Simulcast。如果没有协商同步传输支持，RtpSender 将只使用第一个配置的编码。
+
+请注意，Simulcast 的确切参数取决于发送程序。虽然前面提到的 SDP 标记是为了确保远端可以接收和分解多个 Simulcast 的编码，但在 JSEP 中，用于每个编码的具体分辨率和比特率仅由发送端决定。
+
+JSEP 目前还没有提供一种机制来配置 Simulcast 的接收。这意味着，如果远端提供了 simulcast，则 JSEP端点生成的 answer 将不指示是否支持接收simulcast，因此远端将只发送每个 m-line 的单个编码。
+
+此外，JSEP 没有提供处理来自 JSEP 端点 simulcast offer 请求的机制。这意味着，在 JSEP 端点收到初始 offer 的情况下，设置 simulcast 需要带外信令或 SDP 检查。然而，如果 JSEP 端点在其初始 offer 中设置了 simulcast，则任何已建立的 simulcast 流将在收到传入的重新 offer 后继续工作。该规范的未来版本可能会添加额外的 API 来处理传入的初始 offer 场景。
+
+当使用JSEP从RtpSender发送多个编码时，使用来自[RFC8853]和[RFC8851]的技术。具体来说，当一个RtpSender被配置了多个编码时，RtpSender的"m="部分将包含一个"a=simulcast"属性，正如在[RFC8853]章节5.1中定义的那样，带有一个"send"的simulcast流描述，列出了每个期望的编码，而没有"recv"的simulcast流描述。“m=”部分还将包含每个编码的“a=rid”属性，如[RFC8851]章节4中指定的;使用限制标识符(rid，也称为rid-ids或RtpStreamIds)可以消除各个编码的歧义，即使它们都属于同一个“m=”部分。
