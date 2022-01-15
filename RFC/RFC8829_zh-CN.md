@@ -384,7 +384,25 @@ createdatchannel 方法也包含了 PeerConnection 使用的一些参数(例如 
 
 #### 4.1.8. createOffer
 
+createOffer 方法生成一个 描述其支持的会话配置的 SDP [RFC3264]，包括添加到当前 PeerConnection 媒体的描述 、codec、RTP/RTCP、由 ICE 代理收集的 ICE candidate。可以提供一个选项参数来对生成的 offer 提供额外的控制。这个选项参数允许应用程序触发 ICE 重启，以重新建立连接。
+
+在最初的 offer 中，生成的 SDP 将包含会话所需的所有功能(默认支持但不希望使用的功能可以省略)；对于 SDP 的每一行，SDP 的生成规则都将遵循已定义的 SDP 规则。初始 offer 生成的具体处理详见下文 5.2.1 节。
+
+如果在会话建立后调用 createOffer，createOffer 将根据会话的任何更改生成一个修改当前会话的 offer，例如，添加或停止 RtpTransceivers，或请求 ICE 重启。对于每个现有的流，每个 SDP line 的生成规则必须遵循已有的 RFC 定义。对于每个新媒体流，SDP 的生成必须遵循生成初始 offer 的过程。如果没有更改，或SDP line 不受请求更改的影响，offer 将只包含由最后的 offer/answer 交换协商的参数。后续 offer 生成的具体处理详见下文 5.2.2 节。
+
+由 createOffer 生成的会话描述必须立即被 setLocalDescription 使用；如果一个系统有有限的资源(例如，解码器的数量有限)，createOffer 应该返回一个反映系统当前状态的 offer，这样 setLocalDescription 在尝试获取这些资源时就会成功。
+
+调用这个方法可以做一些事情，比如生成新的 ICE 凭证，但它不会改变 PeerConnection 状态，触发候选收集，或导致媒体流开始或停止。具体地说，在调用 setLocalDescription 之前，offer 不会被应用，也不会成为临时的本地描述。
+
 #### 4.1.9. createAnswer
+
+createAnswer 方法生成一个 SDP，应答在最近的 setRemoteDescription 调用中每个 [RFC3264] 所支持的会话配置兼容的参数，setRemoteDescription 必须在调用 createAnswer 之前调用。像 createOffer 一样，返回的blob 包含了对添加到 PeerConnection 的媒体的描述，为该会话协商的codec/RTP/RTCP 选项，以及 ICE 代理收集的任何候选项，并且可以提供一个选项参数来提供对生成 answer 的额外控制。
+
+作为一个 answer，生成的SDP将包含一个特定的配置，指定媒体传输应该如何建立；对于每一条SDP line，SDP 的生成必须遵循已有的规范。answer 生成的具体处理将在下面的 5.3 节中详细介绍。
+
+由 createAnswer 生成的会话描述必须立即被对端 setLocalDescription 使用；像 createOffer 一样，返回的描述应该反映系统的当前状态。
+
+调用这个方法可以做一些事情，比如生成新的 ICE 凭据，但它不会改变 PeerConnection 状态，不会触发候选收集，也不会导致媒体状态改变。具体来说，answer 不会被应用，也不会成为当前端点的本地描述，直到 setLocalDescription被调用。
 
 #### 4.1.10. SessionDescriptionType
 
