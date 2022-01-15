@@ -353,3 +353,58 @@ JSEP实现将收集 RTP 和 RTCP 候选，但也将提供 "a=rtcp-mux"，从而�
 JSEP 实现将只收集 RTP 候选，并将在它生成的 offer 中任何新的 m-line 中插入 "a=rtcp-mux-only" 。这样一来，候选收集者需要收集的候选数量就减少了一半。使用不包含"a=rtcp-mux" 属性的 m-line 描述将导致返回错误。
 
 默认的复用策略必须设置为 "require"。实现可以选择拒绝应用程序设置多路复用策略为 "negotiate" 的尝试。
+
+#### 4.1.2. addTrack
+
+addTrack 方法为 PeerConnection 添加一个 MediaStreamTrack，使用 MediaStream 参数将该音轨与同一 MediaStream 中的其他音轨关联起来，这样当创建一个 offer 或 answer 时，它们可以被添加到相同的 "LS"(Lip Synchronization)组。将音轨添加到相同的 "LS" 组表明，这些音轨的播放应该同步以进行正确的lip sync，如[RFC5888]，第 7 节所述。addTrack 试图最小化收发器的数量，如下所示：如果PeerConnection处于“have - remote-offer”状态，该track将被附加到第一个兼容的收发器上，该收发器是由最近的setRemoteDescription调用创建的，并且没有本地track。否则，将创建一个新的收发器，如4.1.4节所述。
+
+#### 4.1.3. removeTrack
+
+#### 4.1.4. addTransceiver
+
+#### 4.1.5. onaddtrack Event
+
+#### 4.1.6. createDataChannel
+
+#### 4.1.7. ondatachannel Event
+
+#### 4.1.8. createOffer
+
+#### 4.1.9. createAnswer
+
+#### 4.1.10. SessionDescriptionType
+
+#### 4.1.11. setLocalDescription
+
+#### 4.1.12. setRemoteDescription
+
+#### 4.1.13. currentLocalDescription
+
+#### 4.1.14. pendingLocalDescription
+
+#### 4.1.15. currentRemoteDescription
+
+#### 4.1.16. pendingRemoteDescription
+
+#### 4.1.17. canTrickleIceCandidates
+
+#### 4.1.18. setConfiguration
+
+#### 4.1.19. addIceCandidate
+
+#### 4.1.20. onicecandidate Event
+
+### 4.2. RtpTransceiver
+
+#### 4.2.1. stop
+
+#### 4.2.2. stopped
+
+#### 4.2.3. setDirection
+
+#### 4.2.4. direction
+
+#### 4.2.5. currentDirection
+
+#### 4.2.6. setCodecPreferences
+
