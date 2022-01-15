@@ -285,5 +285,31 @@ JSEP 目前还没有提供一种机制来配置 Simulcast 的接收。这意味�
 
 此外，JSEP 没有提供处理来自 JSEP 端点 simulcast offer 请求的机制。这意味着，在 JSEP 端点收到初始 offer 的情况下，设置 simulcast 需要带外信令或 SDP 检查。然而，如果 JSEP 端点在其初始 offer 中设置了 simulcast，则任何已建立的 simulcast 流将在收到传入的重新 offer 后继续工作。该规范的未来版本可能会添加额外的 API 来处理传入的初始 offer 场景。
 
-当使用 JSEP 从 RtpSender 发送多个编码时，使用来自 [RFC8853] 和 [RFC8851] 的技术。具体来说，当一个 RtpSender 被配置了多个编码时，RtpSender 的 m-line 将包含一个 "a=simulcast" 属性，正如在 [RFC8853] 5.1 节中定义的那样，带有一个"send"的simulcast流描述，列出了每个期望的编码，而没有"recv"的simulcast流描述。“m=”部分还将包含每个编码的“a=rid”属性，如[RFC8851]章节4中指定的;使用限制标识符(rid，也称为rid-ids或RtpStreamIds)可以消除各个编码的歧义，即使它们都属于同一个“m=”部分。
+当使用 JSEP 从 RtpSender 发送多个编码时，使用来自 [RFC8853] 和 [RFC8851] 的技术。具体来说，当一个 RtpSender 被配置了多个编码时，RtpSender 的 m-line 将包含一个 "a=simulcast" 属性，正如在 [RFC8853] 5.1 节中定义的那样，带有一个 "send" simulcast 描述并列出了每个期望的编码，而没有 "recv" simulcast 描述。m-line 还将包含每个编码的 "a=rid" 属性，如 [RFC8851] 4 节中指定的；使用限制标识符(rid，也称为 rid-ids 或 RtpStreamIds )可以消除各个编码的歧义，即使它们都属于同一个 m-line。
+
+#### 3.8. 与 forking 的相互作用
+
+一些呼叫信令系统允许各种类型的 forking ，一个 SDP offer 可以提供给多个设备。例如，SIP [RFC3261] 同时定义了 “并行搜索” 和 “顺序搜索”。尽管这些主要是信令层问题，不在 JSEP 的范围内，但它们确实对媒体相关的配置有一些影响。当 forking 发生在信令层时，负责信令的 JavaScript 应用程序需要决定在什么时间点应该发送或接收什么媒体，以及应该与哪个远程端点通信；JSEP 用于确保媒体引擎能够按照应用程序的要求生成 RTP stream 并执行操作。应用程序可以让媒体引擎做的基本操作如下:
+
+- 开始与给定的远程对等端交换媒体，但保留 offer 中的所有资源。
+- 开始与给定的远程对等点交换媒体，并释放 offer 中未被使用的任何资源。
+
+##### 3.8.1. 顺序 Forking
+
+顺序 forking 涉及一个调用被分派到多个远程被调用方，其中每个被调用方可以接受调用，但每次只有一个活动会话存在；不执行媒体合流操作。
+
+JSEP 可以很好地处理顺序 forking ，允许应用程序轻松地控制选择所需远程端点的策略。当来自其中一个调用者的 answer 到达时，应用程序可以选择将其应用为 provisional answer 或者 final answer。
+
+在 "first-one-wins" 的情况下，第一个 answer 将被应用为 final answer，并且应用程序将拒绝任何随后的 answer。在 SIP 中可以理解为 "ACK + BYE"。
+
+在 "last-one-wins" 的情况下，所有的 answer 将作为 provisional answer，任何先前的呼叫阶段将被终止。在某些时候，应用程序将结束建立过程，可能会使用一个计时器；此时，应用程序可以重新应用挂起的远程描述作为 final answer。
+
+##### 3.8.2. 并行 Forking
+
+并行 forking 包括一个调用被分派到多个远程被调用方，其中每个被调用方可以接受该调用从而可以建立多个同时活动的信令会话。如果多个被调用方同时发送媒体，处理的可能性在[RFC3960] 3.1节中描述。如今的大多数 SIP 设备一次只支持与单个设备交换媒体，而不是像早期那样尝试混合多个媒体音频源，因为这可能会导致混乱的情况。例如，考虑将欧洲的回铃音和北美的回铃音混合在一起——产生的声音将不像这两种音调，会让用户感到困惑。如果信令应用程序希望一次只与一个远程端点交换媒体，那么从媒体引擎的角度来看，这与顺序 forking 的情况完全相同。
+
+在并行 forking 的情况下，JavaScript 应用程序希望同时与多个对等体交换媒体，流程稍微复杂一些，但JavaScript应用程序可以遵循 [RFC3960] 描述的策略，使用 UPDATE。UPDATE 方法允许信令为它希望与之交换媒体的每个对等体建立单独的媒体流。在 JSEP 中，UPDATE 使用的这个 offer 将通过简单地创建一个新的 PeerConnection (参见 4.1 节)来形成，并确保相同的本地媒体流已经被添加到这个新的 PeerConnection 中。然后新的 PeerConnection 对象将产生一个 SDP offer，该 offer 可以被信令用来执行 [RFC3960] 中讨论的 UPDATE 策略。
+
+由于是共享媒体流，应用程序将以 N 个并行 PeerConnection 会话结束，每个会话都有一个本地和远程描述以及它们自己的本地和远程地址。来自这些会话的媒体流可以使用setDirection 来管理(参见 4.2.3 节)，或者应用程序可以选择从所有会话混合播放媒体。当然，如果应用程序只想保留单个会话，它可以简单地终止不再需要的会话。
+
 
