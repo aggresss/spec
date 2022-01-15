@@ -12,7 +12,7 @@
 
 ### 1.1. JSEP 总体设计
 
-WebRTC 呼叫建立的设计重点关注于媒体层面，而信令层面的行为则尽可能的留给应用程序。其根本原因是不同的应用程序在信令层会使用不同的协议，例如现存的 SIP 呼叫协议或者为特定应用程序定制化的协议（可能是一个新的用例）。在这种实现中，需要交换的关键信息是媒体回话描述，它指定了传输参数和媒体配置信息。
+WebRTC 呼叫建立的设计重点关注于媒体层面，而信令层面的行为则尽可能的留给应用程序。其根本原因是不同的应用程序在信令层会使用不同的协议，例如现存的 SIP 呼叫协议或者为特定应用程序定制化的协议（可能是一个新的用例）。在这种实现中，需要交换的关键信息是媒体描述，它指定了传输参数和媒体配置信息。
 
 考虑到这些因素，本文档描述了 JavaScript 会话建立协议(JSEP)，它允许通过 JavaScript 完全控制信令状态机。如上所述，JSEP 假设存在一个模型，在这个模型中，JavaScript 应用程序在包含 WebRTC API 的运行时中执行 “JSEP 实现”。JSEP 的实现几乎完全脱离了核心信令流，它由 JavaScript 使用两个接口来处理:
 
@@ -145,7 +145,7 @@ setRemote(ANSWER) |                                   |
 
 除了这些状态转换，处理 临时 answer 和最终 answer 没有区别。
 
-### 3.3. 回话描述格式
+### 3.3. 会话描述格式
 
 JSEP 的会话描述使用会话描述协议(session Description Protocol, SDP)语法进行内部表示。虽然这种格式对于 JavaScript 操作不是最佳的，但它被广泛接受并经常更新新特性；任何会话描述的替代表示都必须与 SDP 的变化保持同步，至少在这种新的表示取代 SDP 流行之前是如此。
 
@@ -153,7 +153,7 @@ JSEP 的会话描述使用会话描述协议(session Description Protocol, SDP)�
 
 如下所述，大多数应用程序应该能够将这些各种 API 调用产生和使用的 sessiondescription 视为不透明的 blob；也就是说，应用程序不需要读取或更改它们。
 
-### 3.4. 回话描述控制
+### 3.4. 会话描述控制
 
 为了让应用程序控制各种公共会话参数，JSEP 提供了控制面，告诉 JSEP 实现如何生成会话描述。在大多数情况下，这避免了 JavaScript 修改会话描述的需要。
 
@@ -356,17 +356,29 @@ JSEP 实现将只收集 RTP 候选，并将在它生成的 offer 中任何新的
 
 #### 4.1.2. addTrack
 
-addTrack 方法为 PeerConnection 添加一个 MediaStreamTrack，使用 MediaStream 参数将该音轨与同一 MediaStream 中的其他音轨关联起来，这样当创建一个 offer 或 answer 时，它们可以被添加到相同的 "LS"(Lip Synchronization)组。将音轨添加到相同的 "LS" 组表明，这些音轨的播放应该同步以进行正确的lip sync，如[RFC5888]，第 7 节所述。addTrack 试图最小化收发器的数量，如下所示：如果PeerConnection处于“have - remote-offer”状态，该track将被附加到第一个兼容的收发器上，该收发器是由最近的setRemoteDescription调用创建的，并且没有本地track。否则，将创建一个新的收发器，如4.1.4节所述。
+addTrack 方法为 PeerConnection 添加一个 MediaStreamTrack，使用 MediaStream 参数将该 track 与同一 MediaStream 中的其他 track 关联起来，这样当创建一个 offer 或 answer 时，它们可以被添加到相同的 "LS"(Lip Synchronization)组。将 track 添加到相同的 "LS" 组表明，这些 track 的播放应该同步以进行正确的lip sync，如[RFC5888]，第 7 节所述。addTrack 试图最小化收发器的数量，如下所示：如果PeerConnection处于 "have-remote-offer" 状态，该 track 将被附加到第一个兼容的 transceiver 上，该 transceiver 是由最近的 setRemoteDescription 调用创建的，并且没有本地 track。否则，将创建一个新的 transceiver，如 4.1.4 节所述。
 
 #### 4.1.3. removeTrack
 
+removeTrack 方法从 PeerConnection 中删除 MediaStreamTrack，使用 RtpSender 参数来指示哪个 sender 的 track 应该被删除。清除 sender 的 track 后，sender 停止发送。调用 createOffer 后，如果是 transceiver，方向由 sendrecv 变为 recvonly，或者由 sendonly 变为 inactive 。
+
 #### 4.1.4. addTransceiver
 
-#### 4.1.5. onaddtrack Event
+addTransceiver 方法增加一个新的 RtpTransceiver 到 PeerConnection。如果提供了 MediaStreamTrack 参数，则 transceiver 将被配置为该媒体类型，并且 track 将被附加到 transceiver 上。否则，应用程序必须显式地指定类型；这种模式对于创建 recvonly transceiver 非常有用，对于创建可以在以后附加 track 的 transceiver 也非常有用。
+
+应用程序可以在创建的时候指定 transceiver 方向属性、关联的 MediaStreams (允许 "LS" 组分配)以及一组媒体编码(用于在 3.7 节中描述的 simulcast)。
+
+#### 4.1.5. onaddtrack 事件
+
+当 setRemoteDescription 调用后生成了一个新的 remote track 时，onaddtrack 事件被通知给应用程序。新 track 在事件中被作为 MediaStreamTrack 对象，与该 track 所在的 MediaStream 一起包含在事件参数中。
 
 #### 4.1.6. createDataChannel
 
-#### 4.1.7. ondatachannel Event
+createdatchannel 方法创建一个新的数据通道并将其附加到 PeerConnection。如果当前 PeerConnection 没有数据通道，则需要一次新的 offer/answer 交换。在一个给定的PeerConnection 上的所有数据通道共享相同的 SCTP/DTLS 关联("SCTP" 代表 "Stream Control Transmission Protocol")，因此相同的 m-line，后续的数据通道的创建不会对 JSEP 状态产生任何影响。
+
+createdatchannel 方法也包含了 PeerConnection 使用的一些参数(例如 maxPacketLifetime)，但不会在 SDP 中反映，也不会影响 JSEP 状态。
+
+#### 4.1.7. ondatachannel 事件
 
 #### 4.1.8. createOffer
 
@@ -392,7 +404,7 @@ addTrack 方法为 PeerConnection 添加一个 MediaStreamTrack，使用 MediaSt
 
 #### 4.1.19. addIceCandidate
 
-#### 4.1.20. onicecandidate Event
+#### 4.1.20. onicecandidate 事件
 
 ### 4.2. RtpTransceiver
 
