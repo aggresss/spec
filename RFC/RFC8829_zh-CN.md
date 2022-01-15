@@ -285,4 +285,5 @@ JSEP 目前还没有提供一种机制来配置 Simulcast 的接收。这意味�
 
 此外，JSEP 没有提供处理来自 JSEP 端点 simulcast offer 请求的机制。这意味着，在 JSEP 端点收到初始 offer 的情况下，设置 simulcast 需要带外信令或 SDP 检查。然而，如果 JSEP 端点在其初始 offer 中设置了 simulcast，则任何已建立的 simulcast 流将在收到传入的重新 offer 后继续工作。该规范的未来版本可能会添加额外的 API 来处理传入的初始 offer 场景。
 
-当使用JSEP从RtpSender发送多个编码时，使用来自[RFC8853]和[RFC8851]的技术。具体来说，当一个RtpSender被配置了多个编码时，RtpSender的"m="部分将包含一个"a=simulcast"属性，正如在[RFC8853]章节5.1中定义的那样，带有一个"send"的simulcast流描述，列出了每个期望的编码，而没有"recv"的simulcast流描述。“m=”部分还将包含每个编码的“a=rid”属性，如[RFC8851]章节4中指定的;使用限制标识符(rid，也称为rid-ids或RtpStreamIds)可以消除各个编码的歧义，即使它们都属于同一个“m=”部分。
+当使用 JSEP 从 RtpSender 发送多个编码时，使用来自 [RFC8853] 和 [RFC8851] 的技术。具体来说，当一个 RtpSender 被配置了多个编码时，RtpSender 的 m-line 将包含一个 "a=simulcast" 属性，正如在 [RFC8853] 5.1 节中定义的那样，带有一个"send"的simulcast流描述，列出了每个期望的编码，而没有"recv"的simulcast流描述。“m=”部分还将包含每个编码的“a=rid”属性，如[RFC8851]章节4中指定的;使用限制标识符(rid，也称为rid-ids或RtpStreamIds)可以消除各个编码的歧义，即使它们都属于同一个“m=”部分。
+
