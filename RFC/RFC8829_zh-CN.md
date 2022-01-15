@@ -175,7 +175,7 @@ RtpSenders 允许应用程序控制 RTP 媒体的发送方式。RtpSender 在概
 
 #### 3.4.3. RtpReceivers
 
-RtpReceivers 允许应用程序检查如何接收 RTP 媒体。RtpReceiver 在概念上负责传入的 RTP 流，由 m-line 描述。这包括处理接收到的RTP媒体包，解码传入的流以产生远程MediaStreamTrack，并为传入的 RTP 流生成和处理 RTCP。
+RtpReceivers 允许应用程序检查如何接收 RTP 媒体。RtpReceiver 在概念上负责传入的 RTP 流，由 m-line 描述。这包括处理接收到的 RTP 媒体包，解码传入的流以产生远程 MediaStreamTrack，并为传入的 RTP 流生成和处理 RTCP。
 
 ### 3.5. ICE
 
@@ -374,11 +374,13 @@ addTransceiver 方法增加一个新的 RtpTransceiver 到 PeerConnection。如�
 
 #### 4.1.6. createDataChannel
 
-createdatchannel 方法创建一个新的数据通道并将其附加到 PeerConnection。如果当前 PeerConnection 没有数据通道，则需要一次新的 offer/answer 交换。在一个给定的PeerConnection 上的所有数据通道共享相同的 SCTP/DTLS 关联("SCTP" 代表 "Stream Control Transmission Protocol")，因此相同的 m-line，后续的数据通道的创建不会对 JSEP 状态产生任何影响。
+createDatachannel 方法创建一个新的数据通道并将其附加到 PeerConnection。如果当前 PeerConnection 没有数据通道，则需要一次新的 offer/answer 交换。在一个给定的PeerConnection 上的所有数据通道共享相同的 SCTP/DTLS 关联("SCTP" 代表 "Stream Control Transmission Protocol")，因此相同的 m-line，后续的数据通道的创建不会对 JSEP 状态产生任何影响。
 
 createdatchannel 方法也包含了 PeerConnection 使用的一些参数(例如 maxPacketLifetime)，但不会在 SDP 中反映，也不会影响 JSEP 状态。
 
 #### 4.1.7. ondatachannel 事件
+
+当远端协商了一个新的数据通道时，ondatchannel 事件被通知给应用程序，这可以在底层 SCTP/DTLS 关联建立之后的任何时间发生。在事件参数中包含新的数据通道对象。
 
 #### 4.1.8. createOffer
 
