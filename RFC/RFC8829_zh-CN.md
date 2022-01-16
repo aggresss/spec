@@ -406,6 +406,18 @@ createAnswer 方法生成一个 SDP，应答在最近的 setRemoteDescription �
 
 #### 4.1.10. SessionDescriptionType
 
+会话描述对象(RTCSessionDescription)的类型可以是 "offer"、"pranswer"、"answer" 或 "rollback"。这些类型提供了关于应该如何解析描述参数以及应该如何更改媒体状态的信息。
+
+"offer" 表示一个描述必须被解析为一个 offer；描述可能包括许多可能的媒体配置。当 PeerConnection 处于 "stable" 状态时，作为 offer 的描述可以被应用，或者作为先前提供但未回复的 offer 的更新被应用。
+
+"pranswer" 表示描述必须被解析为一个 answer，而不是最终的 answer，因此不可以释放已分配资源。如果 answer 没有指定方向为 inactive ，则可能导致媒体传输开始。作为 "pranswer" 的描述可以作为对 offer 的回应，也可以作为对先前发送的 "pranswer" 的更新。
+
+"answer" 表示一个描述必须被解析为一个 answer，offer/answer 交换将被认为是完整的，并且任何不再需要的资源(解码器，候选)应该被释放。作为 "answer" 的描述可以作为对 "answer" 的回应，也可以作为对先前发送的 "pranswer" 的更新。
+
+provisional answer 和 final answer 之间的唯一区别是，final answer 的结果是释放因 offer 而分配的任何未使用的资源。因此，应用程序可以自行决定 answer 是临时的还是最终的，并可以根据需要更改会话描述的类型。例如，在串行 forking 场景中，应用程序可能会收到多个 final answer，每个远程端点都有一个。应用程序可以选择接受最初的 answer 作为临时 answer，只有当它收到一个满足其标准的 answer 时(例如，一个活跃的用户而不是语音邮件)，才应用这个 answer 作为最终 answer。
+
+"rollback" 是一种特殊的会话描述类型，它指示状态机必须回滚到以前的 "stable" 状态，如 4.1.10.2 节所述。内容必须为空。
+
 #### 4.1.11. setLocalDescription
 
 #### 4.1.12. setRemoteDescription
