@@ -428,6 +428,8 @@ provisional answer 和 final answer 之间的唯一区别是，final answer 的�
 
 ##### 4.1.10.2. Rollback
 
+在某些情况下，可能需要 "rollback" 对 setLocalDescription 或 setRemoteDescription 调用后进行更改。考虑这样一种情况，一个呼叫正在进行，一方希望更改一些会话参数，该端生成一个更新的 offer，然后调用 setLocalDescription。但是，远端(在 setRemoteDescription 之前或之后)决定它不想接受新参数，并向提供程序发送拒绝消息。现在，提供者(可能还有回答者)需要返回到 "stable" 状态和先前的 offer/answer 描述。为了支持这一点，我们引入了 "rollback" 的概念，它丢弃对会话的任何建议更改，将状态机返回到 "stable" 状态。回滚是通过向 setLocalDescription 或 setRemoteDescription 提供带有空内容的类型为 "rollback" 的会话描述来执行的。
+
 #### 4.1.11. setLocalDescription
 
 #### 4.1.12. setRemoteDescription
