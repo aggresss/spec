@@ -418,6 +418,16 @@ provisional answer 和 final answer 之间的唯一区别是，final answer 的�
 
 "rollback" 是一种特殊的会话描述类型，它指示状态机必须回滚到以前的 "stable" 状态，如 4.1.10.2 节所述。内容必须为空。
 
+##### 4.1.10.1. Provisional Answers 使用方式
+
+大多数应用程序不需要使用 "pranswer" 类型创建 answers。虽然 这样可以对 offer 立即响应，为了尽快建立会话运输，防止媒体裁剪发生，JSEP 优先处理应用程序创建和发送一个 "sendonly" 最终答案空 MediaStreamTrack 后立即收到 answer，这将阻止媒体由呼叫者发送，并允许媒体在被呼叫者回答后立即发送。稍后，当被调用方实际接受该调用时，应用程序可以插入真正的 MediaStreamTrack 并创建一个新的 "sendrecv" offer 来更新之前的 offer/answer对，并启动双向媒体流。虽然这也可以通过 "sendonly" pranswer 后接 "sendrecv" answer 来完成，但最初的 pranswer 保留 offer/answer 交换开放，这意味着呼叫者不能在这段时间内发送更新的 offer。
+
+例如，考虑一个典型的 JSEP 应用程序，它希望尽可能快地设置音频和视频。当接收到一个 offer 包含了音频和视频 MediaStreamTracks，它将发送一个直接的 answer 并将这些 track 设置为 sendonly (这意味着接受者将不会发送任何媒体，因为尚未添加自己的 MediaStreamTracks，发起者也不会发送任何媒体)。然后，它将等待用户接受呼叫并获取所需的本地 track。在用户接受后，应用程序将载入它获得的 track，这时 ICE 握手和 DTLS 握手可能已经完成，可以立即开始传输。应用程序还将向远端发送一个新的 offer，指示呼叫接受，并将音频和视频设置为 "sendrecv"。7.3 节给出了一个详细的用例流程。
+
+当然，一些应用程序可能无法执行这种双重 offer/answer 交换，特别是那些使用历史信令协议的应用程序。在这些情况下，pranswer 仍然可以为应用程序提供一种机制来进行传输预连接。
+
+##### 4.1.10.2. Rollback
+
 #### 4.1.11. setLocalDescription
 
 #### 4.1.12. setRemoteDescription
