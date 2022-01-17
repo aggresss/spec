@@ -497,8 +497,24 @@ setConfiguration 方法允许 PeerConnection 的全局配置(最初由构造函�
 
 #### 4.1.19. addIceCandidate
 
+addiccandidate 方法通过一个 iccandidate 对象来更新 ICE agent(章节3.5.2.1)。如果该 ICE candidate 字段为非空，则该 ICE candidate 将被视为一个新的远程 ICE candidate，根据为 Trickle ICE 定义的规则，将其添加到 current/pending 状态的远程描述中。否则，根据 [RFC8838] 第 14 节的定义，iccandidate 被视为候选结束指示。
+
+在任何一种情况下，提供的 iccandidate 中的 m-line 索引, MID，和 ufrag 字段被用来确定 iccandidate 属于哪个 m-line 和 ICE candidate，如上文 3.5.2.1 节所述。在候选结束指示的情况下，m-line 索引和 MID 字段的空值被解释为表示该指示适用于指定 ICE 候选生成中的所有 m-line 。但是，如果对于新的远程候选对象，这两个字段都为空，则必须将其视为无效条件，如下所述。
+
+如果任何 iccandidate 字段包含无效值或在处理 iccandidate 对象时发生错误，必须忽略提供的 iccandidate 并返回一个错误。
+
+否则，将向 ICE 代理提供新的远程候选项或候选结束项指示。对于一个新的远程候选对象，连接检查将被发送到新的候选对象，假设已经调用了 setLocalDescription 来初始化 ICE 收集过程。
 
 #### 4.1.20. onicecandidate 事件
+
+oniccandidate 事件在两种情况下被发送给应用程序：
+
+1. 当ICE agent 在 ICE 收集过程中发现了一个新的允许的本地 ICE 候选，如 3.5.1 节所述，并受 3.5.3 节所讨论的限制；
+2. 当 ICE 收集阶段完成时。事件包含一个单一的 iccandidate 对象，如3.5.2.1 节所定义；
+
+在第一种情况下，新发现的候选对象反映在iccandidate对象中，并且它的所有字段必须是非空的。根据为Trickle ICE定义的规则，这个候选也将被添加到当前和/或待处理的本地描述中。
+
+在第二种情况下，事件的 iccandidate 对象必须将其候选字段设置为 null，以表明当前收集阶段已经完成，也就是说，在这个阶段将不再有其他的候选事件。然而，iccandidate 的 ufrag 字段必须被指定，以表示哪个 ICE 候选的生成正在结束。ICE candidate 的 m-line 和 MID 字段可以指定，表示该事件适用于一个特定的 m-line，或者设置为 null，表示该事件适用于所有在收集阶段的 m-line。这个事件可以被应用程序用来生成一个候选结束的指示，定义在 [RFC8838] 第13节中。
 
 ### 4.2. RtpTransceiver
 
