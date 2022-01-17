@@ -593,7 +593,97 @@ SRTP 密钥的 SDP 安全描述机制 [RFC4568] 不能被使用，如在 [RFC882
 
 ### 5.2. Constructing an Offer
 
+当 createOfferv被调用时，必须创建一个新的 SDP 描述，包含在 [RFC8834] 中指定的功能。这个过程的具体细节如下所述。
+
 #### 5.2.1. Initial Offers
+
+当 createOffer 第一次被调用时，其结果被称为初始 offer。
+
+生成初始 offer 的第一步是生成会话级属性，如[RFC4566] 5 节所述。具体地:
+
+- 第一个 SDP line 必须是 "v=0"，定义在[RFC4566]，章节5.1。
+- 第二个 SDP line 必须是一个 "o=" 的行，定义在[RFC4566]，章节5.2。\<username> 字段的值应该是 "-"。\<session-id> 必须由64位有符号整数表示，且取值必须小于2^63-1。建议通过生成一个 64 位的随机数来构造 \<session-id>，其中最高位设置为 0，其余 63 位采用加密随机方式。\<nettype> \<addrtype> \<unicast-address> 组合的值应该设置为一个无意义的地址，例如 "IN IP4 0.0.0.0"，以防止本端 IP地址泄露到该字段中，这个问题在 [RFC8828] 中进行了讨论。正如在 [RFC4566] 中提到的，整个 "o=" 行需要是唯一的，通过为 \<session-id> 选择一个随机数就足以实现这一点。
+- 第三个 SDP 行必须是 "s=" 的行，在 [RFC4566] 5.3 节中定义；为了匹配 "o=" 行，应该使用 "-" 作为会话名称，例如，"s=-"。请注意，这与 [RFC4566] 中的建议不同，后者建议使用单个空格，但由于 "o=" 和"s=" 在 JSEP 中都是无意义的，因此拥有相同的无意义值似乎更清晰。
+- 会话信息("i=")，URI("u=")，电子邮件地址("e=")，电话号码("p=")，重复时间("r=")，和时区("z=")行在这个上下文中是没有用的，不应该被包括。
+- 加密密钥(“k=”)行不能提供足够的安全性，绝对不能包含。
+- 必须添加 "t=" 行，如 [RFC4566] 5.9 节所述; \<start-time> 和 \<stop-time> 都应该设置为 0，例如"t=0 0"。
+- 必须添加 "a=ice-options" 行以及 "trickle" 和 "ice2" 选项，具体请参见 [RFC8840] 4.1.1 节和 [RFC8445] 10 节。
+- 如果使用 WebRTC 标识，必须添加 "a=identity" 行，如 [RFC8827] 5 节所述。
+
+下一步是生成 m-line，如 5.14 节中 [RFC4566] 所述。一个 m-line 是一个已被添加到 PeerConnection 中的 RtpTransceiver，排除任何停止的 RtpTransceiver；这是按照 RtpTransceivers 被添加到 PeerConnection 的顺序完成的。如果没有这样的 RtpTransceiver，则没有 m-line 生成；后面可以添加更多内容，如[RFC3264] 5节所述。
+
+对于为 RtpTransceiver 生成的每个 m-line，在 RtpTransceiver 和生成的 m-line 索引之间建立一个映射。
+
+每个 m-line，如果没有标记为 "bundle-only"，必须包含唯一的 ICE 证书集和唯一的 ICE 候选集。标记了 bundle-only 的 m-line 不能包含任何 ICE 证书，也不能收集任何候选。
+
+对于 DTLS，所有的 m-line 必须使用 PeerConnection 指定的任何和所有证书；因此，它们必须都具有相同的指纹值或值 [RFC8122]，或者这些值必须是会话级属性。
+
+每个 m-line 必须按照 [RFC4566] 5.14 节中指定的方式生成。对于 m-line 本身，必须遵守以下规则:
+
+- 如果 m-line 被标记为 bundle-only，那么 \<port> 值必须设置为 0。否则，值将被设置为 m-line 的默认的 ICE 候选端口，但是考虑到没有可用的候选端口，必须使用默认的端口值 9 (Discard)，如 RFC8840 4.1.1 节所示。
+- 为了正确地指示使用 DTLS， profile 必须设置为 "UDP/TLS/RTP/SAVPF"，如 [RFC5764] 8节所规定的。
+- 如果已为相关的 RtpTransceiver 设置了编解码器首选项，则必须按相应的顺序生成媒体格式，并且必须排除编解码器首选项中不存在的任何编解码器。
+- 除上述限制外，媒体格式必须包括 [RFC7874] 第3节和 [RFC7742] 第5节中规定的强制性音频/视频编解码器。
+
+m-line 后面必须紧跟着 "c=" 行，如[RFC4566] 5.7节所述。同样，由于没有候选项可用，"c=" 行必须包含默认值 "IN IP4 0.0.0.0"，如 [RFC8840] 4.1.1 节所定义。
+
+[RFC8859] 将 SDP 属性分类。为了 bundling 时不必要的重复，类别相同或传输属性不需要在 bundling 的 "m-line" 中重复，[RFC8843]7.1.3 节中有说明。这包括 m-line，bundling 已经协商好，仍然是需要的，以及“m=”部分标记为 bundle-only。
+
+以下属性，不是相同或运输的类别，必须包含在每个 m-line：
+
+- "a=mid" 行，如 [RFC5888] 4 节中所述。所有的 MID 值必须以一种不泄漏用户信息的方式生成，例如，随机或使用每个 PeerConnection 计数器，并且应该是3字节或更少，以允许它们有效地适合在[RFC8843]章节15.2中定义的RTP头扩展。注意，这并没有设置RtpTransceiver mid属性，因为这只在应用描述时才会发生。此时，生成的MID值可以被认为是“建议的”MID。
+- 方向属性，与关联的 RtpTransceiver 的方向属性相同。
+- 对于媒体 m-line，"a=rtpmap" 和 "a=fmtp" 行描述的每一种媒体格式，如 [RFC4566] 6 节和 [RFC3264] 5.1 节所述。
+- 对于每个需要使用 RTP 重传的主编解码器，对应的 "a=rtpmap" 指示主编解码器的时钟速率的 "rtx"，对应的 "a=fmtp" 指示主编解码器的有效负载类型，如 [RFC4588] 8.1 节所述。
+- 对于每个支持的前向纠错 (FEC) 机制，"a=rtpmap" 和 "a=fmtp" 行，如 [RFC4566] 6 节所述。必须支持的 FEC 机制在 [RFC8854] 7 节中指定，每种媒体类型的具体用法在第 4 节和第 5 节中概述。
+- 如果这个 m-line 用于每个包的媒体持续时间可配置的媒体，例如，音频，一个 "a=maxptime" 表示可以封装在每个包中的最大媒体量，以毫秒为单位，如 [RFC4566] 6节中所规定的。该值被设置为 m-line 中包含的所有编解码器的最大持续时间值中的最小值。
+- 如果这个“m=”部分用于视频媒体，并且已知可以解码的图像的大小有限制，增加 "a=imageattr" 行，如 3.6 节所述。
+- 对于每个支持的 RTP 报头扩展，一个 "a=extmap" 行，如[RFC5285] 5 节中指定的。应该/必须支持的报头扩展列表在 [RFC8834] 5.2 节中指定。任何需要加密的头部扩展必须在 [RFC6904] 4 节中指定。
+- 对于每个支持的 RTCP 反馈机制，一个 "a=rtcp-fb”行，如[RFC4585] 4.2 节所述。应该/必须支持的 RTCP 反馈机制列表在 [RFC8834] 5.1 节中指定。
+- 如果 RtpTransceiver 是 sendrecv 或 sendonly 方向:
+  - 对于通过 addTrack 或 addTransceiver 创建的每个 MediaStream，一个 "a=msid" 行，如 [RFC8830] 2 节中指定的，但省略了 "appdata" 字段。
+- 如果 RtpTransceiver 是 sendrecv 或 sendonly 方向，并且应用程序已经为一个编码指定了 rid-id，或者在 RtpSenders 的参数中指定了多个编码，则为每个指定的编码指定一个 "a=rid" 行。"a=rid" 行在 [RFC8851] 中指定，它的方向必须是 "send"。如果应用程序已经选择了 rid-id，它必须被使用；否则 rid-id 必须由实现生成。rid-ids 生成不能泄露用户信息，例如随机或使用 每个 PeerConnection 计数器( [RFC8852] 3.3节)，并且应该 3 个字节或更少，让他们有效地融入RTP报头中定义扩展 [RFC8852] 3.3节。如果没有指定编码，或者只指定了一个编码但没有指定 rid-id，则不会生成 "a=rid" 行。
+- 如果 RtpTransceiver 是 sendrecv 或 sendonly 方向，并且产生了一个以上的 "a=rid" 行，一个 "a=simulcast" 行，方向 "send"，定义在 [RFC8853] 5.1 节。关联的 rid-id 集合必须包含 m-line 的 "a=rid"行中使用的所有 rid-id。
+- 如果这个 PeerConnection的 bundle policy 被设置为 "max-bundle" 并且这不是第一个 m-line ，或者这个 bundle policy 被设置为 "balanced" 并且这不是这个媒体类型的第一个 m-line，需要 "a=bundle-only" 行。
+
+以下属性，它们属于 IDENTICAL 或 TRANSPORT 类别，但必须只出现在 m-line 中，这些部分要么有唯一的地址，要么与 bundle 标签相关联。(在最初的 offer 中，这意味着那些 m-line 不包含 "a=bundle-only" 属性。)
+
+- "a=ice-ufrag" 和 "a=ice-pwd" 行，参见[RFC8839]章节5.4。
+- 对于每个所需的摘要算法，每个端点的证书都有一个或多个 "a=fingerprint" 行，如 [RFC8122] 5节所述。
+- "a=setup" 行，如[RFC4145] 4 节中规定的，并在[RFC5763] 5 节中说明了用于 DTLS-SRTP 场景的用法。offer 中的角色值必须为 "actpass"。
+- "a=tls-id" 行，如[RFC8842] 5.2 节所述。
+- 一个 "a=rtcp" 行，如[RFC3605] 2.1 节，包含默认值 "9 in IP4 0.0.0.0"，因为还没有收集候选。
+- "a=rtcp-mux" 行，如 [RFC5761] 5.1.3 节所述。
+- 如果 RTP/RTCP 复用策略为 "require"，则在 [RFC8858] 4节中指定 "a=rtcp-mux-only" 行。
+- 一个 "a=rtcp-rsize" 行，在[RFC5506] 5 节中指定。
+
+最后，如果创建了数据通道，则必须为数据生成 m-line。\<media> 必须设置为 "application"，必须设置为 "UDP/DTLS/SCTP" [RFC8841]。\<fmt> 的值必须设置为 "webrtc-datchannel"，如 [RFC8841] 4.2.2 节所述。
+
+在数据 m-line，一个 "a=mid" 行必须被生成，并包括在上面描述的，连同一个 "a=sctp-port" 行引用 SCTP 端口号，如 [RFC8841] 5.1 节中定义；并且如果合适的话，一个 "a=max-message-size" 行，在[RFC8841] 6.1 节定义。
+
+如上所述，只有当数据 m-line 部分有一个唯一的地址或与 bundle 标签相关联(例如，如果它是唯一的 m-line)时，下列 IDENTICAL 或 TRANSPORT 属性才会被包含:
+
+- "a=ice-ufrag"
+- "a=ice-pwd"
+- "a=fingerprint"
+- "a=setup"
+- "a=tls-id"
+
+一旦所有的 m-line 被生成，一个会话级的 "a=group" 属性必须被添加，在 [RFC5888] 中规定。这个属性必须具有 "BUNDLE" 的语义，并且必须包含每个 m-line 的 MID。这样做的结果是，JSEP 实现将所有 m-line 作为一个 bundle group 提供。然而，m-line 是否为 bundle-only，取决于 bundle 策略。
+
+下一步是生成会话级别的 LS 同步组，定义在[RFC5888] 7 节。对于每个被多个 RtpTransceiver 引用的 MediaStream (通过将这些 MediaStream 作为参数传递给 addTrack 和 addTransceiver 方法)，必须添加一组类型为 "LS" 的 group，该 group 包含每个 RtpTransceiver 的 MID 值。
+
+SDP 允许应该在媒体级的属性既放在会话级又放在媒体级，即使它们是相同的。这有助于开发和调试，使它更容易理解各个媒体部分，特别是当一组最初相同的属性中的一个后来被更改时。然而，实现可以选择在会话级别聚合属性，而 JSEP 实现必须准备在任意位置识别属性。
+
+可以包含除上述规定之外的其他属性，但以下属性除外，它们与 [RFC8834] 的要求不兼容且绝对不能包含:
+
+- "a=crypto"
+- "a=key-mgmt"
+- "a=ice-lite"
+
+注意，当使用 bundle 时，任何附加的属性必须遵循 [RFC8859] 中关于这些属性如何与 bundle 交互的建议。
+
+请注意，这些要求在某些情况下比 SDP 的要求更为严格。实现必须准备接受兼容的 SDP，即使它不符合本规范中生成 SDP 的要求。
 
 #### 5.2.2. Subsequent Offers
 
