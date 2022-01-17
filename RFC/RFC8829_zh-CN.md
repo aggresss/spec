@@ -474,9 +474,29 @@ pendingRemoteDescription 方法返回当前正在协商的远程描述的副本�
 
 #### 4.1.17. canTrickleIceCandidates
 
+cantrickleiceccandidates 属性表示远端是否支持接收 Trickle ICE 项。有三个可能的值:
+
+- null:
+没有从另一方收到 SDP，所以不知道它是否能处理 Trickle ICE。这是调用 setRemoteDescription 之前的初始值。
+- true:
+SDP 已经收到另一方的指示，表明它可以支持 Trickle ICE。
+- false:
+SDP 已经从另一方收到指示，它不能支持 Trickle ICE。
+如 3.5.2 节所述，JSEP 实现总是为应用程序单独提供候选，这与 Trickle ICE 所需要的是一致的。然而，应用程序可以使用 canTrickleIceCandidates 属性来确定他们的对等端是否能够真正地进行 Trickle ICE，也就是说，发送最初的 offer 或 answer 是否安全，然后候选人被收集。因为 "true" 是唯一明确表示远程 Trickle ICE 支持的值，所以一个比较 canTrickleIceCandidates 和 "true" 的应用程序在初始 offer 时默认会尝试 Half Trickle ICE，在与 Trickle ICE 兼容的代理进行后续交互时默认会尝试 Full Trickle ICE。
+
 #### 4.1.18. setConfiguration
 
+setConfiguration 方法允许 PeerConnection 的全局配置(最初由构造函数参数设置)在会话期间更改。调用这个方法的效果取决于它被调用的时间，它们会因特定参数的改变而不同:
+
+- 对 STUN/TURN 服务器的任何更改都会影响到下一个收集阶段。如果一个 ICE 收集阶段已经开始或完成，将设置 3.5.1 节中提到的 "needs-ice-restart" 标识。这将导致下一次调用 createOffer 来生成新的 ICE 凭证，目的是强制 ICE 重启并开始一个新的收集阶段，在这个阶段中将使用新的服务器。如果 ICE 候选池的大小为非零且尚未应用本地描述，则将丢弃任何现有的候选池，并从新服务器收集新的候选池。
+- 对 ICE 候选策略的任何更改都会影响下一个收集阶段。如果一个 ICE 收集阶段已经开始或完成，"needs-ice-restart" 标识将被设置。无论哪种方式，对策略的更改都不会对候选池产生影响，因为在出现收集阶段之前，应用程序无法使用池中的候选池，因此仍然可以对任何池中的候选池执行任何必要的过滤。
+- 应用本地描述后，不能改变 ICE 候选池的大小。如果本地描述还没有被应用，任何对 ICE 候选池大小的更改都会立即生效；如果增加，则预先收集更多的候选人;如果减少，则丢弃现在多余的候选项。
+- 在 PeerConnection 建立后，bundle 和 rtcp 复用策略不能被修改。
+
+调用此方法可能导致对ICE代理的状态进行更改。
+
 #### 4.1.19. addIceCandidate
+
 
 #### 4.1.20. onicecandidate 事件
 
