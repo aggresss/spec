@@ -564,7 +564,16 @@ JSEP 实现必须遵守下面列出的规范，这些规范管理 offer 和 answ
 
 #### 5.1.1. Usage Requirements
 
+所有由 JSEP 实现处理的会话描述，无论是本地的还是远程的，都必须表示对以下规范的支持。如果其中任何一项不存在，则必须将此遗漏视为错误。
+
+- 必须使用 [RFC8445] 中规定的 ICE。注意，远程端点可以使用精简实现；实现必须正确处理使用 ICE-lite 的远程端点。远程端点也可以使用旧版本的ICE；实现必须正确处理 [RFC5245] 中规定的使用ICE的远程端点。
+- 必须使用 DTLS [RFC6347] 或 DTLS-SRTP [RFC5763]，根据媒体类型的不同，如 [RFC8827] 所述。
+
+SRTP 密钥的 SDP 安全描述机制 [RFC4568] 不能被使用，如在 [RFC8827] 中讨论的那样。
+
 #### 5.1.2. Profile Names and Interoperability
+
+
 
 ### 5.2. Constructing an Offer
 
