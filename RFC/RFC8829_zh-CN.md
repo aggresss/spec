@@ -573,7 +573,23 @@ SRTP 密钥的 SDP 安全描述机制 [RFC4568] 不能被使用，如在 [RFC882
 
 #### 5.1.2. Profile Names and Interoperability
 
+对于媒体 m-line，JSEP 实现必须支持在 [RFC5764] 中指定的 "UDP/TLS/RTP/SAVPF" profile，以及在 [RFC7850] 中指定的 "TCP/DTLS/RTP/SAVPF" profile，并且必须为他们在 offer 中产生的每一个媒体 m-line 指定这些profile 之一。对于数据 m-line，实现必须支持 "UDP/DTLS/SCTP" profile 以及 "TCP/DTLS/SCTP" profile，并且必须为他们在报价中产生的每一个数据 m-line 指明这些 profile 中的一个。确切的 profile 是由与当前默认或选择的候选 ICE 相关的协议决定的，如 [RFC8839] 4.2.1.2 节所述。
 
+不幸的是，为了兼容性一些端点会生成不同规则的概要文件字符串，即使它们支持这些概要文件中的一个。例如，端点可能生成 "RTP/AVP"，但提供 "a=fingerprint" 和 "a=rtcp-fb" 属性，表示它愿意支持 "UDP/TLS/RTP/SAVPF" 或 "TCP/TLS/RTP/SAVPF"。为了简化与这些端点的兼容性，JSEP 实现在处理接收到的 offer 中的媒体 m-line 时必须遵循以下规则:
+
+- 以下 offer 中出现的 profile 需要被接受:
+  - "RTP/AVP" (defined in [RFC4566], Section 8.2.2)
+  - "RTP/AVPF" (defined in [RFC4585], Section 9)
+  - "RTP/SAVP" (defined in [RFC3711], Section 12)
+  - "RTP/SAVPF" (defined in [RFC5124], Section 6)
+  - "TCP/DTLS/RTP/SAVP" (defined in [RFC7850], Section 3.4)
+  - "TCP/DTLS/RTP/SAVPF" (defined in [RFC7850], Section 3.5)
+  - "UDP/TLS/RTP/SAVP" (defined in [RFC5764], Section 9)
+  - "UDP/TLS/RTP/SAVPF" (defined in [RFC5764], Section 9)
+- profile 所匹配 m-line 的 answer 必须与 offer 匹配；
+- 由于 DTLS-SRTP 是必选项, 所以 SAVP or AVP 并不是必须的; 是否支持 DTLS-SRTP 也可以通过 "a=fingerprint" 属性判断。需要注意，缺少 "a=fingerprint" 属性将会引起协商失败。
+- AVPF 或 AVP的使用只是控制用于 RTCP feedback 的间隔规则。如果提供了 AVPF 或 "a=rtcp-fb" 属性，假设存在 AVPF，即默认值为 "trr-int=0"。否则，假设 AVPF 是在AVP 兼容模式下使用的，并使用 "trr-int=4000" 的值。
+- 在数据 m-line, 实现中必须支持 "UDP/DTLS/SCTP", "TCP/DTLS/SCTP" 和 "DTLS/SCTP" (为了向后兼容) profile.
 
 ### 5.2. Constructing an Offer
 
