@@ -520,13 +520,88 @@ oniccandidate 事件在两种情况下被发送给应用程序：
 
 #### 4.2.1. stop
 
+stop 方法停止 RtpTransceiver。这将导致以后调用 createOffer 为关联的 m-line 生成一个零端口。详情见下文。
+
 #### 4.2.2. stopped
+
+stopped属性指示收发器是否已经停止，可以通过调用停止，也可以通过应用拒绝关联的“m=”部分的回答。在这两种情况下，它都被设置为“true”，否则将被设置为“false”。
+
+一个停止的 RtpTransceiver 不发送任何 RTP 或 RTCP，也不处理任何流入的 RTP 或 RTCP，并且无法重启。
 
 #### 4.2.3. setDirection
 
+setDirection 方法设置 RtpTransceiver 的方向，它会在以后调用 createOffer 和 createAnswer 时影响关联的 m-line 方向属性。方向允许的值为 "recvonly"，"sendrecv"，"sendonly" 和 "inactive"，镜像了[RFC4566] 章节 6 中定义的同名方向属性。
+
+当创建 offer 时，RtpTransceiver 方向直接反映在输出，即使是重新 offer。当创建 answer 时，RtpTransceiver 方向为与 offer 方向的交集，如下面的 5.3 节所述。
+
+注意，当 setDirection 设置收发器的 direction 属性时(4.2.4 节)，这个属性不会立即影响收发器的 RtpSender 是否会发送或者 RtpReceiver 是否会接收。有效的方向是由 currentDirection 属性表示的，它只在应用一个 answer 时更新。
+
 #### 4.2.4. direction
+
+direction 属性表示传递给 setDirection 的最后一个值。如果 setDirection 从未被调用，它将被设置为 RtpTransceiver 初始化时的方向。
 
 #### 4.2.5. currentDirection
 
+currentDirection 属性表示 RtpTransceiver 关联的 m-line 最后协商的方向。更具体地说，它指示了最后一个应用 answer (包括临时 answer)中相关的 m-line 的方向属性 [RFC3264]，如果它是远程 answer，则 "send" 和"recv" 方向颠倒。例如，如果远程应答中关联的 m-line 的 direction 属性是 "recvonly"，则 currentDirection 被设置为 "sendonly"。
+
+如果一个引用这个 RtpTransceiver 的 answer 还没有被应用，或者 RtpTransceiver 已经停止，currentDirection 将被设置为 "null"。
+
 #### 4.2.6. setCodecPreferences
+
+setCodecPreferences 方法设置 RtpTransceiver 的编解码器首选项，这反过来影响在以后调用 createOffer 和 createAnswer 时关联的 m-line 出现和编解码器的顺序。请注意，setCodecPreferences 并不直接影响实现决定发送哪个编解码器。它只影响实现表明它更喜欢通过提供或回答接收哪种编解码器。即使一个编解码器被 setCodecPreferences 排除，它仍然可以被用来发送，直到下一个 offer/answer 交换丢弃它。
+
+RtpTransceiver 的编解码器首选项可能导致后续 createOffer 和 createAnswer 调用排除掉相关的编解码器，在这种情况下，关联的 m-line 中相应的媒体格式将被排除。编解码器首选项不能添加不存在的媒体格式。
+
+RtpTransceiver 的编解码器首选项还可以确定 createOffer 和 createAnswer 后续调用中的编解码器顺序，在这种情况下，关联的 m-line 中的媒体格式的顺序将遵循指定的首选项。
+
+## 5. SDP 交互过程
+
+本节介绍创建和解析 SDP 对象时需要遵循的具体步骤。
+
+### 5.1. 需求概述
+
+JSEP 实现必须遵守下面列出的规范，这些规范管理 offer 和 answer 的创建和处理。
+
+#### 5.1.1. Usage Requirements
+
+#### 5.1.2. Profile Names and Interoperability
+
+### 5.2. Constructing an Offer
+
+#### 5.2.1. Initial Offers
+
+#### 5.2.2. Subsequent Offers
+
+### 5.3. Generating an Answer
+
+#### 5.3.1. Initial Answers
+
+#### 5.3.2. Subsequent Answers
+
+#### 5.3.3. Options Handling
+
+##### 5.3.3.1. VoiceActivityDetection
+
+### 5.4. Modifying an Offer or Answer
+
+### 5.5. Processing a Local Description
+
+### 5.6. Processing a Remote Description
+
+### 5.7. Processing a Rollback
+
+### 5.8. Parsing a Session Description
+
+#### 5.8.1. Session-Level Parsing
+
+#### 5.8.2. Media Section Parsing
+
+#### 5.8.3. Semantics Verification
+
+### 5.9. Applying a Local Description
+
+### 5.10. Applying a Remote Description
+
+### 5.11. Applying an Answer
+
 
