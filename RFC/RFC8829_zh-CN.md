@@ -432,15 +432,45 @@ provisional answer 和 final answer 之间的唯一区别是，final answer 的�
 
 #### 4.1.11. setLocalDescription
 
+setLocalDescription 方法指示 PeerConnection 应用提供的会话描述作为它的本地配置。type 字段指示该描述应被处理为 offer 、provisional answer、final answer 还是 rollback；offer 和 answer 是不同的检查，与已存在的每个SDP line 规则兼容。
+
+这个 API 改变了本地媒体的状态；除此之外它还创建了接收和解码媒体的本地资源。为了使应用程序可以支持改变媒体格式的场景，PeerConnection 必须能够同时支持使用当前和等待本地描述(例如,支持所有已存在的编解码器格式)。这种双重处理开始于 PeerConnection 进入 "have-local-offer" 状态时，并一直持续到 setRemoteDescription 传入一个 final answer 或者 rollback。
+
+这个API间接地控制候选的收集过程。当提供了本地描述，并且当前使用的传输数量与本地描述所需的传输数量不匹配时，PeerConnection 将根据需要创建传输，并开始为每个传输收集候选，如果可用，使用候选池中的候选。
+
+如果(1)setRemoteDescription 被提前调用并带有一个 offer，(2)setLocalDescription被调用带有一个答案(临时或最终)，(3)媒体方向是兼容的，(4)媒体可用来发送，这将导致媒体传输的开始。
+
 #### 4.1.12. setRemoteDescription
+
+setRemoteDescription 方法指示PeerConnection 应用提供的会话描述作为所需的远程配置。与 setLocalDescription 一样，描述的类型字段指示应该如何处理它。
+
+这个 API 改变了本地媒体的状态；除此之外，它还设置了用于发送和编码媒体的本地资源。
+
+如果(1)setLocalDescription 被提前调用并带有一个 offer，(2)setRemoteDescription 被调用并带有一个 answer (临时或最终)，(3)媒体方向是兼容的，(4)媒体可用来发送，这将导致媒体传输的开始。
 
 #### 4.1.13. currentLocalDescription
 
+currentLocalDescription 方法返回当前协商的本地描述，即来自最后一次成功的 offer/answer 交换的本地描述，不包括本地描述被设置之后由 ICE 代理生成的任何本地候选。
+
+如果 offer/answer 交换尚未完成，将返回一个空对象。
+
 #### 4.1.14. pendingLocalDescription
+
+pendingLocalDescription 方法返回当前正在协商的本地描述的副本，即一个没有任何相应远程 answer 的本地 offer集，除了自本地描述被设置以来由 ICE 代理生成的任何本地候选对象之外。
+
+如果 PeerConnection 的状态是 "stable" 或 "have-remote-offer"，则返回空对象。
 
 #### 4.1.15. currentRemoteDescription
 
+currentRemoteDescription 方法返回当前协商的远程描述的副本，即来自最后一次成功 offer/answer 交换的远程描述，以及自远程描述设置后通过 processIceMessage 提供的任何远程候选描述。
+
+如果 offer/answer 交换尚未完成，将返回一个空对象。
+
 #### 4.1.16. pendingRemoteDescription
+
+pendingRemoteDescription 方法返回当前正在协商的远程描述的副本，即一个没有任何相应本地 answer 的远程 offer 集合，除了自远程描述被设置以来通过 processIceMessage 提供的任何远程候选对象之外。
+
+如果 PeerConnection 的状态是 "stable" 或 "have-local-offer"，则返回空对象。
 
 #### 4.1.17. canTrickleIceCandidates
 
