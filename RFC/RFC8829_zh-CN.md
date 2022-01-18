@@ -749,7 +749,84 @@ createOffer 方法接受一个 RTCOfferOptions 对象作为参数。如果存在
 
 ### 5.3. Generating an Answer
 
+当 createAnswer 被调用时，必须创建一个新的 SDP 描述，该描述必须与提供的远程描述以及在 [RFC8834] 中指定的要求兼容。这个过程的具体细节如下所述。
+
 #### 5.3.1. Initial Answers
+
+当提供远程描述后第一次调用 createAnswer 时，结果被称为初始 answer。如果没有安装远程描述，则无法生成答案，并且必须返回一个错误。
+
+请注意，远程描述 SDP 可能不是由 JSEP 端点创建的，可能不符合 5.2 节中列出的所有要求。在许多情况下，这不是问题。然而，如果任何强制性的 SDP 属性缺失，或者上面列出的强制性使用的功能不存在，这必须被视为一个错误，并且必须导致受影响的 m-line 被标记为拒绝。
+
+生成初始答案的第一步是生成会话级属性。这里的过程是相同的，表明在上面 5.2.1 节中，除了 "a=ice-options" 和 "trickle" 选项，在 [RFC8840] 4.1.3 节中被定义, 和 "ice2" 选项在 [RFC8445] 10 节中被定义，包括这样一个选项如果出现在 offer 中。
+
+下一步是生成会话级的 LS group，如 [RFC5888] 7 节中定义的那样。对于 offer 中出现的每一组类型为 "LS"的 group，选择由指定组中的 MID 值引用的本地 RtpTransceiver，并确定其中哪个引用了一个公共的本地 MediaStream(在 addTrack/addTransceiver 调用中指定用于创建它们)或没有 MediaStream 引用，因为它们不是由 addTrack/addTransceiver 创建的。如果存在至少两个这样的 RtpTransceiver，必须添加一组类型为 "LS" 的 RtpTransceiver 的 MID 值。否则，必须忽略提供的 LS group，answer 中不生成相应的组。
+
+作为一个简单的例子，考虑一下下面提供的同一个 MediaStream 中包含的单个音频和单个视频 track。为了清晰起见，与本例无关的 SDP line 已被删除。正如 5.2 节中所解释的，添加了一组类型为 "LS" 的引用每个 track 的 RtpTransceiver。
+
+```sdp
+          a=group:LS a1 v1
+          m=audio 10000 UDP/TLS/RTP/SAVPF 0
+          a=mid:a1
+          a=msid:ms1
+          m=video 10001 UDP/TLS/RTP/SAVPF 96
+          a=mid:v1
+          a=msid:ms1
+```
+
+如果 answer 使用一个单一的 MediaStream，当它添加 track，它的两个 RtpTransceiver 将引用这个流，所以随后的 answer 将包含一个 "LS" 组相同的 answer，如下图所示:
+
+```sdp
+          a=group:LS a1 v1
+          m=audio 20000 UDP/TLS/RTP/SAVPF 0
+          a=mid:a1
+          a=msid:ms2
+          m=video 20001 UDP/TLS/RTP/SAVPF 96
+          a=mid:v1
+          a=msid:ms2
+```
+
+然而，如果 answer 将其 track 分组到单独的 MediaStreams 中，它的 RtpTransceiver 将引用不同的流，因此随后的回答将不包含 "LS" group。
+
+```sdp
+          m=audio 20000 UDP/TLS/RTP/SAVPF 0
+          a=mid:a1
+          a=msid:ms2a
+          m=video 20001 UDP/TLS/RTP/SAVPF 96
+          a=mid:v1
+          a=msid:ms2b
+```
+
+最后，如果 answer 没有添加任何 track，它的 RtpTransceiver 将不会引用任何 MediaStream，为了维护 offer 的首选项，随后的 answe 将包含相同的 "LS" group。
+
+```sdp
+          a=group:LS a1 v1
+          m=audio 20000 UDP/TLS/RTP/SAVPF 0
+          a=mid:a1
+          a=recvonly
+          m=video 20001 UDP/TLS/RTP/SAVPF 96
+          a=mid:v1
+          a=recvonly
+```
+
+7.2 节中的例子展示了一个更复杂的 "LS" group 生成示例。
+
+下一步是为远程 offer 中出现的每个 m-line 生成一个 m-line，如 [RFC3264] 6 节中所述。出于讨论的目的，offer 中的任何会话级属性如果也是有效的媒体级属性则被认为出现在每个 m-line 中。每个提供的 m-line 将有一个相关的 RtpTransceiver，如 5.10 节所述。如果 RtpTransceivers 比 m-line 多，不匹配的 RtpTransceiver 将需要在后续的 offer 关联。
+
+对于每个 offer 的 m-line，如果下列条件符合，对应的 answer 中 m-line 必须通过设置 \<port> 为 0 标记为拒绝(在 [RFC3264] 6节中定义)，进一步处理可以跳过 m-line:
+
+- 关联的 RtpTransceiver 已经停止。
+- 没有提供既支持又被编解码器首选项(如果适用的话)允许的媒体格式。
+- bundle 策略是 "max-bundle"，不是第一个 m-line，也不是和第一个 m-line 在同一个 bundle group 中。
+- bundle 策略是 "balanced"，不是该媒体类型的第一个 m-line，也不是和第一个 m-line 在同一个 bundle group 中。
+- 这个 m-line 在一个 bundle group 中，并且 offer 中标记的 m-line 由于上述原因之一被拒绝。这要求 bundle group 中所有 m-line 被拒绝，如 [RFC8843] 7.3.3 节所述。
+
+否则，answer 中的每个 m-line 必须按照 [RFC3264] 6.1 节中的规定生成。对于 m-line 本身，必须遵守以下规则:
+
+- \<port> 值通常会被设置为 m-line 的默认的 ICE 候选端口，但是考虑到还没有可用的候选端口，必须使用默认的值 9 (Discard)，如 [RFC8840] 4.1.1 节所示。
+- \<proto> 字段必须被设置为与在 offer 中对应的 m-line 完全匹配。
+- 如果已为相关的 RtpTransceiver 设置了编解码器首选项，则媒体格式必须按相应的顺序生成，而不管提供了什么，并且必须排除编解码器首选项中没有出现的任何编解码器。
+- 否则，m-line 上的媒体格式必须按照当前远程描述中提供的格式的顺序生成，不包括当前不支持的格式。当前远程描述中不存在的任何当前可用的媒体格式必须添加到所有现有格式之后。
+- 在任何一种情况下，answer 中的媒体格式必须包括 offer 中包含的至少一种格式，但可以包括在本地支持但 offer 中不包含的格式，如 [RFC3264] 6.1 节所述。如果不存在通用的格式， m-line 将被拒绝。
 
 #### 5.3.2. Subsequent Answers
 
