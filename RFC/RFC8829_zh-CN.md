@@ -759,7 +759,7 @@ createOffer 方法接受一个 RTCOfferOptions 对象作为参数。如果存在
 
 生成初始 answer 的第一步是生成会话级属性。这里的过程是相同的，表明在上面 5.2.1 节中，除了 "a=ice-options" 和 "trickle" 选项，在 [RFC8840] 4.1.3 节中被定义, 和 "ice2" 选项在 [RFC8445] 10 节中被定义，包括这样一个选项如果出现在 offer 中。
 
-下一步是生成会话级的 LS group，如 [RFC5888] 7 节中定义的那样。对于 offer 中出现的每一组类型为 "LS"的 group，选择由指定组中的 MID 值引用的本地 RtpTransceiver，并确定其中哪个引用了一个公共的本地 MediaStream(在 addTrack/addTransceiver 调用中指定用于创建它们)或没有 MediaStream 引用，因为它们不是由 addTrack/addTransceiver 创建的。如果存在至少两个这样的 RtpTransceiver，必须添加一组类型为 "LS" 的 RtpTransceiver 的 MID 值。否则，必须忽略提供的 LS group，answer 中不生成相应的组。
+下一步是生成会话级的 LS group，如 [RFC5888] 7 节中定义的那样。对于 offer 中出现的每一组类型为 "LS" 的 group，选择由指定组中的 MID 值引用的本地 RtpTransceiver，并确定其中哪个引用了一个公共的本地 MediaStream(在 addTrack/addTransceiver 调用中指定用于创建它们)或没有 MediaStream 引用，因为它们不是由 addTrack/addTransceiver 创建的。如果存在至少两个这样的 RtpTransceiver，必须添加一组类型为 "LS" 的 RtpTransceiver 的 MID 值。否则，必须忽略提供的 LS group，answer 中不生成相应的组。
 
 作为一个简单的例子，考虑一下下面提供的同一个 MediaStream 中包含的单个音频和单个视频 track。为了清晰起见，与本例无关的 SDP line 已被删除。正如 5.2 节中所解释的，添加了一组类型为 "LS" 的引用每个 track 的 RtpTransceiver。
 
@@ -842,7 +842,7 @@ m-section 后面必须紧跟着 "c=" 行，如 [RFC4566] 5.7 节所述。同样�
 - 对于 offer 中每个支持的 RTP 头部扩展，需要增加 "a=extmap“ 行，如 [RFC5285] 5 节中所规定的。支持的报头扩展列表在 [RFC8834] 5.2 节中指定。任何需要加密的报头扩展在 [RFC6904] 4 节中指定。
 - 对于每个支持的 RTCP 反馈机制，在 offer 中，"a=rtcp-fb" 行，如[RFC4585] 4.2 节所述。支持的 RTCP 反馈机制列表在 [RFC8834] 5.1 节中指定。
 - 如果 RtpTransceiver 有一个 sendrecv 或 sendonly 方向:
-  - 对于通过 addTrack 或 addTransceiver 创建的每个 MediaStream，一个 "a=msid" 行，如在[RFC8830] 2 节中指定的，但省略了 "appdata" 字段。
+  - 对于通过 addTrack 或 addTransceiver 创建的每个 MediaStream，一个 "a=msid" 行，如在 [RFC8830] 2 节中指定的，但省略了 "appdata" 字段。
 
 如果一个 m-section 没有捆绑到另一个 m-section 必须包含以下属性( IDENTICAL 或 TRANSPORT 类别):
 
