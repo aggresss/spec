@@ -356,7 +356,7 @@ JSEP 实现将只收集 RTP 候选，并将在它生成的 offer 中任何新的
 
 #### 4.1.2. addTrack
 
-addTrack 方法为 PeerConnection 添加一个 MediaStreamTrack，使用 MediaStream 参数将该 track 与同一 MediaStream 中的其他 track 关联起来，这样当创建一个 offer 或 answer 时，它们可以被添加到相同的 "LS"(Lip Synchronization)组。将 track 添加到相同的 "LS" 组表明，这些 track 的播放应该同步以进行正确的lip sync，如[RFC5888]，第 7 节所述。addTrack 试图最小化收发器的数量，如下所示：如果PeerConnection处于 "have-remote-offer" 状态，该 track 将被附加到第一个兼容的 transceiver 上，该 transceiver 是由最近的 setRemoteDescription 调用创建的，并且没有本地 track。否则，将创建一个新的 transceiver，如 4.1.4 节所述。
+addTrack 方法为 PeerConnection 添加一个 MediaStreamTrack，使用 MediaStream 参数将该 track 与同一 MediaStream 中的其他 track 关联起来，这样当创建一个 offer 或 answer 时，它们可以被添加到相同的 "LS"(Lip Synchronization)组。将 track 添加到相同的 "LS" 组表明，这些 track 的播放应该同步以进行正确的lip sync，如[RFC5888]，第 7 节所述。addTrack 试图最小化收发器的数量，如下所示：如果 PeerConnection 处于 "have-remote-offer" 状态，该 track 将被附加到第一个兼容的 transceiver 上，该 transceiver 是由最近的 setRemoteDescription 调用创建的，并且没有本地 track。否则，将创建一个新的 transceiver，如 4.1.4 节所述。
 
 #### 4.1.3. removeTrack
 
@@ -686,6 +686,48 @@ SDP 允许应该在媒体级的属性既放在会话级又放在媒体级，即�
 请注意，这些要求在某些情况下比 SDP 的要求更为严格。实现必须准备接受兼容的 SDP，即使它不符合本规范中生成 SDP 的要求。
 
 #### 5.2.2. Subsequent Offers
+
+当多次调用 createOffer，或者在本地描述已经设置之后调用，处理过程与初始 offer 略有不同。
+
+如果之前的 offer 没有使用 setLocalDescription 应用，这意味着 PeerConnection 仍然处于 "stable" 状态，必须遵循生成初始 offer 的步骤，受以下限制:
+
+- "o=" 行中的字段必须保持不变，除了 \<session-version> 字段，如果 createOffer 的输出可能与之前 createOffer 的输出不同，则 \<session-version> 字段必须在每次调用 createOffer 时递增 1；实现可以选择在每次调用时递增 \<session-version>。生成的 \<session-version> 的值与当前本地描述的无关；特别注意以下情况，如果当前版本为 N ，一个 offer 被创建并应用于版本 N+1，然后该 offer 被回滚，以便当前版本再次为 N，但是下一个生成的 offer 将为版本 N+2。
+
+请注意，如果应用程序通过读取 currentLocalDescription 而不是 createOffer 来创建一个 offer，返回的 SDP 可能与最初调用 setLocalDescription 时不同，因为添加了收集的 ICE 候选项，但 \<session-version> 将不会改变。没有已知的情况会导致问题，但如果这是一个问题，解决方案是简单地使用 createOffer 来确保唯一的 \<session-version>。
+
+如果前面使用 setLocalDescription 提供应用，但相应的来自远端的 answer 尚未应用，这意味着 PeerConnection 仍在 "have-local-offer" 状态，offer 的生成将遵循以下规则：
+
+- "s=" 和 "t=" 行必须保持不变。
+- 如果有任何 RtpTransceiver 被添加，并且在当前本地描述或远程描述中存在一个 "m=" 的 0 端口区域，m-line 必须被回收，为添加的 RtpTransceiver 生成一个 m-line ，就像 m-line 被添加到会话描述中(包括一个新的 MID 值)，并将其放在与 m-line 相同的索引和 0 端口。
+- 如果 RtpTransceiver 被停止并且没有与 m-line 相关联，则绝对不能为它生成 m-line 。这阻止了 RtpTransceiver 的 m-line 被回收，并在之前的 offer/answer 交换中用于新的 RtpTransceiver，如上所述。
+- 如果 RtpTransceiver 已经停止并与一个 m-line 相关联，并且 m-line 没有被回收，如上所述，一个 m-line 必须为它生成与端口设置为 0 和删除所有 "a=msid" 行。
+- 对于没有停止的 RtpTransceiver，"a=msid" 行必须保持不变，如果它们存在于当前的描述中，无论 RtpTransceiver 的方向或 track 的变化。如果在当前描述中没有 "a=msid"行，"a=msid" 行(s)必须根据与初始 offer 相同的规则生成。
+- 每一行 "m=" 和 "c=" 必须填写端口，相关的 RTP profile，和 m-line 的默认候选地址，如[RFC8839]，4.2.1.2 节和 5.1.2 节所述。如果还没有收集 RTP 候选项，则必须仍然使用默认值，如上所述。
+- 每一行 "a=mid" 必须保持一致。
+- "a=ice-ufrag" 和 "a=ice-pwd" 必须保持不变，除非 ICE 配置发生了改变(例如，改变了支持的 STUN/TURN 服务器或 ICE 候选策略)或 icerstart 选项(5.2.3.1 节)被指定。如果 m-line 被捆绑到另一个 m-line 中，它仍然不能包含任何 ICE 凭证。
+- 如果 m-line 没有被捆绑到另一个 m-line 中，它的 "a=rtcp" 属性行必须被填充默认 rtcp 候选的端口和地址，如 RFC5761 5.1.3 节所示。如果还没有收集 RTCP 候选项，则必须使用默认值，如 5.2.1 节所述。
+- 如果 m-line 没有捆绑到另一个 m-line，对于在最近的收集阶段(参见章节3.5.1)收集的每个候选，必须添加一个 "a=candidate" 行，如 [RFC8839] 5.1 节所定义。如果该 m-line 的候选收集已经完成，则必须添加一个 "a=end-of-candidates" 属性，如 [RFC8840] 8.2 节所述。如果 m-line 被捆绑到另一个 m-line 中，那么 "a=candidate" 和 "a=end-of-candidates" 都必须被省略。
+- 对于仍然存在的 RtpTransceiver，"a=rid" 行必须保持不变。
+- 对于仍然存在的 RtpTransceiver，任何 "a=simulcast" 行必须保持不变。
+
+如果之前的 offer 是使用 setLocalDescription 应用的，而来自远端相应的 answer 已经使用 setRemoteDescription 应用，这意味着 PeerConnection 是在 "have-remote-pranswer" 状态或 "stable" 状态，根据协商的会话描述，按照上面提到的 "have-local-offer" 状态的步骤生成报价。
+
+此外，对于新 offer 中每一个现有的、不可回收的、不可拒绝的 m-line，根据当前本地或远程描述中相应的 m-line 的内容，视情况作出以下调整:
+
+- m-line 和相应的 "a=rtpmap" 和 "a=fmtp" 行必须只包含没有被相关 RtpTransceiver 的编解码器首选项排除的媒体格式，而且必须包括所有当前可用的格式。先前提供但不再提供的媒体格式(例如，共享硬件编解码器)可能被排除在外。
+- 除非已为相关联的 RtpTransceiver 设置了编解码器首选项，否则 m-line 上的媒体格式必须按照与最近的 answer 相同的顺序生成。任何媒体格式，没有出现在最近的 answer 必须添加在所有现有的格式之后。
+- RTP 头部扩展必须只包含那些在最近的 answer 中出现的。
+- RTCP 反馈机制必须只包括最近的 answer 中出现的那些，除了引用新添加的媒体格式的特定于格式的机制。
+- 如果最近的 answer 包含了 "a=rtcp-mux" 行，那么 "a=rtcp" 行绝对不能被添加。
+- "a=rtcp-mux" 必须与最近的 answer 一致。
+- 不能添加 "a=rtcp-mux-only" 行。
+- "a=rtcp-rsize" 行不能添加，除非出现在最近的 anwer 中。
+- 不能添加 "a=bundle-only" 行，定义在 [RFC8843] 6 节。相反，JSEP 实现必须简单地省略绑定了 m-line 的 IDENTICAL 和 TRANSPORT 类别中的参数，如 [RFC8843] 7.1.3 节所述。
+- 注意，如果媒体 m-line 被捆绑到数据 m-line 中，那么某些 TRANSPORT 和 IDENTICAL 的属性可能会出现在数据 m-line 中，即使它们只适合于媒体 m-line (例如，"a=rtcp-mux")。这在初始 offer 中不可能发生，因为在初始 offer 中，JSEP 实现总是在数据 m-line 之前列出媒体 m-line，而且至少有一个媒体 m-line 将没有 "a=bundle-only" 属性。因此，在最初的 offer 中，任何 "a=bundle-only" 的 m-line 将被捆绑到前面的非 bundle-only 媒体 m-line 中。
+
+"a=group:BUNDLE" 属性必须包含在最近的 answer 中 BUNDLE 组中指定的 MID 标识符，减去任何被标记为被拒绝的 m-line，加上任何新添加或重新启用的 m-line。换句话说，bundle 属性必须包含所有之前绑定的 m-line，只要它们还是活动状态，以及任何新的 m-line。
+
+"a=group:LS" 属性生成与首次 offer 相同的方式，有额外的规定，任何 LS 同步组出现在最近的 answer 必须继续存在并必须包含任何以前现有 MID，只要确定 m-line 仍然存在并且没有被拒绝, group 仍然包含至少两个 MID 标识符。这确保了任何同步的 "recvonly" m-line 在新的 offer 中继续同步。
 
 ### 5.3. Generating an Answer
 
