@@ -729,6 +729,24 @@ SDP 允许应该在媒体级的属性既放在会话级又放在媒体级，即�
 
 "a=group:LS" 属性生成与首次 offer 相同的方式，有额外的规定，任何 LS 同步组出现在最近的 answer 必须继续存在并必须包含任何以前现有 MID，只要确定 m-line 仍然存在并且没有被拒绝, group 仍然包含至少两个 MID 标识符。这确保了任何同步的 "recvonly" m-line 在新的 offer 中继续同步。
 
+#### 5.2.3. Options Handling
+
+createOffer 方法接受一个 RTCOfferOptions 对象作为参数。如果存在以下选项，则在生成 SDP 描述时执行特殊处理。
+
+##### 5.2.3.1. IceRestart
+
+如果 IceRestart 选项被指定为 true，则 offer 必须通过生成新的 ICE ufrag 和 pwd 属性来指示 ICE 重启，如 [RFC8839] 4.4.3.1.1 节所述。如果在初始 offer 中指定了这个选项，则没有效果(因为已经生成了一个新的 ICE ufrag 和 pwd )。类似地，如果 ICE 配置改变了，这个选项也没有作用，因为新的 ufrag 和 pwd 属性将自动生成。在应用程序检测到故障的情况下，此选项主要用于重新建立连接。
+
+##### 5.2.3.2. VoiceActivityDetection
+
+静音抑制，也称为不连续传输("DTX")，可以在没有检测到语音活动时切换到一种特殊的编码，从而减少音频使用的带宽，但代价是会引起一些失真。
+
+如果指定 "VoiceActivityDetection" 选项为 true，必须注明提供支持沉默抑制的音频接收包括舒适噪声("CN")为每个提供音频编解码器编解码器，按照[RFC3389] 5.1节中定义，除非编解码器有自己的内部静音抑制支持。对于具有自身内部静音抑制支持的编解码器，必须为该编解码器指定适当的 fmtp 参数，以表示需要对接收的音频进行静音抑制。例如，当使用 Opus 编解码器 [RFC6716] 时，在 [RFC7587] 中指定的 "usedtx=1" 参数将被用于 offer。
+
+如果 "VoiceActivityDetection" 选项被指定为 false，则 JSEP 实现不能使用 "CN" 编解码器。对于具有自身内部静音抑制支持的编解码器，必须指定该编解码器的适当的 fmtp 参数，以表示不希望对接收的音频进行静音抑制。例如，当使用 Opus 编解码器时，"usedtx=0" 参数将在 offer 中指定。此外，在 "VoiceActivityDetection" 选项被指定为 false 的场景下，实现绝对不能对它产生的媒体使用静音抑制，无论 "CN" 编解码器或相关的 fmtp 参数是否出现在对等体的描述中。这些规则的影响 JSEP 中的静音抑制依赖于双方的相互协议，这确保了一致的处理，无论使用哪种编解码器。
+
+在[RFC6464] 4 节中描述的客户端到混音器音频电平报头扩展的信令中，"VoiceActivityDetection" 选项对 "vad" 值的设置没有任何影响。
+
 ### 5.3. Generating an Answer
 
 #### 5.3.1. Initial Answers
