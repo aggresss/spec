@@ -277,7 +277,7 @@ JSEP 应用程序通常通过提供给 setLocalDescription 的信息通知 JSEP 
 
 JSEP 支持 MediaStreamTrack 的 Simulcast 传输，其中媒体源的多个编码可以在一个 m-section 的上下文中传输。当前的 JSEP API 设计用于允许应用程序发送 Simulcast 媒体，但只接收单一编码。这允许在多用户场景中，每个发送客户端向服务器发送多个编码，然后服务器为每个接收客户端选择要转发的适当编码。
 
-应用程序通过在 RtpSender上配置多个编码来请求支持 Simulcast。在生成报价或答案时，这些编码通过相应的 m-section 上的 SDP 标记表示，如下所述。理解并愿意接收 Simulcast 的接收器也将包括 SDP 标记来表示他们的支持，而 JSEP 端点将使用这些标记来确定是否允许给定的 RtpSender 进行 Simulcast。如果没有协商同步传输支持，RtpSender 将只使用第一个配置的编码。
+应用程序通过在 RtpSender上配置多个编码来请求支持 Simulcast。在生成 offer 或 answer 时，这些编码通过相应的 m-section 上的 SDP 标记表示，如下所述。理解并愿意接收 Simulcast 的接收器也将包括 SDP 标记来表示他们的支持，而 JSEP 端点将使用这些标记来确定是否允许给定的 RtpSender 进行 Simulcast。如果没有协商同步传输支持，RtpSender 将只使用第一个配置的编码。
 
 请注意，Simulcast 的确切参数取决于发送程序。虽然前面提到的 SDP 标记是为了确保远端可以接收和分解多个 Simulcast 的编码，但在 JSEP 中，用于每个编码的具体分辨率和比特率仅由发送端决定。
 
@@ -420,7 +420,7 @@ provisional answer 和 final answer 之间的唯一区别是，final answer 的�
 
 ##### 4.1.10.1. Provisional Answers 使用方式
 
-大多数应用程序不需要使用 "pranswer" 类型创建 answers。虽然 这样可以对 offer 立即响应，为了尽快建立会话运输，防止媒体裁剪发生，JSEP 优先处理应用程序创建和发送一个 "sendonly" 最终答案空 MediaStreamTrack 后立即收到 answer，这将阻止媒体由呼叫者发送，并允许媒体在被呼叫者回答后立即发送。稍后，当被调用方实际接受该调用时，应用程序可以插入真正的 MediaStreamTrack 并创建一个新的 "sendrecv" offer 来更新之前的 offer/answer对，并启动双向媒体流。虽然这也可以通过 "sendonly" pranswer 后接 "sendrecv" answer 来完成，但最初的 pranswer 保留 offer/answer 交换开放，这意味着呼叫者不能在这段时间内发送更新的 offer。
+大多数应用程序不需要使用 "pranswer" 类型创建 answers。虽然 这样可以对 offer 立即响应，为了尽快建立会话运输，防止媒体裁剪发生，JSEP 优先处理应用程序创建和发送一个 "sendonly" 最终 answer (MediaStreamTrack 为空) 后立即收到 answer，这将阻止媒体由呼叫者发送，并允许媒体在被呼叫者回答后立即发送。稍后，当被调用方实际接受该调用时，应用程序可以插入真正的 MediaStreamTrack 并创建一个新的 "sendrecv" offer 来更新之前的 offer/answer对，并启动双向媒体流。虽然这也可以通过 "sendonly" pranswer 后接 "sendrecv" answer 来完成，但最初的 pranswer 保留 offer/answer 交换开放，这意味着呼叫者不能在这段时间内发送更新的 offer。
 
 例如，考虑一个典型的 JSEP 应用程序，它希望尽可能快地设置音频和视频。当接收到一个 offer 包含了音频和视频 MediaStreamTracks，它将发送一个直接的 answer 并将这些 track 设置为 sendonly (这意味着接受者将不会发送任何媒体，因为尚未添加自己的 MediaStreamTracks，发起者也不会发送任何媒体)。然后，它将等待用户接受呼叫并获取所需的本地 track。在用户接受后，应用程序将载入它获得的 track，这时 ICE 握手和 DTLS 握手可能已经完成，可以立即开始传输。应用程序还将向远端发送一个新的 offer，指示呼叫接受，并将音频和视频设置为 "sendrecv"。7.3 节给出了一个详细的用例流程。
 
@@ -438,7 +438,7 @@ setLocalDescription 方法指示 PeerConnection 应用提供的会话描述作�
 
 这个API间接地控制候选的收集过程。当提供了本地描述，并且当前使用的传输数量与本地描述所需的传输数量不匹配时，PeerConnection 将根据需要创建传输，并开始为每个传输收集候选，如果可用，使用候选池中的候选。
 
-如果(1)setRemoteDescription 被提前调用并带有一个 offer，(2)setLocalDescription被调用带有一个答案(临时或最终)，(3)媒体方向是兼容的，(4)媒体可用来发送，这将导致媒体传输的开始。
+如果(1)setRemoteDescription 被提前调用并带有一个 offer，(2)setLocalDescription被调用带有一个 answer(临时或最终)，(3)媒体方向是兼容的，(4)媒体可用来发送，这将导致媒体传输的开始。
 
 #### 4.1.12. setRemoteDescription
 
@@ -573,7 +573,7 @@ SRTP 密钥的 SDP 安全描述机制 [RFC4568] 不能被使用，如在 [RFC882
 
 #### 5.1.2. Profile Names and Interoperability
 
-对于媒体 m-section，JSEP 实现必须支持在 [RFC5764] 中指定的 "UDP/TLS/RTP/SAVPF" profile，以及在 [RFC7850] 中指定的 "TCP/DTLS/RTP/SAVPF" profile，并且必须为他们在 offer 中产生的每一个媒体 m-section 指定这些profile 之一。对于数据 m-section，实现必须支持 "UDP/DTLS/SCTP" profile 以及 "TCP/DTLS/SCTP" profile，并且必须为他们在报价中产生的每一个数据 m-section 指明这些 profile 中的一个。确切的 profile 是由与当前默认或选择的候选 ICE 相关的协议决定的，如 [RFC8839] 4.2.1.2 节所述。
+对于媒体 m-section，JSEP 实现必须支持在 [RFC5764] 中指定的 "UDP/TLS/RTP/SAVPF" profile，以及在 [RFC7850] 中指定的 "TCP/DTLS/RTP/SAVPF" profile，并且必须为他们在 offer 中产生的每一个媒体 m-section 指定这些profile 之一。对于数据 m-section，实现必须支持 "UDP/DTLS/SCTP" profile 以及 "TCP/DTLS/SCTP" profile，并且必须为他们在 offer 中产生的每一个数据 m-section 指明这些 profile 中的一个。确切的 profile 是由与当前默认或选择的候选 ICE 相关的协议决定的，如 [RFC8839] 4.2.1.2 节所述。
 
 不幸的是，为了兼容性一些端点会生成不同规则的概要文件字符串，即使它们支持这些概要文件中的一个。例如，端点可能生成 "RTP/AVP"，但提供 "a=fingerprint" 和 "a=rtcp-fb" 属性，表示它愿意支持 "UDP/TLS/RTP/SAVPF" 或 "TCP/TLS/RTP/SAVPF"。为了简化与这些端点的兼容性，JSEP 实现在处理接收到的 offer 中的媒体 m-section 时必须遵循以下规则:
 
@@ -710,7 +710,7 @@ SDP 允许应该在媒体级的属性既放在会话级又放在媒体级，即�
 - 对于仍然存在的 RtpTransceiver，"a=rid" 行必须保持不变。
 - 对于仍然存在的 RtpTransceiver，任何 "a=simulcast" 行必须保持不变。
 
-如果之前的 offer 是使用 setLocalDescription 应用的，而来自远端相应的 answer 已经使用 setRemoteDescription 应用，这意味着 PeerConnection 是在 "have-remote-pranswer" 状态或 "stable" 状态，根据协商的会话描述，按照上面提到的 "have-local-offer" 状态的步骤生成报价。
+如果之前的 offer 是使用 setLocalDescription 应用的，而来自远端相应的 answer 已经使用 setRemoteDescription 应用，这意味着 PeerConnection 是在 "have-remote-pranswer" 状态或 "stable" 状态，根据协商的会话描述，按照上面提到的 "have-local-offer" 状态的步骤生成 offer。
 
 此外，对于新 offer 中每一个现有的、不可回收的、不可拒绝的 m-section，根据当前本地或远程描述中相应的 m-section 的内容，视情况作出以下调整:
 
@@ -753,11 +753,11 @@ createOffer 方法接受一个 RTCOfferOptions 对象作为参数。如果存在
 
 #### 5.3.1. Initial Answers
 
-当提供远程描述后第一次调用 createAnswer 时，结果被称为初始 answer。如果没有安装远程描述，则无法生成答案，并且必须返回一个错误。
+当提供远程描述后第一次调用 createAnswer 时，结果被称为初始 answer。如果没有安装远程描述，则无法生成 answer，并且必须返回一个错误。
 
 请注意，远程描述 SDP 可能不是由 JSEP 端点创建的，可能不符合 5.2 节中列出的所有要求。在许多情况下，这不是问题。然而，如果任何强制性的 SDP 属性缺失，或者上面列出的强制性使用的功能不存在，这必须被视为一个错误，并且必须导致受影响的 m-section 被标记为拒绝。
 
-生成初始答案的第一步是生成会话级属性。这里的过程是相同的，表明在上面 5.2.1 节中，除了 "a=ice-options" 和 "trickle" 选项，在 [RFC8840] 4.1.3 节中被定义, 和 "ice2" 选项在 [RFC8445] 10 节中被定义，包括这样一个选项如果出现在 offer 中。
+生成初始 answer 的第一步是生成会话级属性。这里的过程是相同的，表明在上面 5.2.1 节中，除了 "a=ice-options" 和 "trickle" 选项，在 [RFC8840] 4.1.3 节中被定义, 和 "ice2" 选项在 [RFC8445] 10 节中被定义，包括这样一个选项如果出现在 offer 中。
 
 下一步是生成会话级的 LS group，如 [RFC5888] 7 节中定义的那样。对于 offer 中出现的每一组类型为 "LS"的 group，选择由指定组中的 MID 值引用的本地 RtpTransceiver，并确定其中哪个引用了一个公共的本地 MediaStream(在 addTrack/addTransceiver 调用中指定用于创建它们)或没有 MediaStream 引用，因为它们不是由 addTrack/addTransceiver 创建的。如果存在至少两个这样的 RtpTransceiver，必须添加一组类型为 "LS" 的 RtpTransceiver 的 MID 值。否则，必须忽略提供的 LS group，answer 中不生成相应的组。
 
@@ -875,7 +875,7 @@ m-section 后面必须紧跟着 "c=" 行，如 [RFC4566] 5.7 节所述。同样�
 
 #### 5.3.2. Subsequent Answers
 
-当 createAnswer 在第二次(或更晚)时被调用，或者在已经安装了本地描述之后被调用时，处理过程与初始答案略有不同。
+当 createAnswer 在第二次(或更晚)时被调用，或者在已经安装了本地描述之后被调用时，处理过程与初始 answer 略有不同。
 
 如果之前的 answer 没有使用 setLocalDescription 应用，这意味着 PeerConnection 仍然处于 "have-remote-offer" 状态，则必须遵循生成初始 answer 的步骤，受以下限制:
 
@@ -1051,9 +1051,77 @@ answer 是静音抑制的处理如 5.2.3.2 节所述，但有一个例外：如�
 - 会话描述必须遵循 [RFC3264] 6 节中定义的规则，包括要求 m-section 的数量必须与相关 offer 中 m-section 的数量完全匹配。
 - 对于每个 m-section，媒体类型和协议值必须与相关 offer 中相应的 m-section 中的媒体类型和协议值完全匹配。
 
+如果上述任何一个检查失败，处理必须停止并返回一个错误。
+
 ### 5.9. Applying a Local Description
 
+以下步骤在媒体引擎级别执行以应用本地描述。如果返回错误，则必须将会话恢复到执行这些步骤之前的状态。
+
+首先，处理 m-section。对于每个 m-section，必须执行以下步骤；如果任何参数超出范围或不能应用，处理必须停止并返回一个错误。
+
+- 如果这个 m-section 是新的，开始收集候选，定义在[RFC8445] 5.1.1 节，除非它是明确被捆绑 ((1) 是一个 offer 和 m-section 被标记 bundle-only 或 (2) 是一个 answer , m-section 捆绑到另一个 m-section)。
+- 或者，如果ICE ufrag 和 pwd 的值已经改变，触发 ICE 代理 ICE 重启，如 [RFC8445] 9 节所述，并开始收集 m-section 的新连接候选。如果这个描述是一个 answer，也开始检查那个媒体部分。
+- 如果 m-section \<proto> 部分值表示使用 RTP:
+  - 如果没有 RtpTransceiver 与这个 m-section 相关联，找到一个并根据以下步骤将其与这个 m-section 相关联。请注意，这种情况只会发生在 offer。
+    - 找到对应于这个 m-section 的 RtpTransceiver，使用在创建 offer 时建立的 RtpTransceiver 和 m-section 索引之间的映射。
+    - 设置 RtpTransceiver 的 mid 属性值为 m-section 的 mid。
+  - 如果 RTCP mux 被指定，准备从 RTP ICE 组件中去除 RTP 和 RTCP，如 [RFC5761] 5.1.3 节所述。
+  - 对于每个指定的 RTP 报头扩展，建立扩展 ID 和 URI 之间的映射，如 [RFC5285] 6 节所述。
+  - 如果支持 MID 报头扩展，准备基于 MID 报头扩展来 demux RTP 流，如[RFC8843]，15 节所述。
+  - 对于每个指定的媒体格式，建立有效负载类型和实际媒体格式之间的映射，如 [RFC3264] 6.1 节所述。另外，根据 m-section 所支持的媒体格式，准备好 demux RTP 流，如 [RFC8843] 9.2 节所述。
+  - 对于每个指定的 "rtx" 媒体格式，建立 rtx 有效载荷类型和相关的主有效载荷类型之间的映射，如 [RFC4588] 8.6 和 8.7 节所述。
+  - 如果 direction 属性类型为 "sendrecv" 或 "recvonly"，则启用媒体接收和解码。
+
+最后，如果此描述的类型是 "pranswer" 或 "answer"，则遵循下面 5.11 节中定义的处理。
+
 ### 5.10. Applying a Remote Description
+
+执行以下步骤应用远程描述。如果返回错误，则必须将会话恢复到执行这些步骤之前的状态。
+
+如果 answer 包含任何 "a=ice-options" 属性，其中 "trickle" 被列为一个属性，更新 PeerConnection canTrickleIceCandidates 属性为 "true"。否则，将此属性设置为 "false"。
+
+必须对会话级别的属性执行以下步骤；如果任何参数超出范围或不能应用，处理必须停止并返回一个错误。
+
+- 对于任何指定的 "CT" 带宽值，将该值设置为所有 m-section 的最大总比特率的限制，如 [RFC4566] 5.8 节所述。在这个总体限制内，实现可以动态地决定如何在 m-section 之间最佳地分配可用带宽，单个 m-section 指定的任何特定限制。
+- 对于任何指定的 "RR" 或 "RS" 带宽值，按照 [RFC3556] 2 节中的规定处理。
+- 任何 "AS" 带宽值([RFC4566] 5.8 节)必须被忽略，因为这个构造在会话级别上的意义没有被很好地定义。
+
+对于每个 m-section，必须执行以下步骤；如果任何参数超出范围或不能应用，处理必须停止并返回一个错误。
+
+- 如果 ICE ufrag 或 pwd 从之前的远程描述中更改:
+  - 如果描述类型为 "offer"，实现必须注意，需要重新启动 ICE，如[RFC8839] 4.4.1.1.1 节所述。
+  - 如果描述类型为 "answer" 或 "pranswer"，则检查当前本地描述是否为 ICE 重启，如果不是，则生成一个错误。如果 PeerConnection 的状态是 "have-remote-pranswer"，并且 ICE 的 ufrag 或 pwd 由之前的临时 answer 更改，那么就通知 ICE 代理放弃之前的任何 ICE 检查表状态的 m-section。最后，向ICE代理发出信号，开始检查。
+- 如果当前本地描述是 ICE 重启，但ICE ufrag 和 pwd 都没有从之前的远程描述更改(根据 [RFC8445] 9 节的规定)，则会产生错误。
+- 配置与此 m-section 相关的 ICE 组件，以使用提供的 ICE 远程 ufrag 和 pwd 进行连接检查。
+- 如 [RFC8445] 6.1.2 节所述，将任何提供的 ICE 候选项与任何收集到的本地候选项配对，并使用适当的凭证开始连接检查。
+- 如果存在 "a=end-of-candidates" 属性，则按照 [RFC8838] 14 节中的描述处理结束候选的指示。
+- 如果"m=" \<proto> 部分值表示使用 RTP:
+  - 如果 m-section 被回收(5.2.2 节)，通过设置 RtpTransceiver 的 mid 属性为 "null" 来解除当前关联的 RtpTransceiver，并且丢弃该 RtpTransceiver 和它的 m-section 索引之间的映射。
+  - 如果 m-section 没有与任何 RtpTransceiver 关联(可能是因为它在上一步被解除关联)，要么找到一个 RtpTransceiver，要么根据以下步骤创建一个 RtpTransceiver:
+    - 如果 m-section 为 sendrecv 或 recvonly，RtpTransceiver 与 m-section 相同类型 && 通过 addTrack 添加到 PeerConnection  && 不与任何 m-section 关联 && 没有停止，符合以上条件的第一个(根据 5.2.1 节) RtpTransceiver。
+    - 如果上一步没有发现 RtpTransceiver，需要创建一个 recvonly 方向的 RtpTransceiver。
+    - 通过将 RtpTransceiver 的 mid 属性的值设置为 m-section 的 mid，将发现或创建的 RtpTransceiver 与 m-section 关联起来，并在 RtpTransceiver和 m-section 索引间建立一个映射。如果 m-section 不包含 MID(即，远程端点不支持 MID 扩展)，为RtpTransceiver MID 属性生成一个值，遵循 5.2.1 节中提到的 "a=mid" 的指导。
+- 对于每个本地实现也支持的指定媒体格式，建立指定负载类型和媒体格式之间的映射，如 [RFC3264] 6.1 节所述。具体地说，这意味着在发送每个指定的媒体格式时，实现需要记录在传出 RTP 包中使用的有效负载类型，以及在它们的顺序中表示的每种格式的相对首选项。如果任何指定的媒体格式不被本地实现支持，则必须忽略它。
+- 对于每一种指定的 "rtx" 媒体格式，建立 rtx 有效载荷类型与其关联的主有效载荷类型之间的映射，如 [RFC4588] 4 节所述。如果任何引用的主有效负载类型不存在，则必须返回错误。请注意，RTX 有效载荷类型可能引用本地媒体实现不支持的主有效载荷类型，在这种情况下，RTX 有效载荷类型也必须被忽略。
+- 对于本地实现支持的每个指定的 fmtp 参数，在相关的媒体格式上启用它们。
+- 对于在 m-section 中发出的每个 SSRC，准备使用该 SSRC 来 demux RTP 流，用于这个 m-section，如 [RFC8843] 9.2 节所述。
+- 对于每个指定的 RTP 头部扩展，也被本地实现支持，建立扩展 ID 和 URI 之间的映射，如 [RFC5285] 5 节所述。具体地说，这意味着实现在发送每个指定的报头扩展名时记录在发送 RTP 包中使用的扩展名 ID。如果任何指定的 RTP 报头扩展不被本地实现支持，它必须被忽略。
+- 对于本地实现支持的每个指定的 RTCP 反馈机制，在相关的媒体格式上启用它们。
+- 对于任何指定的 "TIAS"(Transport Independent Application Specific Maximum)带宽值，将此值设置为发送媒体时使用的最大 RTP 比特率的约束，如 [RFC3890] 中所规定的。如果没有 "TIAS" 值，但指定了一个 "AS" 值，则使用以下公式生成一个 "TIAS" 值:
+
+    ```text
+    TIAS = AS * 1000 * 0.95 - (50 * 40 * 8)
+    ```
+
+  1000 将单位从 kbps 更改为 bps(根据 TIAS 的要求)，0.95 是将 5% 的带宽分配给 RTCP。然后减去报头开销的估计值，其中 50 基于每秒 50 个包，40 基于典型的报头大小(以字节为单位)，8 将字节转换为比特。请注意，"TIAS" 比 "AS" 更可取，因为它提供了更精确的带宽控制。
+- 对于任何 "RR" 或 "RS" 带宽值，按照 [RFC3556] 2 节中的规定处理。
+- 任何指定的 "CT" 带宽值都必须被忽略，因为这个构造在媒体层面上的意义没有被很好地定义。
+- 如果 m-section 的类型是"audio":
+  - 对于每个指定的 "CN" 媒体格式，为所有支持的具有相同时钟速率的媒体格式配置静音抑制，如 [RFC3389] 5 节所述，除了具有自己内部静音抑制机制的格式。这类格式(如 Opus )的静音抑制是通过 fmtp 参数来控制的，如 5.2.3.2 节所述。
+  - 对于每个指定的 "telephone-event" 媒体格式，在相同的时钟速率下为所有支持的媒体格式启用双音多频(DTMF)传输，如 [RFC4733] 2.5.1.2 节所述。如果有任何受支持的媒体格式没有相应的电话事件格式，请禁用这些格式的 DTMF 传输。
+  - 对于任何指定的 "ptime" 值，将可用的媒体格式配置为在发送时使用指定的包大小。如果媒体格式不支持指定的大小，则使用下一个最接近的值。
+
+最后，如果此描述的类型是 "pranswer" 或 "answer"，则遵循下面第 5.11 节中定义的处理。
 
 ### 5.11. Applying an Answer
 
