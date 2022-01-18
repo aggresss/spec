@@ -1125,4 +1125,35 @@ answer 是静音抑制的处理如 5.2.3.2 节所述，但有一个例外：如�
 
 ### 5.11. Applying an Answer
 
+除了上面提到的处理本地或远程描述的步骤外，在处理类型为 "pranswer" 或 "answer" 的描述时，还将执行以下步骤。
 
+对于每个 m-section，必须执行以下步骤:
+
+- 如果 m-section 已经拒绝了(例如 \<port> 值设置为 0 的 answer)，停止任何接收或传输媒体的这一节中，而且除非 non-rejected 的 m-section 支持 bundle，否则丢弃任何 ICE 组件相关联，如 [RFC8839] 4.4.3.1 节所述。
+- 如果远程 DTLS 指纹被更改或 "a=tls-id" 属性的值被更改，需要断开 DTLS 连接。这包括 PeerConnection 状态为 "have-remote-pranswer" 的情况。如果一个 DTLS 连接需要被断开，但是 answer 没有指示 ICE 重启，或者在 "have-remote-pranswer" 的情况下，新的 ICE 凭证，必须生成一个错误。如果在没有改变 tls-id 值或指纹的情况下执行 ICE 重启，那么相同的 DTLS 连接将在新的 ICE 通道上继续。注意，尽管 JSEP 要求当且仅当提供方改变 tls-id 值时，非 JSEP 应答者被允许改变 tls-id 值，只要 offer 包含一个 ICE 重启。因此，在接收 answer 之前处理 DTLS 数据的 JSEP 实现必须准备好接收来自以前的 DTLS 连接的 ClientHello 或数据。
+- 如果不存在有效的 DTLS 连接，则在任何底层 ICE 组件处于活动状态时，准备使用指定的角色和指纹启动 DTLS 连接。
+- 如果"m=" \<proto> 值表示使用RTP:
+  - 如果 m-section 引用了 RTCP 反馈机制，而在 offer 中相应的 m-section 中没有出现，这表明协商存在问题，一定会导致错误。但是，answer 中允许使用新的媒体格式和新的 RTP 报头扩展值，如 [RFC3264] 7 节和 [RFC5285] 6 节所述。
+  - 如果 m-section 启用了 RTCP mux，则丢弃 RTCP ICE 组件(如果存在)，并开始或继续在 RTP ICE 组件上 muxing RTCP，如 [RFC5761] 5.1.3 节所述。否则，准备通过 RTCP ICE 组件发送 RTCP；如果没有 RTCP ICE 组件存在，因为之前启用了 RTCP mux 这一定会导致错误。
+  - 如果 m-section 启用了 Reduced-Size RTCP，配置这个 m-section 的 RTCP 传输使用 Reduced-Size RTCP，如 [RFC5506] 所述。
+  - 如果方向属性的 answer 表明 JSEP 实现应该发送媒体("sendonly" 为本地的 answer，"recvonly" 为远端 answer，或 "sendrecv" 类型的 answer)，选择媒体格式发送最首选的媒体格式从远程描述也是本地支持，如 [RFC3264] 6.1 节和 7 节所述，并在底层传输层建立后开始使用该格式传输 RTP 媒体。如果这个输出 RTP 流还没有选择 SSRC，请选择一个唯一的随机流。如果媒体已经在传输，则应该使用相同的 SSRC，除非新的编解码器的时钟速率不同，在这种情况下必须选择一个新的 SSRC，如 [RFC7160] 4.1 节所述。
+  - 远程描述中的有效载荷类型映射用于确定输出 RTP 流的有效载荷类型，包括上面选择的发送媒体格式的有效载荷类型。任何协商的 RTP 报头扩展都应该包含在输出 RTP 流中，使用来自远程描述的扩展映射。如果已经协商好了 MID 报头扩展，将其包含在输出 RTP 流中，如[RFC8843] 15 节所示。如果 RtpStreamId 或 RepairedRtpStreamId 报头扩展已经协商，并且 rid-id 已经建立，在输出 RTP 流中包括这些报头扩展，如 [RFC8851] 4 节所示。
+  - 如果 m-section 的类型是音频并且静音抑制，远端和本地都支持的情况下，用静音抑制外向的媒体，按照5.2.3.2 节。如果不满足这些条件，则不能使用静音抑制对外发媒体。
+  - 如果协商成功，发送相应数量的源 RTP 流，如 [RFC8853] 5.3.3 节所述。
+  - 如果上面选择的发送媒体格式有相应的 "rtx" 媒体格式，或者已经协商了 FEC 机制，则为每个源 RTP 流建立一个具有唯一随机 SSRC 的冗余 RTP 流，并根据需要启动或继续发送 rtx/FEC 包。
+  - 如果上面选择的发送媒体格式具有相同的时钟速率对应的 RED 媒体格式，为了弹性目的，允许使用指定格式的冗余编码，如 [RFC8854] 3.2 节所述。请注意，与 RTX 或 FEC 媒体格式不同，RED 格式是在源 RTP 流上传输的，而不是在冗余 RTP 流上。
+  - 为所有使用指定媒体格式的源 RTP 流启用媒体部分中引用的 RTCP 反馈机制。具体来说，开始或继续发送请求的反馈类型，并对收到的反馈做出反应，如 [RFC4585] 4.2 节所述。当发送 RTCP 反馈时，请遵循 [RFC8108] 5.4.1 节中的规则和建议来选择使用哪个 SSRC。
+  - 如果 answer 中的 direction 属性指示 JSEP 实现不应该发送媒体(本地 answer 为 "recvonly"，远程 answer 为 "sendonly"，或任何一种类型的答案为 "inactive")，停止发送所有 RTP 媒体，但继续发送 RTCP，如 [RFC3264] 5.1 节所述。
+- 如果"m=" 部分 \<proto> 值表示使用 SCTP:
+  - 如果存在 SCTP 关联，且远端 SCTP 端口已经改变，则丢弃现有的 SCTP 关联。这包括 PeerConnection 状态为 "have-remote-pranswer" 的情况。
+  - 如果没有有效的 SCTP 关联存在，准备在关联的 ICE 组件和 DTLS 连接上发起一个 SCTP 关联，使用来自本地描述的本地 SCTP 端口值和来自远端描述的远端 SCTP 端口值，如 [RFC8841] 10.2节所述。
+
+如果 answer 包含了有效的 bundle 组，丢弃所有将被捆绑到每个 bundle 的主 ICE 组件上的 m-section 的ICE组件，并开始相应的混合这些 m-section，如 [RFC8843] 7.4 节所述。
+
+如果描述类型为 "answer"，并且在 ICE 候选池中仍有剩余的候选项，则丢弃它们。
+
+## 6. 处理 RTP/RTCP
+
+捆绑操作时，将传入的 RTP/RTCP 与适当的 m-section 关联(在 [RFC8843] 9.2 节中定义）。当不捆绑时，从接收 RTP/RTCP 的 ICE 组件中清除相应的 m-section。
+
+一旦正确的 m-section 被确认，RTP/RTCP 被交付给与 m-section 相关的 RtpTransceiver(s)， RTP/RTCP 的进一步处理在 RtpTransceiver 级别完成。这包括使用 RID 机制 [RFC8851] 及其相关的 RtpStreamId 和 RepairedRtpStreamId 标识符来区分多个编码流，并确定哪个源 RTP 流可以被指定的冗余的 RTP 流修复。
