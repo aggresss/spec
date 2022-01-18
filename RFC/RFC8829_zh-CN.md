@@ -913,17 +913,143 @@ answer 是静音抑制的处理如 5.2.3.2 节所述，但有一个例外：如�
 
 ### 5.5. Processing a Local Description
 
+当 SessionDescription 被提供给 setLocalDescription 时，必须执行以下步骤:
+
+- 如果描述类型为 "rollback"，则按照 5.7 节定义的处理，跳过本节其余部分描述的处理。
+- 否则，SessionDescription 的类型将根据 PeerConnection 的当前状态进行检查:
+  - 当类型为 offer 时，PeerConnection的状态必须是 "stable" 或 "have-local-offer"。
+  - 当类型为 pranswer 或 answer 时，PeerConnection 状态必须为 "have-remote-offer" 或 "have-local-pranswer"。
+- 如果该类型对当前状态不正确，处理必须停止并返回一个错误。
+- 然后检查 SessionDescription 以确保其内容与上次 createOffer/createAnswer 调用中生成的内容相同并且没有被更改，5.4 节所讨论的那样；否则，处理必须停止并返回一个错误。
+- 接下来，SessionDescription 被解析成一个数据结构，如下面 5.8 节所述。
+- 最后，解析的 SessionDescription 被应用，如下 5.9 节所述。
+
 ### 5.6. Processing a Remote Description
+
+当 SessionDescription 被提供给 setRemoteDescription 时，必须执行以下步骤:
+
+- 如果描述类型为 "rollback"，则按照 5.7 节定义的处理，跳过本节其余部分描述的处理。
+- 否则，SessionDescription 的类型将根据 PeerConnection 的当前状态进行检查:
+  - 如果是 offer, PeerConnection 的状态必须是 "stable" 或者 "have-remote-offer"。
+  - 当类型为 pranswer 或 answer 时，PeerConnection 状态必须为 "have-local-offer" 或 "have-remote-pranswer"。
+- 如果该类型对当前状态不正确，处理必须停止并返回一个错误。
+- 接下来，SessionDescription 被解析成一个数据结构，如下面 5.8 节所述。如果解析由于任何原因失败，处理必须停止并返回一个错误。
+- 最后，解析的 SessionDescription 被应用，如下面的 5.10 节所述。
 
 ### 5.7. Processing a Rollback
 
+当 PeerConnection 处于除 "stable" 之外的任何状态时，可以执行 "rollback"。这意味着 offer 和 provisional answer 都可以回滚。回滚只能用于取消建议的更改；不支持从 "stable" 状态回滚到以前的 "stable" 状态。如果在 "stable" 状态下尝试回滚，处理必须停止并返回一个错误。请注意，这意味着一旦 answer 执行了 setLocalDescription 就不能回滚。
+
+无论调用 setLocalDescription 还是 setRemoteDescription, rollback 的效果都必须相同。
+
+为了处理回滚，JSEP 实现放弃当前的 offer/answer 事务，将信令状态设置为 "stable"，并将挂起的本地或远程描述设置为 "null"(参见 4.1.14 和 4.1.16 节)。由废弃的局部描述分配的任何资源或候选都将被丢弃;接收到的任何媒体都按照前面的本地和远程描述进行处理。
+
+通过回滚会话描述的应用，回滚将任何与 m-section 相关联的 RtpTransceiver 分离(参见章节5.10和5.9)。这意味着以前关联的一些 RtpTransceiver 将不再与任何 m-secion 相关联；在这种情况下，RtpTransceiver mid 属性的值必须设置为 "null"，并且必须丢弃该 transceiver 和它的 m-section 索引之间的映射关系。如果 RtpTransceiver 是通过应用一个远程提供创建的，被回滚后必须停止并从PeerConnection 移除。但是，如果通过 addTrack 方法将一个 track 附加到 RtpTransceiver 上，那么这个 RtpTransceiver 就不能被移除。这使得应用程序可以调用 addTrack，然后调用setRemoteDescription 提供一个 offer，然后回滚那个 offer，再次调用 createOffer，并在生成的 offer 中为添加的 track 对应的 m-section。
+
 ### 5.8. Parsing a Session Description
+
+会话描述对象中包含的 SDP 由一系列的文本行组成，每一行包含一个 key-value 表达式，如 [RFC4566] 5 节所述。逐行读取 SDP，并将其转换为包含反序列化信息的数据结构。但是 SDP 允许许多类型的行，并不是所有的行都与 JSEP 应用程序相关。对于每一行，实现首先要根据其定义的 ABNF 语法确保正确，检查它是否符合 [RFC4566] 和 [RFC3264] 中使用的语义，然后解析、存储或丢弃所提供的值，如下所述。
+
+如果任何一行的格式不对，或者不能按照描述解析，解析器必须错误地停止并拒绝会话描述，即使该值将被丢弃。这确保了实现不会意外地误解存在二义性的 SDP。
 
 #### 5.8.1. Session-Level Parsing
 
+首先，检查和解析会话级别的行。这些行必须以特定的顺序和特定的语法出现，如 [RFC4566] 5 节中定义的那样。请注意，虽然特定的行类型(例如，"v="，"c=")必须以定义的顺序出现，但相同类型的行(通常是 "a=" )可以以任何顺序出现。
+
+下面的非属性行在 JSEP 上下文中没有意义，并且可能在检查后被丢弃。
+
+- "c=" 行必须检查语法，但它的值只用于 ICE 不匹配检测，如 [RFC8445] 5.4 节中定义的那样。注意，JSEP实现永远不会遇到这种情况，因为 WebRTC 需要 ICE。
+- "i="，"u="，"e="，"p="，"t="，"r="，"z=" 和 "k=" 行必须检查语法，但它们的值不被使用。
+
+其余的非属性行按如下方式处理:
+
+- "v=" 行必须是 0 的版本，如 [RFC4566] 5.1 节所述。
+- "o=" 行必须按照 [RFC4566] 5.2 节中的规定进行解析。
+- "b=" 行如果存在，必须按照 [RFC4566] 5.8 节的规定解析，并存储 bwtype 和带宽值。
+
+最后处理属性行。特定处理必须应用于以下会话级属性("a=")行:
+
+- 任何 "a=group" 行被解析为在 [RFC5888] 5 节中指定的，并且组的语义和 mid 被存储。
+- 如果存在，一个单独的 "a=ice-lite" 行被解析为 [RFC8839] 5.3 节中指定的，并且一个值表示存在 ice-lite 被存储。
+- 如果存在，一个单独的 "a=ice-ufrag" 行被解析为 [RFC8839] 5.4 节中指定的，并且 ufrag 值被存储。
+- 如果存在，一个单独的 "a=ice-pwd" 行被解析为[RFC8839] 5.4 节中指定的，并且密码值被存储。
+- 如果存在，"a=ice-options" 一行将被解析为[RFC8839] 5.6节中指定的，并且指定的选项集将被存储。
+- 任何 "a=fingerprint" 行按照[RFC8122] 5 节中的规定进行解析，并存储指纹和算法值集。
+- 如果存在，"a=setup" 一行将按照[RFC4145] 4 节中的规定进行解析，并存储 setup 值。
+- 如果存在，"a=tls-id" 一行将按照[RFC8842] 5 节中的规定进行解析，并存储属性值。
+- 任何 "a=identity" 行都会被解析并存储标识值以供后续验证，如 [RFC8827] 5 节所述。
+- 任何 "a=extmap" 行都按照 [RFC5285] 5 节中指定的方式进行解析，并存储它们的值。
+
+其他与 JSEP 无关的属性也可能出现，实现应该处理它们所识别的任何属性。根据 [RFC4566] 5.13 节的要求，必须忽略未知的属性行。
+
+一旦所有会话级别的行都被解析，处理就会继续进行 m-section 中的行。
+
 #### 5.8.2. Media Section Parsing
 
+和会话级别的行一样，媒体部分的行必须按照特定的顺序和语法出现，这些语法在 [RFC4566] 5 节中定义。
+
+"m=" 行本身必须按照 [RFC4566] 5.14 节中描述的那样被解析，并且存储 \<media>，\<port>，\<proto> 和 \<fmt> 值。
+
+在 "m=" 行之后，必须对以下非属性行应用特定处理:
+
+- 与会话级别的 "c=" 行一样，"c=" 行必须根据 [RFC4566] 5.7 节解析，但它的值没有被使用。
+- "b=" 行如果存在，必须按照 [RFC4566] 5.8 节的规定解析，并存储 bwtype 和带宽值。
+
+以下属性行也必须应用特定处理:
+
+- 如果存在一个单独的 "a=ice-ufrag" 行被解析为 [RFC8839] 5.4 节中指定的，并且 ufrag 值被存储。
+- 如果存在一个单独的 "a=ice-pwd" 行被解析为[RFC8839] 5.4 节中指定的，并且密码值被存储。
+- 如果存在，"a=ice-options" 行将被解析为 [RFC8839] 5.6 节中指定的，并且指定的选项集将被存储。
+- 任何 "a=candidate" 属性必须按照 [RFC8839] 5.1 节中的规定进行解析，并存储它们的值。
+- 任何 "a=remote-candidate" 的属性必须按照 [RFC8839] 5.2 节中的规定进行解析，但是它们的值会被忽略。
+- 如果存在，单个 "a=end-of-candidates" 属性必须按照 [RFC8840] 8.1 节中指定的方式进行解析，并标记和存储它的存在或不存在。
+- 任何 "a=fingerprint" 行按照 [RFC8122] 5 节中的规定进行解析，并存储指纹和算法值集。
+
+如果 "m=" \<proto> 值表示使用 RTP，如上文 5.1.2 节所述，必须处理以下属性行:
+
+- "m=" \<fmt> 值必须按照 [RFC4566] 5.14 节中指定的方式解析，并存储各个值。
+- 任何 "a=rtpmap" 或 "a=fmtp" 行必须按照 [RFC4566] 6 节中的规定进行解析，并存储它们的值。
+- 如果存在 "a=ptime" 行必须按照 [RFC4566] 6 节的描述进行解析，并存储其值。
+- 如果存在 "a=maxptime" 行必须按照 [RFC4566] 6 节中的描述进行解析，并存储其值。
+- 如果存在一个方向属性行(例如，"a=sendrecv")必须按照 [RFC4566] 6 节中的描述进行解析，并存储其值。
+- 任何 "a=ssrc" 属性必须按照 [RFC5576] 4.1 节中的规定进行解析，并存储它们的值。
+- 任何 "a=extmap" 属性必须按照 [RFC5285] 5 节中指定的解析，并存储它们的值。
+- 任何 "a=rtcp-fb" 属性必须按照 [RFC4585] 4.2 节中的规定进行解析，并存储它们的值。
+- 如果存在一个单独的 "a=rtcp-mux" 属性必须按照 [RFC5761] 5.1.3 节中的规定进行解析，并标记和存储它的存在或不存在。
+- 如果存在一个 "a=rtcp-mux-only" 属性必须按照 [RFC8858] 3 节中指定的方式进行解析，并标记和存储它的存在或不存在。
+- 如果存在一个单独的 "a=rtcp-rsize" 属性必须按照 [RFC5506] 5 节中的规定进行解析，并标记和存储它的存在或不存在。
+- 如果存在，"a=rtcp" 属性必须按照 2.1 节 [RFC3605] 中的规定进行解析，但是它的值被忽略，因为在使用 ICE 时，这些信息是多余的。
+- 如果存在，"a=msid" 属性必须按照 [RFC8830] 3.2 节中的规定进行解析，并存储它们的值，忽略任何 "appdata" 字段。如果不存在 "a=msid" 属性，则为会话的 "default" MediaStream 生成一个随机的msid-id 值，如果该值还没有出现，则存储该值。
+- 任何 "a=imageattr" 属性必须按照 [RFC6236] 3 节中的规定进行解析，并存储它们的值。
+- 任何 "a=rid" 行必须按照 [RFC8851] 10 节中的规定解析，并存储它们的值。
+- 如果存在一个 "a=simulcast" 行必须按照 [RFC8853] 中的规定进行解析，并存储其值。
+
+否则，如果"m=" \<proto> 值表示使用 SCTP，则必须处理以下属性行:
+
+- "m=" \<fmt> 的值必须按照 [RFC8841] 4.3 节中的规定进行解析，并存储应用协议值。
+- 一个 "a=sctp-port" 属性必须存在，它必须按照 [RFC8841] 5.2 节中的规定进行解析，并存储该值。
+- 如果存在一个单独的 "a=max-message-size" 属性必须按照 [RFC8841] 6 节中的规定进行解析，并存储该值。否则，使用指定的默认值。
+
+其他与 JSEP 无关的属性也可能出现，实现应该处理它们所识别的任何属性。根据 [RFC4566] 5.13 节的要求，必须忽略未知的属性行。
+
 #### 5.8.3. Semantics Verification
+
+假设解析成功完成，然后对解析的描述进行评估，以确保内部一致性以及对强制特性的适当支持。具体来说，执行以下检查:
+
+- 对于每个 m-section，必须提供 5.1.1 节中列举的每个强制使用特性的有效值。这些值可以在媒体级出现，也可以从会话级继承。
+  - ICE ufrag 和 pwd 的值必须符合[RFC8839] 5.4 节中规定的大小限制。
+  - tls-id 值必须根据 [RFC8842] 5节设置。如果这是一个更新 offer 或一个更新 offer 的响应，tls-id 值与当前使用的不一样，DTLS 连接不被继续，远程描述必须是 ICE 重启的一部分，以及新的 ufrag 和 pwd 值。
+  - DTLS setup 值必须根据 [RFC5763] 5 节中指定的规则设置，并且必须与当前 DTLS 连接所选择的角色保持一致，如果存在并且正在继续。
+- DTLS 指纹值，其中至少有一个指纹必须存在。
+- 所有在 "a=simulcast" 行中引用的 rid-id 必须作为 "a=rid" 行存在。
+- 每个 m-section 也会被检查，以确保不使用禁止的特性。
+- 如果 RTP/RTCP 复用策略为 "require"，每个 m-section 必须包含一个 "a=rtcp-mux" 属性。如果一个 m-section 包含一个 "a=rtcp-mux-only" 属性，该 section 也必须包含一个 "a=rtcp-mux" 属性。
+- 如果 m-section 出现在前面的 answer 中，RTP/RTCP 复用的状态必须匹配之前协商的。
+
+如果该会话描述类型为 "pranswer" 或 "answer"，则应用以下附加检查:
+
+- 会话描述必须遵循 [RFC3264] 6 节中定义的规则，包括要求 m-section 的数量必须与相关 offer 中 m-section 的数量完全匹配。
+- 对于每个 m-section，媒体类型和协议值必须与相关 offer 中相应的 m-section 中的媒体类型和协议值完全匹配。
 
 ### 5.9. Applying a Local Description
 
