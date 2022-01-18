@@ -1287,7 +1287,7 @@ a=candidate:1 2 udp 2113929470 203.0.113.100 10103 typ host
 a=end-of-candidates
 ```
 
-|answer-A1| 如下：
+|answer-A1| SDP 如下：
 
 ```sdp
 v=0
@@ -1346,5 +1346,767 @@ a=msid:61317484-2ed4-49d7-9eb7-1414322a7aae
 
 ### 7.2. Detailed Example
 
+本节展示了两个 JSEP 端点之间更复杂的会话示例。Trickle ICE 是在 Full Trickle 模式下使用的，捆绑策略是 "max-bundle"，RTCP mux 策略是 "require"，并且只有一个 TURN 服务。最初，Alice 和 Bob 都建立了一个音频通道和一个数据通道。稍后 Bob 添加了两个视频流(一个用于他的视频提要，一个用于屏幕共享)，两者都支持 FEC 并将视频提要配置为 simulcast。Alice 接受这些视频流，但不添加她自己的视频流，因此它们被作为 recvonly 处理。Alice 还指定了最大视频解码器分辨率。
+
+```text
+//                  set up local media state
+AliceJS->AliceUA:   create new PeerConnection
+AliceJS->AliceUA:   addTrack with an audio track
+AliceJS->AliceUA:   createDataChannel to get data channel
+AliceJS->AliceUA:   createOffer to get |offer-B1|
+AliceJS->AliceUA:   setLocalDescription with |offer-B1|
+
+//                  |offer-B1| is sent over signaling protocol to Bob
+AliceJS->WebServer: signaling with |offer-B1|
+WebServer->BobJS:   signaling with |offer-B1|
+
+//                  |offer-B1| arrives at Bob
+BobJS->BobUA:       create a PeerConnection
+BobJS->BobUA:       setRemoteDescription with |offer-B1|
+BobUA->BobJS:       ontrack event with audio track from Alice
+
+//                  candidates are sent to Bob
+AliceUA->AliceJS:   onicecandidate (host) |offer-B1-candidate-1|
+AliceJS->WebServer: signaling with |offer-B1-candidate-1|
+AliceUA->AliceJS:   onicecandidate (srflx) |offer-B1-candidate-2|
+AliceJS->WebServer: signaling with |offer-B1-candidate-2|
+AliceUA->AliceJS:   onicecandidate (relay) |offer-B1-candidate-3|
+AliceJS->WebServer: signaling with |offer-B1-candidate-3|
+
+WebServer->BobJS:   signaling with |offer-B1-candidate-1|
+BobJS->BobUA:       addIceCandidate with |offer-B1-candidate-1|
+WebServer->BobJS:   signaling with |offer-B1-candidate-2|
+BobJS->BobUA:       addIceCandidate with |offer-B1-candidate-2|
+WebServer->BobJS:   signaling with |offer-B1-candidate-3|
+BobJS->BobUA:       addIceCandidate with |offer-B1-candidate-3|
+
+//                  Bob accepts call
+BobJS->BobUA:       addTrack with local audio
+BobJS->BobUA:       createDataChannel to get data channel
+BobJS->BobUA:       createAnswer to get |answer-B1|
+BobJS->BobUA:       setLocalDescription with |answer-B1|
+
+//                  |answer-B1| is sent to Alice
+BobJS->WebServer:   signaling with |answer-B1|
+WebServer->AliceJS: signaling with |answer-B1|
+AliceJS->AliceUA:   setRemoteDescription with |answer-B1|
+AliceUA->AliceJS:   ontrack event with audio track from Bob
+
+//                  candidates are sent to Alice
+BobUA->BobJS:       onicecandidate (host) |answer-B1-candidate-1|
+BobJS->WebServer:   signaling with |answer-B1-candidate-1|
+BobUA->BobJS:       onicecandidate (srflx) |answer-B1-candidate-2|
+BobJS->WebServer:   signaling with |answer-B1-candidate-2|
+BobUA->BobJS:       onicecandidate (relay) |answer-B1-candidate-3|
+BobJS->WebServer:   signaling with |answer-B1-candidate-3|
+
+WebServer->AliceJS: signaling with |answer-B1-candidate-1|
+AliceJS->AliceUA:   addIceCandidate with |answer-B1-candidate-1|
+WebServer->AliceJS: signaling with |answer-B1-candidate-2|
+AliceJS->AliceUA:   addIceCandidate with |answer-B1-candidate-2|
+WebServer->AliceJS: signaling with |answer-B1-candidate-3|
+AliceJS->AliceUA:   addIceCandidate with |answer-B1-candidate-3|
+
+//                  data channel opens
+BobUA->BobJS:       ondatachannel event
+AliceUA->AliceJS:   ondatachannel event
+BobUA->BobJS:       onopen
+AliceUA->AliceJS:   onopen
+
+//                  media is flowing between endpoints
+BobUA->AliceUA:     audio+data sent from Bob to Alice
+AliceUA->BobUA:     audio+data sent from Alice to Bob
+
+//                  some time later, Bob adds two video streams
+//                  note: no candidates exchanged, because of bundle
+BobJS->BobUA:       addTrack with first video stream
+BobJS->BobUA:       addTrack with second video stream
+BobJS->BobUA:       createOffer to get |offer-B2|
+BobJS->BobUA:       setLocalDescription with |offer-B2|
+
+//                  |offer-B2| is sent to Alice
+BobJS->WebServer:   signaling with |offer-B2|
+WebServer->AliceJS: signaling with |offer-B2|
+AliceJS->AliceUA:   setRemoteDescription with |offer-B2|
+AliceUA->AliceJS:   ontrack event with first video track
+AliceUA->AliceJS:   ontrack event with second video track
+AliceJS->AliceUA:   createAnswer to get |answer-B2|
+AliceJS->AliceUA:   setLocalDescription with |answer-B2|
+
+//                  |answer-B2| is sent over signaling protocol
+//                  to Bob
+AliceJS->WebServer: signaling with |answer-B2|
+WebServer->BobJS:   signaling with |answer-B2|
+BobJS->BobUA:       setRemoteDescription with |answer-B2|
+
+//                  media is flowing between endpoints
+BobUA->AliceUA:     audio+video+data sent from Bob to Alice
+AliceUA->BobUA:     audio+video+data sent from Alice to Bob
+```
+
+|offer-B1| SDP 如下：
+
+```sdp
+v=0
+o=- 4962303333179871723 1 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=ice-options:trickle ice2
+a=group:BUNDLE a1 d1
+
+m=audio 9 UDP/TLS/RTP/SAVPF 96 0 8 97 98
+c=IN IP4 0.0.0.0
+a=mid:a1
+a=sendrecv
+a=rtpmap:96 opus/48000/2
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:97 telephone-event/8000
+a=rtpmap:98 telephone-event/48000
+a=fmtp:97 0-15
+a=fmtp:98 0-15
+a=maxptime:120
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:2 urn:ietf:params:rtp-hdrext:ssrc-audio-level
+a=msid:57017fee-b6c1-4162-929c-a25110252400
+a=ice-ufrag:ATEn
+a=ice-pwd:AtSK0WpNtpUjkY4+86js7ZQl
+a=fingerprint:sha-256
+              29:E2:1C:3B:4B:9F:81:E6:B8:5C:F4:A5:A8:D8:73:04:
+              BB:05:2F:70:9F:04:A9:0E:05:E9:26:33:E8:70:88:A2
+a=setup:actpass
+a=tls-id:17f0f4ba8a5f1213faca591b58ba52a7
+a=rtcp-mux
+a=rtcp-mux-only
+a=rtcp-rsize
+
+m=application 0 UDP/DTLS/SCTP webrtc-datachannel
+c=IN IP4 0.0.0.0
+a=mid:d1
+a=sctp-port:5000
+a=max-message-size:65536
+a=bundle-only
+```
+
+|offer-B1-candidate-1| 如下:
+
+```text
+ufrag ATEn
+index 0
+mid   a1
+attr  candidate:1 1 udp 2113929471 203.0.113.100 10100 typ host
+```
+
+|offer-B1-candidate-2| 如下:
+
+```text
+ufrag ATEn
+index 0
+mid   a1
+attr  candidate:1 1 udp 1845494015 198.51.100.100 11100 typ srflx
+                raddr 203.0.113.100 rport 10100
+```
+
+|offer-B1-candidate-3| 如下:
+
+```text
+ufrag ATEn
+index 0
+mid   a1
+attr  candidate:1 1 udp 255 192.0.2.100 12100 typ relay
+                raddr 198.51.100.100 rport 11100
+```
+
+|answer-B1| SDP 如下
+
+```sdp
+v=0
+o=- 7729291447651054566 1 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=ice-options:trickle ice2
+a=group:BUNDLE a1 d1
+
+m=audio 9 UDP/TLS/RTP/SAVPF 96 0 8 97 98
+c=IN IP4 0.0.0.0
+a=mid:a1
+a=sendrecv
+a=rtpmap:96 opus/48000/2
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:97 telephone-event/8000
+a=rtpmap:98 telephone-event/48000
+a=fmtp:97 0-15
+a=fmtp:98 0-15
+a=maxptime:120
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:2 urn:ietf:params:rtp-hdrext:ssrc-audio-level
+a=msid:71317484-2ed4-49d7-9eb7-1414322a7aae
+a=ice-ufrag:7sFv
+a=ice-pwd:dOTZKZNVlO9RSGsEGM63JXT2
+a=fingerprint:sha-256
+              7B:8B:F0:65:5F:78:E2:51:3B:AC:6F:F3:3F:46:1B:35:
+              DC:B8:5F:64:1A:24:C2:43:F0:A1:58:D0:A1:2C:19:08
+a=setup:active
+a=tls-id:7a25ab85b195acaf3121f5a8ab4f0f71
+a=rtcp-mux
+a=rtcp-mux-only
+a=rtcp-rsize
+
+m=application 9 UDP/DTLS/SCTP webrtc-datachannel
+c=IN IP4 0.0.0.0
+a=mid:d1
+a=sctp-port:5000
+a=max-message-size:65536
+```
+
+|answer-B1-candidate-1| 如下：
+
+```text
+ufrag 7sFv
+index 0
+mid   a1
+attr  candidate:1 1 udp 2113929471 203.0.113.200 10200 typ host
+```
+
+|answer-B1-candidate-2| 如下：
+
+```text
+ufrag 7sFv
+index 0
+mid   a1
+attr  candidate:1 1 udp 1845494015 198.51.100.200 11200 typ srflx
+                raddr 203.0.113.200 rport 10200
+```
+
+|answer-B1-candidate-3| 如下：
+
+```text
+ufrag 7sFv
+index 0
+mid   a1
+attr  candidate:1 1 udp 255 192.0.2.200 12200 typ relay
+                raddr 198.51.100.200 rport 11200
+```
+
+|offer-B2| 的 SDP 如下所示。除了新的 m-section 的视频，两者都提供 FEC 并且其中一个为 simulcast，注意在 "o=" 行版本号的增量；更改 "c=" 行，表示选中的本地候选；以及将集合的候选包含为 a=candidate 行。
+
+```sdp
+v=0
+o=- 7729291447651054566 2 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=ice-options:trickle ice2
+a=group:BUNDLE a1 d1 v1 v2
+a=group:LS a1 v1
+
+m=audio 12200 UDP/TLS/RTP/SAVPF 96 0 8 97 98
+c=IN IP4 192.0.2.200
+a=mid:a1
+a=sendrecv
+a=rtpmap:96 opus/48000/2
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:97 telephone-event/8000
+a=rtpmap:98 telephone-event/48000
+a=fmtp:97 0-15
+a=fmtp:98 0-15
+a=maxptime:120
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:2 urn:ietf:params:rtp-hdrext:ssrc-audio-level
+a=msid:71317484-2ed4-49d7-9eb7-1414322a7aae
+a=ice-ufrag:7sFv
+a=ice-pwd:dOTZKZNVlO9RSGsEGM63JXT2
+a=fingerprint:sha-256
+              7B:8B:F0:65:5F:78:E2:51:3B:AC:6F:F3:3F:46:1B:35:
+              DC:B8:5F:64:1A:24:C2:43:F0:A1:58:D0:A1:2C:19:08
+a=setup:actpass
+a=tls-id:7a25ab85b195acaf3121f5a8ab4f0f71
+a=rtcp-mux
+a=rtcp-mux-only
+a=rtcp-rsize
+a=candidate:1 1 udp 2113929471 203.0.113.200 10200 typ host
+a=candidate:1 1 udp 1845494015 198.51.100.200 11200 typ srflx
+            raddr 203.0.113.200 rport 10200
+a=candidate:1 1 udp 255 192.0.2.200 12200 typ relay
+            raddr 198.51.100.200 rport 11200
+a=end-of-candidates
+
+m=application 12200 UDP/DTLS/SCTP webrtc-datachannel
+c=IN IP4 192.0.2.200
+a=mid:d1
+a=sctp-port:5000
+a=max-message-size:65536
+
+m=video 12200 UDP/TLS/RTP/SAVPF 100 101 102 103 104
+c=IN IP4 192.0.2.200
+a=mid:v1
+a=sendrecv
+a=rtpmap:100 VP8/90000
+a=rtpmap:101 H264/90000
+a=fmtp:101 packetization-mode=1;profile-level-id=42e01f
+a=rtpmap:102 rtx/90000
+a=fmtp:102 apt=100
+a=rtpmap:103 rtx/90000
+a=fmtp:103 apt=101
+a=rtpmap:104 flexfec/90000
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:3 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id
+a=rtcp-fb:100 ccm fir
+a=rtcp-fb:100 nack
+a=rtcp-fb:100 nack pli
+a=msid:71317484-2ed4-49d7-9eb7-1414322a7aae
+a=rid:1 send
+a=rid:2 send
+a=rid:3 send
+a=simulcast:send 1;2;3
+
+m=video 12200 UDP/TLS/RTP/SAVPF 100 101 102 103 104
+c=IN IP4 192.0.2.200
+a=mid:v2
+a=sendrecv
+a=rtpmap:100 VP8/90000
+a=rtpmap:101 H264/90000
+a=fmtp:101 packetization-mode=1;profile-level-id=42e01f
+a=rtpmap:102 rtx/90000
+a=fmtp:102 apt=100
+a=rtpmap:103 rtx/90000
+a=fmtp:103 apt=101
+a=rtpmap:104 flexfec/90000
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:3 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id
+a=rtcp-fb:100 ccm fir
+a=rtcp-fb:100 nack
+a=rtcp-fb:100 nack pli
+a=msid:81317484-2ed4-49d7-9eb7-1414322a7aae
+```
+
+|answer-B2|的 SDP 如下所示。接受视频 m-section 使用 a=recvonly 来表示单向视频，使用 a=imageattr 来限制接收的分辨率，注意使用 setup:passive 来维护现有的 DTLS 角色。
+
+```sdp
+v=0
+o=- 4962303333179871723 2 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=ice-options:trickle ice2
+a=group:BUNDLE a1 d1 v1 v2
+a=group:LS a1 v1
+
+m=audio 12100 UDP/TLS/RTP/SAVPF 96 0 8 97 98
+c=IN IP4 192.0.2.100
+a=mid:a1
+a=sendrecv
+a=rtpmap:96 opus/48000/2
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:97 telephone-event/8000
+a=rtpmap:98 telephone-event/48000
+a=fmtp:97 0-15
+a=fmtp:98 0-15
+a=maxptime:120
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:2 urn:ietf:params:rtp-hdrext:ssrc-audio-level
+a=msid:57017fee-b6c1-4162-929c-a25110252400
+a=ice-ufrag:ATEn
+a=ice-pwd:AtSK0WpNtpUjkY4+86js7ZQl
+a=fingerprint:sha-256
+              29:E2:1C:3B:4B:9F:81:E6:B8:5C:F4:A5:A8:D8:73:04:
+              BB:05:2F:70:9F:04:A9:0E:05:E9:26:33:E8:70:88:A2
+a=setup:passive
+a=tls-id:17f0f4ba8a5f1213faca591b58ba52a7
+a=rtcp-mux
+a=rtcp-mux-only
+a=rtcp-rsize
+a=candidate:1 1 udp 2113929471 203.0.113.100 10100 typ host
+a=candidate:1 1 udp 1845494015 198.51.100.100 11100 typ srflx
+            raddr 203.0.113.100 rport 10100
+a=candidate:1 1 udp 255 192.0.2.100 12100 typ relay
+            raddr 198.51.100.100 rport 11100
+a=end-of-candidates
+
+m=application 12100 UDP/DTLS/SCTP webrtc-datachannel
+c=IN IP4 192.0.2.100
+a=mid:d1
+a=sctp-port:5000
+a=max-message-size:65536
+
+m=video 12100 UDP/TLS/RTP/SAVPF 100 101 102 103
+c=IN IP4 192.0.2.100
+a=mid:v1
+a=recvonly
+a=rtpmap:100 VP8/90000
+a=rtpmap:101 H264/90000
+a=fmtp:101 packetization-mode=1;profile-level-id=42e01f
+a=rtpmap:102 rtx/90000
+a=fmtp:102 apt=100
+a=rtpmap:103 rtx/90000
+a=fmtp:103 apt=101
+a=imageattr:100 recv [x=[48:1920],y=[48:1080],q=1.0]
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:3 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id
+a=rtcp-fb:100 ccm fir
+a=rtcp-fb:100 nack
+a=rtcp-fb:100 nack pli
+
+m=video 12100 UDP/TLS/RTP/SAVPF 100 101 102 103
+c=IN IP4 192.0.2.100
+a=mid:v2
+a=recvonly
+a=rtpmap:100 VP8/90000
+a=rtpmap:101 H264/90000
+a=fmtp:101 packetization-mode=1;profile-level-id=42e01f
+a=rtpmap:102 rtx/90000
+a=fmtp:102 apt=100
+a=rtpmap:103 rtx/90000
+a=fmtp:103 apt=101
+a=imageattr:100 recv [x=[48:1920],y=[48:1080],q=1.0]
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:3 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id
+a=rtcp-fb:100 ccm fir
+a=rtcp-fb:100 nack
+a=rtcp-fb:100 nack pli
+```
+
 ### 7.3. Early Transport Warmup Example
 
+这个例子演示了 4.1.10.1 节中描述的传输预热技术。在这里，Alice 的端点向 Bob 的端点发送一个 offer 以启动一个音频/视频通话。Bob 立即响应一个 answer，该 answer 接受音频/视频 m-section，但将它们标记为 send-only (从 Bob 的角度来看)，这意味着 Alice 还不能发送媒体。这允许 JSEP 实现立即开始协商 ICE 和 DTLS。Bob 的端点然后提示他接听电话，当他接听时他的端点发送第二个 offer，这使音频和视频 m-section 被激活从而实现双向媒体传输。这种流程的优点是，一旦收到第一个 answer，实现就可以继续进行 ICE 和 DTLS 协商，并建立会话传输。如果传输设置在第二个 offer 被发送之前完成，那么媒体可以被被呼叫者在应答电话时立即传输，最大限度地减少拨号后的延迟。第二个 offer/answer 交换还可以更改首选的编解码器或其他会话参数。
+
+这个例子也使用了在 3.5.3 节中描述的 relay ICE 候选策略来最小化所需的 ICE 收集和检查。
+
+```text
+//                  set up local media state
+AliceJS->AliceUA:   create new PeerConnection with "relay" ICE policy
+AliceJS->AliceUA:   addTrack with two tracks: audio and video
+AliceJS->AliceUA:   createOffer to get |offer-C1|
+AliceJS->AliceUA:   setLocalDescription with |offer-C1|
+
+//                  |offer-C1| is sent over signaling protocol to Bob
+AliceJS->WebServer: signaling with |offer-C1|
+WebServer->BobJS:   signaling with |offer-C1|
+
+//                  |offer-C1| arrives at Bob
+BobJS->BobUA:       create new PeerConnection with "relay" ICE policy
+BobJS->BobUA:       setRemoteDescription with |offer-C1|
+BobUA->BobJS:       ontrack events for audio and video
+
+//                  a relay candidate is sent to Bob
+AliceUA->AliceJS:   onicecandidate (relay) |offer-C1-candidate-1|
+AliceJS->WebServer: signaling with |offer-C1-candidate-1|
+
+WebServer->BobJS:   signaling with |offer-C1-candidate-1|
+BobJS->BobUA:       addIceCandidate with |offer-C1-candidate-1|
+
+//                  Bob prepares an early answer to warm up the
+//                  transport
+BobJS->BobUA:       addTransceiver with null audio and video tracks
+BobJS->BobUA:       transceiver.setDirection(sendonly) for both
+BobJS->BobUA:       createAnswer
+BobJS->BobUA:       setLocalDescription with answer
+
+//                  |answer-C1| is sent over signaling protocol
+//                  to Alice
+BobJS->WebServer:   signaling with |answer-C1|
+WebServer->AliceJS: signaling with |answer-C1|
+
+//                  |answer-C1| (sendonly) arrives at Alice
+AliceJS->AliceUA:   setRemoteDescription with |answer-C1|
+AliceUA->AliceJS:   ontrack events for audio and video
+
+//                  a relay candidate is sent to Alice
+BobUA->BobJS:       onicecandidate (relay) |answer-B1-candidate-1|
+BobJS->WebServer:   signaling with |answer-B1-candidate-1|
+
+WebServer->AliceJS: signaling with |answer-B1-candidate-1|
+AliceJS->AliceUA:   addIceCandidate with |answer-B1-candidate-1|
+
+//                  ICE and DTLS establish while call is ringing
+
+//                  Bob accepts call, starts media, and sends
+//                  new offer
+BobJS->BobUA:       transceiver.setTrack with audio and video tracks
+BobUA->AliceUA:     media sent from Bob to Alice
+BobJS->BobUA:       transceiver.setDirection(sendrecv) for both
+                    transceivers
+BobJS->BobUA:       createOffer
+BobJS->BobUA:       setLocalDescription with offer
+
+//                  |offer-C2| is sent over signaling protocol
+//                  to Alice
+BobJS->WebServer:   signaling with |offer-C2|
+WebServer->AliceJS: signaling with |offer-C2|
+
+//                  |offer-C2| (sendrecv) arrives at Alice
+AliceJS->AliceUA:   setRemoteDescription with |offer-C2|
+AliceJS->AliceUA:   createAnswer
+AliceJS->AliceUA:   setLocalDescription with |answer-C2|
+AliceUA->BobUA:     media sent from Alice to Bob
+
+//                  |answer-C2| is sent over signaling protocol
+//                  to Bob
+AliceJS->WebServer: signaling with |answer-C2|
+WebServer->BobJS:   signaling with |answer-C2|
+BobJS->BobUA:       setRemoteDescription with |answer-C2|
+```
+
+|offer-C1| SDP 如下：
+
+```sdp
+v=0
+o=- 1070771854436052752 1 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=ice-options:trickle ice2
+a=group:BUNDLE a1 v1
+a=group:LS a1 v1
+
+m=audio 9 UDP/TLS/RTP/SAVPF 96 0 8 97 98
+c=IN IP4 0.0.0.0
+a=mid:a1
+a=sendrecv
+a=rtpmap:96 opus/48000/2
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:97 telephone-event/8000
+a=rtpmap:98 telephone-event/48000
+a=fmtp:97 0-15
+a=fmtp:98 0-15
+a=maxptime:120
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:2 urn:ietf:params:rtp-hdrext:ssrc-audio-level
+a=msid:bbce3ba6-abfc-ac63-d00a-e15b286f8fce
+a=ice-ufrag:4ZcD
+a=ice-pwd:ZaaG6OG7tCn4J/lehAGz+HHD
+a=fingerprint:sha-256
+              C4:68:F8:77:6A:44:F1:98:6D:7C:9F:47:EB:E3:34:A4:
+              0A:AA:2D:49:08:28:70:2E:1F:AE:18:7D:4E:3E:66:BF
+a=setup:actpass
+a=tls-id:9e5b948ade9c3d41de6617b68f769e55
+a=rtcp-mux
+a=rtcp-mux-only
+a=rtcp-rsize
+
+m=video 0 UDP/TLS/RTP/SAVPF 100 101 102 103
+c=IN IP4 0.0.0.0
+a=mid:v1
+a=sendrecv
+a=rtpmap:100 VP8/90000
+a=rtpmap:101 H264/90000
+a=fmtp:101 packetization-mode=1;profile-level-id=42e01f
+a=rtpmap:102 rtx/90000
+a=fmtp:102 apt=100
+a=rtpmap:103 rtx/90000
+a=fmtp:103 apt=101
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:3 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id
+a=rtcp-fb:100 ccm fir
+a=rtcp-fb:100 nack
+a=rtcp-fb:100 nack pli
+a=msid:bbce3ba6-abfc-ac63-d00a-e15b286f8fce
+a=bundle-only
+```
+
+|offer-C1-candidate-1| 如下：
+
+```text
+ufrag 4ZcD
+index 0
+mid   a1
+attr  candidate:1 1 udp 255 192.0.2.100 12100 typ relay
+                raddr 0.0.0.0 rport 0
+```
+
+|answer-C1| SDP 如下：
+
+```sdp
+v=0
+o=- 6386516489780559513 1 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=ice-options:trickle ice2
+a=group:BUNDLE a1 v1
+a=group:LS a1 v1
+
+m=audio 9 UDP/TLS/RTP/SAVPF 96 0 8 97 98
+c=IN IP4 0.0.0.0
+a=mid:a1
+a=sendonly
+a=rtpmap:96 opus/48000/2
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:97 telephone-event/8000
+a=rtpmap:98 telephone-event/48000
+a=fmtp:97 0-15
+a=fmtp:98 0-15
+a=maxptime:120
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:2 urn:ietf:params:rtp-hdrext:ssrc-audio-level
+a=msid:751f239e-4ae0-c549-aa3d-890de772998b
+a=ice-ufrag:TpaA
+a=ice-pwd:t2Ouhc67y8JcCaYZxUUTgKw/
+a=fingerprint:sha-256
+              A2:F3:A5:6D:4C:8C:1E:B2:62:10:4A:F6:70:61:C4:FC:
+              3C:E0:01:D6:F3:24:80:74:DA:7C:3E:50:18:7B:CE:4D
+a=setup:active
+a=tls-id:55e967f86b7166ed14d3c9eda849b5e9
+a=rtcp-mux
+a=rtcp-mux-only
+a=rtcp-rsize
+
+m=video 9 UDP/TLS/RTP/SAVPF 100 101 102 103
+c=IN IP4 0.0.0.0
+a=mid:v1
+a=sendonly
+a=rtpmap:100 VP8/90000
+a=rtpmap:101 H264/90000
+a=fmtp:101 packetization-mode=1;profile-level-id=42e01f
+a=rtpmap:102 rtx/90000
+a=fmtp:102 apt=100
+a=rtpmap:103 rtx/90000
+a=fmtp:103 apt=101
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:3 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id
+a=rtcp-fb:100 ccm fir
+a=rtcp-fb:100 nack
+a=rtcp-fb:100 nack pli
+a=msid:751f239e-4ae0-c549-aa3d-890de772998b
+```
+
+|answer-C1-candidate-1| 如下：
+
+```text
+ufrag TpaA
+index 0
+mid   a1
+attr  candidate:1 1 udp 255 192.0.2.200 12200 typ relay
+                raddr 0.0.0.0 rport 0
+```
+
+|offer-C2| SDP 如下：
+
+```sdp
+v=0
+o=- 6386516489780559513 2 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=ice-options:trickle ice2
+a=group:BUNDLE a1 v1
+a=group:LS a1 v1
+
+m=audio 12200 UDP/TLS/RTP/SAVPF 96 0 8 97 98
+c=IN IP4 192.0.2.200
+a=mid:a1
+a=sendrecv
+a=rtpmap:96 opus/48000/2
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:97 telephone-event/8000
+a=rtpmap:98 telephone-event/48000
+a=fmtp:97 0-15
+a=fmtp:98 0-15
+a=maxptime:120
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:2 urn:ietf:params:rtp-hdrext:ssrc-audio-level
+a=msid:751f239e-4ae0-c549-aa3d-890de772998b
+a=ice-ufrag:TpaA
+a=ice-pwd:t2Ouhc67y8JcCaYZxUUTgKw/
+a=fingerprint:sha-256
+              A2:F3:A5:6D:4C:8C:1E:B2:62:10:4A:F6:70:61:C4:FC:
+              3C:E0:01:D6:F3:24:80:74:DA:7C:3E:50:18:7B:CE:4D
+a=setup:actpass
+a=tls-id:55e967f86b7166ed14d3c9eda849b5e9
+a=rtcp-mux
+a=rtcp-mux-only
+a=rtcp-rsize
+a=candidate:1 1 udp 255 192.0.2.200 12200 typ relay
+            raddr 0.0.0.0 rport 0
+a=end-of-candidates
+
+m=video 12200 UDP/TLS/RTP/SAVPF 100 101 102 103
+c=IN IP4 192.0.2.200
+a=mid:v1
+a=sendrecv
+a=rtpmap:100 VP8/90000
+a=rtpmap:101 H264/90000
+a=fmtp:101 packetization-mode=1;profile-level-id=42e01f
+a=rtpmap:102 rtx/90000
+a=fmtp:102 apt=100
+a=rtpmap:103 rtx/90000
+a=fmtp:103 apt=101
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:3 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id
+a=rtcp-fb:100 ccm fir
+a=rtcp-fb:100 nack
+a=rtcp-fb:100 nack pli
+a=msid:751f239e-4ae0-c549-aa3d-890de772998b
+```
+
+|answer-C2| SDP 如下：
+
+```sdp
+v=0
+o=- 1070771854436052752 2 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=ice-options:trickle ice2
+a=group:BUNDLE a1 v1
+a=group:LS a1 v1
+
+m=audio 12100 UDP/TLS/RTP/SAVPF 96 0 8 97 98
+c=IN IP4 192.0.2.100
+a=mid:a1
+a=sendrecv
+a=rtpmap:96 opus/48000/2
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:97 telephone-event/8000
+a=rtpmap:98 telephone-event/48000
+a=fmtp:97 0-15
+a=fmtp:98 0-15
+a=maxptime:120
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:2 urn:ietf:params:rtp-hdrext:ssrc-audio-level
+a=msid:bbce3ba6-abfc-ac63-d00a-e15b286f8fce
+a=ice-ufrag:4ZcD
+a=ice-pwd:ZaaG6OG7tCn4J/lehAGz+HHD
+a=fingerprint:sha-256
+              C4:68:F8:77:6A:44:F1:98:6D:7C:9F:47:EB:E3:34:A4:
+              0A:AA:2D:49:08:28:70:2E:1F:AE:18:7D:4E:3E:66:BF
+a=setup:passive
+a=tls-id:9e5b948ade9c3d41de6617b68f769e55
+a=rtcp-mux
+a=rtcp-mux-only
+a=rtcp-rsize
+a=candidate:1 1 udp 255 192.0.2.100 12100 typ relay
+            raddr 0.0.0.0 rport 0
+a=end-of-candidates
+
+m=video 12100 UDP/TLS/RTP/SAVPF 100 101 102 103
+c=IN IP4 192.0.2.100
+a=mid:v1
+a=sendrecv
+a=rtpmap:100 VP8/90000
+a=rtpmap:101 H264/90000
+a=fmtp:101 packetization-mode=1;profile-level-id=42e01f
+a=rtpmap:102 rtx/90000
+a=fmtp:102 apt=100
+a=rtpmap:103 rtx/90000
+a=fmtp:103 apt=101
+a=extmap:1 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:3 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id
+a=rtcp-fb:100 ccm fir
+a=rtcp-fb:100 nack
+a=rtcp-fb:100 nack pli
+a=msid:bbce3ba6-abfc-ac63-d00a-e15b286f8fce
+```
+
+## 8. Security Considerations
+
+IETF 已经发布了单独的文档 [RFC8827] [RFC8826]，将 WebRTC 的安全架构作为一个整体来描述。本节的其余部分将介绍本文档的安全考虑事项。
+
+虽然 JSEP 接口在形式上是一个 API，但最好将其视为一个 Internet 协议，从 JSEP 实现的角度来看，应用程序 JavaScript 是不可信任的。因此，采用 [RFC3552] 的威胁模型。特别是 JavaScript 可以以任何顺序和任何输入(包括恶意输入)调用 API。当我们考虑传递给 setLocalDescription 的 SDP 时，这尤其重要。虽然正确的 API 使用要求应用程序通过从 createOffer 或 createAnswer 派生的 SDP，但不能保证应用程序这样做。JSEP 实现必须为 JavaScript 传入虚假数据做好准备。
+
+相反，应用程序开发者需要知道 JavaScript 不能完全控制端点行为。特别值得一提的一种情况是，将 ICE 候选从 SDP 中提取出来或写入 Trickle 候选并不具有预期的行为：实现仍然会对这些候选执行检查，即使他们没有被发送到另一边。因此无法通过删除 server-reflexive 候选来阻止远端对等体探测自己的公共 IP 地址。希望隐藏其公网 IP 地址的应用程序必须将 ICE 代理配置为只使用 relay 候选地址。
+
+## 9. IANA Considerations
+
+This document has no IANA actions.
