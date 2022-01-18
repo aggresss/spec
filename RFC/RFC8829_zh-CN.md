@@ -889,15 +889,27 @@ m-section 后面必须紧跟着 "c=" 行，如 [RFC4566] 5.7 节所述。同样�
 - 每个 "a=tls-id" 行必须保持不变，除非 offer 的 "a=tls-id" 行改变了，在这种情况下，必须创建一个新的 tls-id 值，如 [RFC8842] 5.2 节所述。
 - 每个 "a=setup" 行必须使用与现有的 DTLS 关联一致的 "active" 或 "passive" 角色。
 - 必须使用 RTCP 多路复用，当且仅当 m-section 之前使用了 RTCP 多路复用时，插入 "a=rtcp-mux" 行。
-- 如果 m-section 没有捆绑到另一个m-section 并且 RTCP 复用未启用，"a=rtcp-mux" 属性行必须填写默认 RTCP 候选端口和地址。如果还没有收集 RTCP 候选项，则必须使用默认值，如上面 5.3.1 节所述。
+- 如果 m-section 没有捆绑到另一个 m-section 并且 RTCP 复用未启用，"a=rtcp-mux" 属性行必须填写默认 RTCP 候选端口和地址。如果还没有收集 RTCP 候选项，则必须使用默认值，如上面 5.3.1 节所述。
 - 如果 m-section 没有捆绑到另一个 m-section，对于在最近(参见章节3.5.1)收集的每个候选，必须添加一个 "a=candidate" 行，如 [RFC8839] 5.1 节中定义。如果该 section 的候选收集已经完成，则必须添加一个 "a=end-of-candidates" 属性，如 [RFC8840] 8.2 节所述。如果 m-section 被捆绑到另一个 m-section 中，那么 "a=candidate" 和 "a=end-of-candidates" 都必须被省略。
 - 对于没有停止的 RtpTransceiver，"a=msid" 行必须保持不变，无论 RtpTransceiver 的方向或 track 发生了什么变化。如果当前描述中没有 "a=msid" 行，"a=msid" 行必须按照与初始 answer 相同的规则生成。
 
 #### 5.3.3. Options Handling
 
+createAnswer 方法以一个 RTCAnswerOptions 对象作为参数。RTCAnswerOptions 的参数集不同于 RTCOfferOptions 中支持的参数集；IceRestart 选项是非必要的，因为在所有的 m-section 当提供者选择执行ICE 重启时，ICE 凭证将自动被更改。
+
+RTCAnswerOptions支持以下选项。
+
 ##### 5.3.3.1. VoiceActivityDetection
 
+answer 是静音抑制的处理如 5.2.3.2 节所述，但有一个例外：如果支持静音抑制不是在 offer 中声明，VoiceActivityDetection 参数没有影响，answer 必须生成 VoiceActivityDetection 被设置为 "false"。这是在每个编解码器的基础上完成的(例如，如果提供以某种方式提供对 CN 的支持，但为 Opus 设置 "usedtx=0"，设置 VoiceActivityDetection 为 "true" 将导致一个 answer 与 CN 编解码器和 "usedtx=0")。这条规则的影响是应答者不会试图对任何不提供静音抑制的端点使用静音抑制，使得静音抑制保证双向支持，即使是非 JSEP 端点。
+
 ### 5.4. Modifying an Offer or Answer
+
+从 createOffer 或 createAnswer 返回的 SDP 在传递给 setLocalDescription 之前不能被更改。如果需要对 SDP 进行精确控制，必须使用前面提到的 createOffer/createAnswer 选项或 RtpTransceiver API。
+
+在调用 setLocalDescription 提供一个 offer 或 answer 后，应用程序可以在发送到远端之前修改 SDP 以减少它的能力，只要它遵循上面定义一个有效的 JSEP offer 或 answer 的规则。类似地，一个应用程序收到了来自对等端的 offer 或 answer，可能会在调用 setRemoteDescription 之前修改收到的 SDP，受同样的约束。
+
+与往常一样，应用程序完全负责它发送给另一方的内容，所有传入的 SDP 将由 JSEP 实现在其能力的范围内处理。假设所有的 SDP 都格式正确是错误的，但是可以假设，该规范的任何实现都能够处理来自该规范的任何其他实现的未修改的 SDP，作为远端 offer 或 answer。
 
 ### 5.5. Processing a Local Description
 
