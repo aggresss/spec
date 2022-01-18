@@ -46,11 +46,11 @@ JSEP 的一种变体是保留基本的面向会话描述的 API，但将生成 o
 
 自从 WebRTC 规范文档被批准以来，IETF 已经意识到指定 JSEP 的文档和指定 BUNDLE 的文档(该 RFC 和 [RFC8843])之间的不一致。这些文档不是为了达成一项决议而进一步推迟公布，而是按照最初批准的方式予以公布。IETF 打算重新启动这些工作，一旦有了解决方案，这些文档的修订版将会发布。
 
-具体的问题涉及到 m-line 被指定为 "bundle-only"，将在本 RFC 4.1.1 节讨论。目前，JSEP 和 BUNDLE 之间存在分歧，这些规范和现有的浏览器实现之间也存在分歧:
+具体的问题涉及到 m-section 被指定为 "bundle-only"，将在本 RFC 4.1.1 节讨论。目前，JSEP 和 BUNDLE 之间存在分歧，这些规范和现有的浏览器实现之间也存在分歧:
 
-- JSEP 规定，m-line 应该使用端口 0，并在初始 offer 中添加 "a=bundle-only" 属性，而不是在 answer 或后续 offer 中；
-- BUNDLE 规定，m-line 应该像前面所描述的那样标记，但是是在所有的 offer 和 answer 中。
-- 当前大多数浏览器不标记任何端口为 0 的 m-line，而是为所有捆绑的 m-line 使用相同的端口；其他则遵循 JSEP 定义。
+- JSEP 规定，m-section 应该使用端口 0，并在初始 offer 中添加 "a=bundle-only" 属性，而不是在 answer 或后续 offer 中；
+- BUNDLE 规定，m-section 应该像前面所描述的那样标记，但是是在所有的 offer 和 answer 中。
+- 当前大多数浏览器不标记任何端口为 0 的 m-section，而是为所有捆绑的 m-section 使用相同的端口；其他则遵循 JSEP 定义。
 
 ## 2. 术语
 
@@ -83,7 +83,7 @@ JSEP 没有指定特定的信令模型或状态机，除了一般需要以 [RFC3
 
 会话描述是否适用于本地或远端将影响该描述的含义。例如，发送给远端的编解码列表表明了本地方愿意接收的内容，当与远端支持的编解码集相交叉时，该列表指定了远程方应该发送的内容。然而，并不是所有的参数都遵循这一规则；有些参数是声明性的，远端必须接受或完全拒绝它们。这种参数的一个例子是 TLS 指纹 [RFC8122]，在 DTLS [RFC6347] 的上下文中使用；这些指纹是根据提供的本地证书计算的，不受协商的影响。
 
-此外，不同的 RFC 对 offer 和 answer 的格式提出了不同的条件。例如，offer 可以提出任意数量的 m-line(即，媒体描述如 [RFC4566]，5.14 节所述)，但 answer 必须包含与要约完全相同的数字。
+此外，不同的 RFC 对 offer 和 answer 的格式提出了不同的条件。例如，offer 可以提出任意数量的 m-section(即，媒体描述如 [RFC4566]，5.14 节所述)，但 answer 必须包含与要约完全相同的数字。
 
 最后，虽然确切的媒体参数只有在一个 offer 和一个 answer 交换之后才知道，但 offer 方可能会在收到 answer 之前收到 ICE 检查和可能的媒体(例如，在一个连接建立后的重新 offer)。在这种情况下，为了正确处理传入的媒体，offer 方的媒体处理程序必须在 answer 到达之前了解 offer 的细节。
 
@@ -161,33 +161,33 @@ JSEP 的会话描述使用会话描述协议(session Description Protocol, SDP)�
 
 #### 3.4.1. RtpTransceivers
 
-RtpTransceivers 允许应用程序控制与一个 m-line 相关联的 RTP media。每个 RtpTransceiver 有一个 RtpSender 和 一个RtpReceiver，应用程序可以使用它们来控制 RTP media 的发送和接收。应用程序也可以直接修改 RtpTransceiver，例如停止操作。
+RtpTransceivers 允许应用程序控制与一个 m-section 相关联的 RTP media。每个 RtpTransceiver 有一个 RtpSender 和 一个RtpReceiver，应用程序可以使用它们来控制 RTP media 的发送和接收。应用程序也可以直接修改 RtpTransceiver，例如停止操作。
 
-RtpTransceivers 通常与 m-line 是 1:1 的映射，尽管可能会有比 m-line 更多的 RtpTransceivers ，例如：当RtpTransceivers 被创建但还没有关联到 m-line，或者如果 RtpTransceivers 已经停止并从 m-line 中分离。如果 RtpTransceiver 的 mid (media identification) 属性是非空的，则 RtpTransceiver 被认为与 m-line 相关联；否则它被认为是游离的。关联的 m-line 是在创建一个 offer 或应用一个远程 offer 时使用收发器和 m-line 索引之间的映射确定的。
+RtpTransceivers 通常与 m-section 是 1:1 的映射，尽管可能会有比 m-section 更多的 RtpTransceivers ，例如：当RtpTransceivers 被创建但还没有关联到 m-section，或者如果 RtpTransceivers 已经停止并从 m-section 中分离。如果 RtpTransceiver 的 mid (media identification) 属性是非空的，则 RtpTransceiver 被认为与 m-section 相关联；否则它被认为是游离的。关联的 m-section 是在创建一个 offer 或应用一个远程 offer 时使用收发器和 m-section 索引之间的映射确定的。
 
-一个 RtpTransceiver 从来不会与一个以上的 m-line 相关联，并且一旦会话描述被应用，一个 m-line 总是与一个 RtpTransceiver 相关联。然而，在某些情况下，当一个 m-line 被拒绝时，正如下面 5.2.2 节中讨论的那样，m-line 将被“回收”，RtpTransceiver 将与一个新的 MID 值相关联。
+一个 RtpTransceiver 从来不会与一个以上的 m-section 相关联，并且一旦会话描述被应用，一个 m-section 总是与一个 RtpTransceiver 相关联。然而，在某些情况下，当一个 m-section 被拒绝时，正如下面 5.2.2 节中讨论的那样，m-section 将被“回收”，RtpTransceiver 将与一个新的 MID 值相关联。
 
-RtpTransceivers 可以由应用程序显式创建，也可以通过调用 setRemoteDescription 来隐式创建，并提供一个新的 m-line。
+RtpTransceivers 可以由应用程序显式创建，也可以通过调用 setRemoteDescription 来隐式创建，并提供一个新的 m-section。
 
 #### 3.4.2. RtpSenders
 
-RtpSenders 允许应用程序控制 RTP 媒体的发送方式。RtpSender 在概念上负责由 m-line 描述输出的 RTP 流。这包括编码附加的 MediaStreamTrack，发送 RTP 媒体包，以及关联的 RTCP。
+RtpSenders 允许应用程序控制 RTP 媒体的发送方式。RtpSender 在概念上负责由 m-section 描述输出的 RTP 流。这包括编码附加的 MediaStreamTrack，发送 RTP 媒体包，以及关联的 RTCP。
 
 #### 3.4.3. RtpReceivers
 
-RtpReceivers 允许应用程序检查如何接收 RTP 媒体。RtpReceiver 在概念上负责传入的 RTP 流，由 m-line 描述。这包括处理接收到的 RTP 媒体包，解码传入的流以产生远程 MediaStreamTrack，并为传入的 RTP 流生成和处理 RTCP。
+RtpReceivers 允许应用程序检查如何接收 RTP 媒体。RtpReceiver 在概念上负责传入的 RTP 流，由 m-section 描述。这包括处理接收到的 RTP 媒体包，解码传入的流以产生远程 MediaStreamTrack，并为传入的 RTP 流生成和处理 RTCP。
 
 ### 3.5. ICE
 
 #### 3.5.1. ICE Gathering 概述
 
-JSEP 根据应用程序的需要收集 ICE candidates。ICE candidates 的收集被称为收集阶段，这是由添加一个新的或回收的 m-line 到本地会话描述或描述中新的 ICE 凭证触发的，表明 ICE 重启。新 ICE 凭据的使用可以由应用程序显式触发，也可以由 JSEP 实现隐式触发，以响应 ICE 配置中的更改。
+JSEP 根据应用程序的需要收集 ICE candidates。ICE candidates 的收集被称为收集阶段，这是由添加一个新的或回收的 m-section 到本地会话描述或描述中新的 ICE 凭证触发的，表明 ICE 重启。新 ICE 凭据的使用可以由应用程序显式触发，也可以由 JSEP 实现隐式触发，以响应 ICE 配置中的更改。
 
 当 ICE 配置发生变化，需要一个新的收集阶段时，就会设置一个 “needs-ice-restart” 标识。设置了这个标识后，调用 createOffer API 将生成新的 ICE 凭证。这个标识通过调用setLocalDescription API 来清除，该 API 带有来自 offer 或 answer 的新 ICE 凭证，即本地或远程发起的ICE重启。
 
 当一个新的收集阶段开始时，ICE 代理将通过状态更改事件通知应用程序正在进行收集。然后，当每个新的 ICE candidates 可用时，ICE 代理将通过一个 oniccandidate 事件通知应用程序；这些候选对象也将自动添加到当前或者挂起的本地会话描述中。最后，当收集完所有的 ICE candidates 后，将发送一个最后的 oniccandidate 事件，以表明收集过程已经完成。
 
-注意，收集阶段只收集 new/recycled/restaring 状态的 m-line 所需的候选；其他 m-line 继续使用它们现有的候选项。同样，如果一个 m-line 被绑定(通过一个成功的bundle 协商或者被标记为 bundle-only)，那么当且仅当它的 MID 项是一个 bundle 标签时，候选的 m-line 将被收集并交换，如 [RFC8843] 所述。
+注意，收集阶段只收集 new/recycled/restaring 状态的 m-section 所需的候选；其他 m-section 继续使用它们现有的候选项。同样，如果一个 m-section 被绑定(通过一个成功的bundle 协商或者被标记为 bundle-only)，那么当且仅当它的 MID 项是一个 bundle 标签时，候选的 m-section 将被收集并交换，如 [RFC8843] 所述。
 
 #### 3.5.2. ICE Candidate Trickling
 
@@ -209,7 +209,7 @@ candidate:1 1 UDP 1694498815 192.0.2.33 10000 typ host
 
 iccandidate 对象包含一个字段，用来指明它与哪个 ICE 用户名片段(ufrag)相关联，如 [RFC8839] 5.4 节中定义的那样。该值用于确定该 iccandidate 属于哪个会话描述(以及哪个收集阶段)，这有助于解决 ICE 重启时的歧义。如果这个字段在接收到的 iccandidate 中不存在(可能是在与非 JSEP 端点通信时)，则假定为最近接收到的会话描述。
 
-可以通过一个 m-line 索引或者 MID 这两种方式中的一种确认 iceCandidate 对象与 m-line 是相关联的，m-line 索引是一个从零开始的索引,索引 N 指的第 N + 1 m-line 的会话描述引用的这个 IceCandidate。 MID 是一个 “media stream identification” 的值，在[RFC5888] 第4章中定义，它提供了一种更健壮的方法来标识会话描述中的 m-line，使用关联的 RtpTransceiver 对象的MID(它可能是由应答者在与不支持 MID 属性的非 JSEP 端点交互时本地生成的，如下面 5.10 节所讨论的)。如果在接收到的 iccandidate 中有 MID 字段，它必须被用于识别;否则，将使用 m-line 索引。如上所述，实现时必须考虑到接收对象缺少某些字段的情况。
+可以通过一个 m-section 索引或者 MID 这两种方式中的一种确认 iceCandidate 对象与 m-section 是相关联的，m-section 索引是一个从零开始的索引,索引 N 指的第 N + 1 m-section 的会话描述引用的这个 IceCandidate。 MID 是一个 “media stream identification” 的值，在[RFC5888] 第4章中定义，它提供了一种更健壮的方法来标识会话描述中的 m-section，使用关联的 RtpTransceiver 对象的MID(它可能是由应答者在与不支持 MID 属性的非 JSEP 端点交互时本地生成的，如下面 5.10 节所讨论的)。如果在接收到的 iccandidate 中有 MID 字段，它必须被用于识别;否则，将使用 m-section 索引。如上所述，实现时必须考虑到接收对象缺少某些字段的情况。
 
 #### 3.5.3. ICE Candidate 策略
 
@@ -239,7 +239,7 @@ JSEP 应用程序通常通过提供给 setLocalDescription 的信息通知 JSEP 
 
 #### 3.6.1. 创建 imageattr 属性
 
-接收器将首先结合任何已知的本地限制(例如，硬件解码器能力或本地策略)，以确定它可以接收的绝对最小和最大尺寸。如果没有已知的局部限制，"a=imageattr" 属性应该被省略。如果这些局部限制排除了接收任何视频，例如，不允许分辨率的简并情况下，"a=imageattr" 属性必须被省略，如果合适的话，m-line 必须被标记为 sendonly/inactive。
+接收器将首先结合任何已知的本地限制(例如，硬件解码器能力或本地策略)，以确定它可以接收的绝对最小和最大尺寸。如果没有已知的局部限制，"a=imageattr" 属性应该被省略。如果这些局部限制排除了接收任何视频，例如，不允许分辨率的简并情况下，"a=imageattr" 属性必须被省略，如果合适的话，m-section 必须被标记为 sendonly/inactive。
 
 否则，一个 "a=imageattr" 属性被创建为一个 "recv" 方向，并且由前面提到的交集形成的分辨率空间被用来指定它的最小和最大的 "x=" 和 "y=" 值。
 
@@ -263,7 +263,7 @@ JSEP 应用程序通常通过提供给 setLocalDescription 的信息通知 JSEP 
 
 根据 RtpSender 是如何配置的，它可能会产生一个特定分辨率的单一编码，或者，如果同时发送(3.7节)多个已经协商的编码，每个都有自己的特定分辨率。此外，根据配置的不同，每种编码都可以在需要时灵活地减少分辨率，或者锁定到特定的输出分辨率。
 
-对于由 RtpSender 产生的每个编码，远程描述中相应的 m-line 中的 "a=imageattr recv" 属性集将被处理，以确定应该传输什么。仅考虑引用为编码选择的媒体格式的属性；每个这样的属性都是单独计算的，从 "q=" 值最高的属性开始。如果多个属性具有相同的 "q=" 值，则按照它们在包含 "m=" 部分中出现的顺序计算它们。请注意，虽然 JSEP 端点每一种媒体格式最多包含一个 "a=imageattr recv"属性，但 JSEP 端点可以从非 JSEP 端点接收包含多个此类属性的 m-line 的会话描述。
+对于由 RtpSender 产生的每个编码，远程描述中相应的 m-section 中的 "a=imageattr recv" 属性集将被处理，以确定应该传输什么。仅考虑引用为编码选择的媒体格式的属性；每个这样的属性都是单独计算的，从 "q=" 值最高的属性开始。如果多个属性具有相同的 "q=" 值，则按照它们在包含 "m=" 部分中出现的顺序计算它们。请注意，虽然 JSEP 端点每一种媒体格式最多包含一个 "a=imageattr recv"属性，但 JSEP 端点可以从非 JSEP 端点接收包含多个此类属性的 m-section 的会话描述。
 
 对于每个 "a=imageattr recv" 属性，应用以下规则。如果此处理成功，则相应地传输编码，并且不再考虑该编码的其他属性。否则，将按照前面提到的顺序计算下一个属性。如果所提供的所有属性都不能被成功处理，那么就不能传输编码，并且应该向应用程序抛出一个错误。
 
@@ -275,17 +275,17 @@ JSEP 应用程序通常通过提供给 setLocalDescription 的信息通知 JSEP 
 
 #### 3.7. Simulcast
 
-JSEP 支持 MediaStreamTrack 的 Simulcast 传输，其中媒体源的多个编码可以在一个 m-line 的上下文中传输。当前的 JSEP API 设计用于允许应用程序发送 Simulcast 媒体，但只接收单一编码。这允许在多用户场景中，每个发送客户端向服务器发送多个编码，然后服务器为每个接收客户端选择要转发的适当编码。
+JSEP 支持 MediaStreamTrack 的 Simulcast 传输，其中媒体源的多个编码可以在一个 m-section 的上下文中传输。当前的 JSEP API 设计用于允许应用程序发送 Simulcast 媒体，但只接收单一编码。这允许在多用户场景中，每个发送客户端向服务器发送多个编码，然后服务器为每个接收客户端选择要转发的适当编码。
 
-应用程序通过在 RtpSender上配置多个编码来请求支持 Simulcast。在生成报价或答案时，这些编码通过相应的 m-line 上的 SDP 标记表示，如下所述。理解并愿意接收 Simulcast 的接收器也将包括 SDP 标记来表示他们的支持，而 JSEP 端点将使用这些标记来确定是否允许给定的 RtpSender 进行 Simulcast。如果没有协商同步传输支持，RtpSender 将只使用第一个配置的编码。
+应用程序通过在 RtpSender上配置多个编码来请求支持 Simulcast。在生成报价或答案时，这些编码通过相应的 m-section 上的 SDP 标记表示，如下所述。理解并愿意接收 Simulcast 的接收器也将包括 SDP 标记来表示他们的支持，而 JSEP 端点将使用这些标记来确定是否允许给定的 RtpSender 进行 Simulcast。如果没有协商同步传输支持，RtpSender 将只使用第一个配置的编码。
 
 请注意，Simulcast 的确切参数取决于发送程序。虽然前面提到的 SDP 标记是为了确保远端可以接收和分解多个 Simulcast 的编码，但在 JSEP 中，用于每个编码的具体分辨率和比特率仅由发送端决定。
 
-JSEP 目前还没有提供一种机制来配置 Simulcast 的接收。这意味着，如果远端提供了 simulcast，则 JSEP端点生成的 answer 将不指示是否支持接收simulcast，因此远端将只发送每个 m-line 的单个编码。
+JSEP 目前还没有提供一种机制来配置 Simulcast 的接收。这意味着，如果远端提供了 simulcast，则 JSEP端点生成的 answer 将不指示是否支持接收simulcast，因此远端将只发送每个 m-section 的单个编码。
 
 此外，JSEP 没有提供处理来自 JSEP 端点 simulcast offer 请求的机制。这意味着，在 JSEP 端点收到初始 offer 的情况下，设置 simulcast 需要带外信令或 SDP 检查。然而，如果 JSEP 端点在其初始 offer 中设置了 simulcast，则任何已建立的 simulcast 流将在收到传入的重新 offer 后继续工作。该规范的未来版本可能会添加额外的 API 来处理传入的初始 offer 场景。
 
-当使用 JSEP 从 RtpSender 发送多个编码时，使用来自 [RFC8853] 和 [RFC8851] 的技术。具体来说，当一个 RtpSender 被配置了多个编码时，RtpSender 的 m-line 将包含一个 "a=simulcast" 属性，正如在 [RFC8853] 5.1 节中定义的那样，带有一个 "send" simulcast 描述并列出了每个期望的编码，而没有 "recv" simulcast 描述。m-line 还将包含每个编码的 "a=rid" 属性，如 [RFC8851] 4 节中指定的；使用限制标识符(rid，也称为 rid-ids 或 RtpStreamIds )可以消除各个编码的歧义，即使它们都属于同一个 m-line。
+当使用 JSEP 从 RtpSender 发送多个编码时，使用来自 [RFC8853] 和 [RFC8851] 的技术。具体来说，当一个 RtpSender 被配置了多个编码时，RtpSender 的 m-section 将包含一个 "a=simulcast" 属性，正如在 [RFC8853] 5.1 节中定义的那样，带有一个 "send" simulcast 描述并列出了每个期望的编码，而没有 "recv" simulcast 描述。m-section 还将包含每个编码的 "a=rid" 属性，如 [RFC8851] 4 节中指定的；使用限制标识符(rid，也称为 rid-ids 或 RtpStreamIds )可以消除各个编码的歧义，即使它们都属于同一个 m-section。
 
 #### 3.8. 与 forking 的相互作用
 
@@ -332,16 +332,16 @@ PeerConnection 构造函数允许应用程序为媒体会话指定全局参数�
 
 如果指定了 ICE 候选池的大小，则表示预收集候选的 ICE 组件的数量。因为预收集的结果是在很长一段时间内使用 STUN/TURN 服务器资源，这必须只发生在应用程序请求时，因此默认的候选池大小必须为零。
 
-应用程序可以指定使用 bundle 的首选策略，bundle 的多路复用机制定义在 [RFC8843] 中。无论策略如何，应用程序将总是尝试协商捆绑到一个单一的传输，并将提供一个单一 bundle 组的所有 m-line；这个单一传输的使用取决于接受 bundle 的应答器。但是，通过从下面的列表中指定策略，应用程序可以精确地控制它将媒体流捆绑在一起的积极程度，这将影响它与 "non-bundle-aware" 端点的互操作方式。当与 "non-bundle-aware" 终端协商时，只有未标记为 "bundle-only" 的流将被建立。
+应用程序可以指定使用 bundle 的首选策略，bundle 的多路复用机制定义在 [RFC8843] 中。无论策略如何，应用程序将总是尝试协商捆绑到一个单一的传输，并将提供一个单一 bundle 组的所有 m-section；这个单一传输的使用取决于接受 bundle 的应答器。但是，通过从下面的列表中指定策略，应用程序可以精确地控制它将媒体流捆绑在一起的积极程度，这将影响它与 "non-bundle-aware" 端点的互操作方式。当与 "non-bundle-aware" 终端协商时，只有未标记为 "bundle-only" 的流将被建立。
 
 可用的策略集合如下:
 
 - balanced:
-每个类型(音频、视频或应用程序)的第一个 m-line 将包含传输参数，这将允许应答者拆分该部分。每个类型的第二个和后续的 m-line 将被标记为 "bundle-only"。结果是，如果有N种不同的媒体类型，那么将为 N 个媒体流收集候选媒体。这一政策平衡了实现多元化的期望和确保基本音频和视频仍然可以在遗留方案中协商的需要。当作为应答者时，如果 offer 中没有bundle 组，实现将拒绝所有类型的 m-line 。
+每个类型(音频、视频或应用程序)的第一个 m-section 将包含传输参数，这将允许应答者拆分该部分。每个类型的第二个和后续的 m-section 将被标记为 "bundle-only"。结果是，如果有N种不同的媒体类型，那么将为 N 个媒体流收集候选媒体。这一政策平衡了实现多元化的期望和确保基本音频和视频仍然可以在遗留方案中协商的需要。当作为应答者时，如果 offer 中没有bundle 组，实现将拒绝所有类型的 m-section 。
 - max-compat:
-所有 m-line 将包含传输参数但不标记为 "bundle-only"。这个策略将允许所有的流都被 "non-bundle-aware" 的端点接收，但是需要为每个媒体流收集单独的候选。
+所有 m-section 将包含传输参数但不标记为 "bundle-only"。这个策略将允许所有的流都被 "non-bundle-aware" 的端点接收，但是需要为每个媒体流收集单独的候选。
 - max-bundle:
-只有第一个 m-line 将包含传输参数，除第一个流之外的所有流将被标记为 "bundle-only"。该策略旨在最小化候选集合和最大化复用，以降低与历史端点的兼容性为代价。当作为应答者时，实现将拒绝除第一个 m-line 区段之外的任何 m-line，除非它们与 m-line 在同一个 bundle 组中。
+只有第一个 m-section 将包含传输参数，除第一个流之外的所有流将被标记为 "bundle-only"。该策略旨在最小化候选集合和最大化复用，以降低与历史端点的兼容性为代价。当作为应答者时，实现将拒绝除第一个 m-section 区段之外的任何 m-section，除非它们与 m-section 在同一个 bundle 组中。
 
 由于提供了性能和与遗留端点兼容性之间的最佳权衡，默认 bundle 策略必须设置为 "balanced"。
 
@@ -350,7 +350,7 @@ PeerConnection 构造函数允许应用程序为媒体会话指定全局参数�
 - negotiate:
 JSEP实现将收集 RTP 和 RTCP 候选，但也将提供 "a=rtcp-mux"，从而允许兼容多路或非多路复用终端。
 - require:
-JSEP 实现将只收集 RTP 候选，并将在它生成的 offer 中任何新的 m-line 中插入 "a=rtcp-mux-only" 。这样一来，候选收集者需要收集的候选数量就减少了一半。使用不包含"a=rtcp-mux" 属性的 m-line 描述将导致返回错误。
+JSEP 实现将只收集 RTP 候选，并将在它生成的 offer 中任何新的 m-section 中插入 "a=rtcp-mux-only" 。这样一来，候选收集者需要收集的候选数量就减少了一半。使用不包含"a=rtcp-mux" 属性的 m-section 描述将导致返回错误。
 
 默认的复用策略必须设置为 "require"。实现可以选择拒绝应用程序设置多路复用策略为 "negotiate" 的尝试。
 
@@ -374,7 +374,7 @@ addTransceiver 方法增加一个新的 RtpTransceiver 到 PeerConnection。如�
 
 #### 4.1.6. createDataChannel
 
-createDatachannel 方法创建一个新的数据通道并将其附加到 PeerConnection。如果当前 PeerConnection 没有数据通道，则需要一次新的 offer/answer 交换。在一个给定的PeerConnection 上的所有数据通道共享相同的 SCTP/DTLS 关联("SCTP" 代表 "Stream Control Transmission Protocol")，因此相同的 m-line，后续的数据通道的创建不会对 JSEP 状态产生任何影响。
+createDatachannel 方法创建一个新的数据通道并将其附加到 PeerConnection。如果当前 PeerConnection 没有数据通道，则需要一次新的 offer/answer 交换。在一个给定的PeerConnection 上的所有数据通道共享相同的 SCTP/DTLS 关联("SCTP" 代表 "Stream Control Transmission Protocol")，因此相同的 m-section，后续的数据通道的创建不会对 JSEP 状态产生任何影响。
 
 createdatchannel 方法也包含了 PeerConnection 使用的一些参数(例如 maxPacketLifetime)，但不会在 SDP 中反映，也不会影响 JSEP 状态。
 
@@ -499,7 +499,7 @@ setConfiguration 方法允许 PeerConnection 的全局配置(最初由构造函�
 
 addiccandidate 方法通过一个 iccandidate 对象来更新 ICE agent(章节3.5.2.1)。如果该 ICE candidate 字段为非空，则该 ICE candidate 将被视为一个新的远程 ICE candidate，根据为 Trickle ICE 定义的规则，将其添加到 current/pending 状态的远程描述中。否则，根据 [RFC8838] 第 14 节的定义，iccandidate 被视为候选结束指示。
 
-在任何一种情况下，提供的 iccandidate 中的 m-line 索引, MID，和 ufrag 字段被用来确定 iccandidate 属于哪个 m-line 和 ICE candidate，如上文 3.5.2.1 节所述。在候选结束指示的情况下，m-line 索引和 MID 字段的空值被解释为表示该指示适用于指定 ICE 候选生成中的所有 m-line 。但是，如果对于新的远程候选对象，这两个字段都为空，则必须将其视为无效条件，如下所述。
+在任何一种情况下，提供的 iccandidate 中的 m-section 索引, MID，和 ufrag 字段被用来确定 iccandidate 属于哪个 m-section 和 ICE candidate，如上文 3.5.2.1 节所述。在候选结束指示的情况下，m-section 索引和 MID 字段的空值被解释为表示该指示适用于指定 ICE 候选生成中的所有 m-section 。但是，如果对于新的远程候选对象，这两个字段都为空，则必须将其视为无效条件，如下所述。
 
 如果任何 iccandidate 字段包含无效值或在处理 iccandidate 对象时发生错误，必须忽略提供的 iccandidate 并返回一个错误。
 
@@ -514,13 +514,13 @@ oniccandidate 事件在两种情况下被发送给应用程序：
 
 在第一种情况下，新发现的候选对象反映在iccandidate对象中，并且它的所有字段必须是非空的。根据为Trickle ICE定义的规则，这个候选也将被添加到当前和/或待处理的本地描述中。
 
-在第二种情况下，事件的 iccandidate 对象必须将其候选字段设置为 null，以表明当前收集阶段已经完成，也就是说，在这个阶段将不再有其他的候选事件。然而，iccandidate 的 ufrag 字段必须被指定，以表示哪个 ICE 候选的生成正在结束。ICE candidate 的 m-line 和 MID 字段可以指定，表示该事件适用于一个特定的 m-line，或者设置为 null，表示该事件适用于所有在收集阶段的 m-line。这个事件可以被应用程序用来生成一个候选结束的指示，定义在 [RFC8838] 第13节中。
+在第二种情况下，事件的 iccandidate 对象必须将其候选字段设置为 null，以表明当前收集阶段已经完成，也就是说，在这个阶段将不再有其他的候选事件。然而，iccandidate 的 ufrag 字段必须被指定，以表示哪个 ICE 候选的生成正在结束。ICE candidate 的 m-section 和 MID 字段可以指定，表示该事件适用于一个特定的 m-section，或者设置为 null，表示该事件适用于所有在收集阶段的 m-section。这个事件可以被应用程序用来生成一个候选结束的指示，定义在 [RFC8838] 第13节中。
 
 ### 4.2. RtpTransceiver
 
 #### 4.2.1. stop
 
-stop 方法停止 RtpTransceiver。这将导致以后调用 createOffer 为关联的 m-line 生成一个零端口。详情见下文。
+stop 方法停止 RtpTransceiver。这将导致以后调用 createOffer 为关联的 m-section 生成一个零端口。详情见下文。
 
 #### 4.2.2. stopped
 
@@ -530,7 +530,7 @@ stopped属性指示收发器是否已经停止，可以通过调用停止，也�
 
 #### 4.2.3. setDirection
 
-setDirection 方法设置 RtpTransceiver 的方向，它会在以后调用 createOffer 和 createAnswer 时影响关联的 m-line 方向属性。方向允许的值为 "recvonly"，"sendrecv"，"sendonly" 和 "inactive"，镜像了[RFC4566] 章节 6 中定义的同名方向属性。
+setDirection 方法设置 RtpTransceiver 的方向，它会在以后调用 createOffer 和 createAnswer 时影响关联的 m-section 方向属性。方向允许的值为 "recvonly"，"sendrecv"，"sendonly" 和 "inactive"，镜像了[RFC4566] 章节 6 中定义的同名方向属性。
 
 当创建 offer 时，RtpTransceiver 方向直接反映在输出，即使是重新 offer。当创建 answer 时，RtpTransceiver 方向为与 offer 方向的交集，如下面的 5.3 节所述。
 
@@ -542,17 +542,17 @@ direction 属性表示传递给 setDirection 的最后一个值。如果 setDire
 
 #### 4.2.5. currentDirection
 
-currentDirection 属性表示 RtpTransceiver 关联的 m-line 最后协商的方向。更具体地说，它指示了最后一个应用 answer (包括临时 answer)中相关的 m-line 的方向属性 [RFC3264]，如果它是远程 answer，则 "send" 和"recv" 方向颠倒。例如，如果远程应答中关联的 m-line 的 direction 属性是 "recvonly"，则 currentDirection 被设置为 "sendonly"。
+currentDirection 属性表示 RtpTransceiver 关联的 m-section 最后协商的方向。更具体地说，它指示了最后一个应用 answer (包括临时 answer)中相关的 m-section 的方向属性 [RFC3264]，如果它是远程 answer，则 "send" 和"recv" 方向颠倒。例如，如果远程应答中关联的 m-section 的 direction 属性是 "recvonly"，则 currentDirection 被设置为 "sendonly"。
 
 如果一个引用这个 RtpTransceiver 的 answer 还没有被应用，或者 RtpTransceiver 已经停止，currentDirection 将被设置为 "null"。
 
 #### 4.2.6. setCodecPreferences
 
-setCodecPreferences 方法设置 RtpTransceiver 的编解码器首选项，这反过来影响在以后调用 createOffer 和 createAnswer 时关联的 m-line 出现和编解码器的顺序。请注意，setCodecPreferences 并不直接影响实现决定发送哪个编解码器。它只影响实现表明它更喜欢通过提供或回答接收哪种编解码器。即使一个编解码器被 setCodecPreferences 排除，它仍然可以被用来发送，直到下一个 offer/answer 交换丢弃它。
+setCodecPreferences 方法设置 RtpTransceiver 的编解码器首选项，这反过来影响在以后调用 createOffer 和 createAnswer 时关联的 m-section 出现和编解码器的顺序。请注意，setCodecPreferences 并不直接影响实现决定发送哪个编解码器。它只影响实现表明它更喜欢通过提供或回答接收哪种编解码器。即使一个编解码器被 setCodecPreferences 排除，它仍然可以被用来发送，直到下一个 offer/answer 交换丢弃它。
 
-RtpTransceiver 的编解码器首选项可能导致后续 createOffer 和 createAnswer 调用排除掉相关的编解码器，在这种情况下，关联的 m-line 中相应的媒体格式将被排除。编解码器首选项不能添加不存在的媒体格式。
+RtpTransceiver 的编解码器首选项可能导致后续 createOffer 和 createAnswer 调用排除掉相关的编解码器，在这种情况下，关联的 m-section 中相应的媒体格式将被排除。编解码器首选项不能添加不存在的媒体格式。
 
-RtpTransceiver 的编解码器首选项还可以确定 createOffer 和 createAnswer 后续调用中的编解码器顺序，在这种情况下，关联的 m-line 中的媒体格式的顺序将遵循指定的首选项。
+RtpTransceiver 的编解码器首选项还可以确定 createOffer 和 createAnswer 后续调用中的编解码器顺序，在这种情况下，关联的 m-section 中的媒体格式的顺序将遵循指定的首选项。
 
 ## 5. SDP 交互过程
 
@@ -573,9 +573,9 @@ SRTP 密钥的 SDP 安全描述机制 [RFC4568] 不能被使用，如在 [RFC882
 
 #### 5.1.2. Profile Names and Interoperability
 
-对于媒体 m-line，JSEP 实现必须支持在 [RFC5764] 中指定的 "UDP/TLS/RTP/SAVPF" profile，以及在 [RFC7850] 中指定的 "TCP/DTLS/RTP/SAVPF" profile，并且必须为他们在 offer 中产生的每一个媒体 m-line 指定这些profile 之一。对于数据 m-line，实现必须支持 "UDP/DTLS/SCTP" profile 以及 "TCP/DTLS/SCTP" profile，并且必须为他们在报价中产生的每一个数据 m-line 指明这些 profile 中的一个。确切的 profile 是由与当前默认或选择的候选 ICE 相关的协议决定的，如 [RFC8839] 4.2.1.2 节所述。
+对于媒体 m-section，JSEP 实现必须支持在 [RFC5764] 中指定的 "UDP/TLS/RTP/SAVPF" profile，以及在 [RFC7850] 中指定的 "TCP/DTLS/RTP/SAVPF" profile，并且必须为他们在 offer 中产生的每一个媒体 m-section 指定这些profile 之一。对于数据 m-section，实现必须支持 "UDP/DTLS/SCTP" profile 以及 "TCP/DTLS/SCTP" profile，并且必须为他们在报价中产生的每一个数据 m-section 指明这些 profile 中的一个。确切的 profile 是由与当前默认或选择的候选 ICE 相关的协议决定的，如 [RFC8839] 4.2.1.2 节所述。
 
-不幸的是，为了兼容性一些端点会生成不同规则的概要文件字符串，即使它们支持这些概要文件中的一个。例如，端点可能生成 "RTP/AVP"，但提供 "a=fingerprint" 和 "a=rtcp-fb" 属性，表示它愿意支持 "UDP/TLS/RTP/SAVPF" 或 "TCP/TLS/RTP/SAVPF"。为了简化与这些端点的兼容性，JSEP 实现在处理接收到的 offer 中的媒体 m-line 时必须遵循以下规则:
+不幸的是，为了兼容性一些端点会生成不同规则的概要文件字符串，即使它们支持这些概要文件中的一个。例如，端点可能生成 "RTP/AVP"，但提供 "a=fingerprint" 和 "a=rtcp-fb" 属性，表示它愿意支持 "UDP/TLS/RTP/SAVPF" 或 "TCP/TLS/RTP/SAVPF"。为了简化与这些端点的兼容性，JSEP 实现在处理接收到的 offer 中的媒体 m-section 时必须遵循以下规则:
 
 - 以下 offer 中出现的 profile 需要被接受:
   - "RTP/AVP" (defined in [RFC4566], Section 8.2.2)
@@ -586,10 +586,10 @@ SRTP 密钥的 SDP 安全描述机制 [RFC4568] 不能被使用，如在 [RFC882
   - "TCP/DTLS/RTP/SAVPF" (defined in [RFC7850], Section 3.5)
   - "UDP/TLS/RTP/SAVP" (defined in [RFC5764], Section 9)
   - "UDP/TLS/RTP/SAVPF" (defined in [RFC5764], Section 9)
-- profile 所匹配 m-line 的 answer 必须与 offer 匹配；
+- profile 所匹配 m-section 的 answer 必须与 offer 匹配；
 - 由于 DTLS-SRTP 是必选项, 所以 SAVP or AVP 并不是必须的; 是否支持 DTLS-SRTP 也可以通过 "a=fingerprint" 属性判断。需要注意，缺少 "a=fingerprint" 属性将会引起协商失败。
 - AVPF 或 AVP的使用只是控制用于 RTCP feedback 的间隔规则。如果提供了 AVPF 或 "a=rtcp-fb" 属性，假设存在 AVPF，即默认值为 "trr-int=0"。否则，假设 AVPF 是在AVP 兼容模式下使用的，并使用 "trr-int=4000" 的值。
-- 在数据 m-line, 实现中必须支持 "UDP/DTLS/SCTP", "TCP/DTLS/SCTP" 和 "DTLS/SCTP" (为了向后兼容) profile.
+- 在数据 m-section, 实现中必须支持 "UDP/DTLS/SCTP", "TCP/DTLS/SCTP" 和 "DTLS/SCTP" (为了向后兼容) profile.
 
 ### 5.2. Constructing an Offer
 
@@ -610,43 +610,43 @@ SRTP 密钥的 SDP 安全描述机制 [RFC4568] 不能被使用，如在 [RFC882
 - 必须添加 "a=ice-options" 行以及 "trickle" 和 "ice2" 选项，具体请参见 [RFC8840] 4.1.1 节和 [RFC8445] 10 节。
 - 如果使用 WebRTC 标识，必须添加 "a=identity" 行，如 [RFC8827] 5 节所述。
 
-下一步是生成 m-line，如 5.14 节中 [RFC4566] 所述。一个 m-line 是一个已被添加到 PeerConnection 中的 RtpTransceiver，排除任何停止的 RtpTransceiver；这是按照 RtpTransceivers 被添加到 PeerConnection 的顺序完成的。如果没有这样的 RtpTransceiver，则没有 m-line 生成；后面可以添加更多内容，如[RFC3264] 5节所述。
+下一步是生成 m-section，如 5.14 节中 [RFC4566] 所述。一个 m-section 是一个已被添加到 PeerConnection 中的 RtpTransceiver，排除任何停止的 RtpTransceiver；这是按照 RtpTransceivers 被添加到 PeerConnection 的顺序完成的。如果没有这样的 RtpTransceiver，则没有 m-section 生成；后面可以添加更多内容，如[RFC3264] 5节所述。
 
-对于为 RtpTransceiver 生成的每个 m-line，在 RtpTransceiver 和生成的 m-line 索引之间建立一个映射。
+对于为 RtpTransceiver 生成的每个 m-section，在 RtpTransceiver 和生成的 m-section 索引之间建立一个映射。
 
-每个 m-line，如果没有标记为 "bundle-only"，必须包含唯一的 ICE 证书集和唯一的 ICE 候选集。标记了 bundle-only 的 m-line 不能包含任何 ICE 证书，也不能收集任何候选。
+每个 m-section，如果没有标记为 "bundle-only"，必须包含唯一的 ICE 证书集和唯一的 ICE 候选集。标记了 bundle-only 的 m-section 不能包含任何 ICE 证书，也不能收集任何候选。
 
-对于 DTLS，所有的 m-line 必须使用 PeerConnection 指定的任何和所有证书；因此，它们必须都具有相同的指纹值或值 [RFC8122]，或者这些值必须是会话级属性。
+对于 DTLS，所有的 m-section 必须使用 PeerConnection 指定的任何和所有证书；因此，它们必须都具有相同的指纹值或值 [RFC8122]，或者这些值必须是会话级属性。
 
-每个 m-line 必须按照 [RFC4566] 5.14 节中指定的方式生成。对于 m-line 本身，必须遵守以下规则:
+每个 m-section 必须按照 [RFC4566] 5.14 节中指定的方式生成。对于 m-section 本身，必须遵守以下规则:
 
-- 如果 m-line 被标记为 bundle-only，那么 \<port> 值必须设置为 0。否则，值将被设置为 m-line 的默认的 ICE 候选端口，但是考虑到没有可用的候选端口，必须使用默认的端口值 9 (Discard)，如 RFC8840 4.1.1 节所示。
+- 如果 m-section 被标记为 bundle-only，那么 \<port> 值必须设置为 0。否则，值将被设置为 m-section 的默认的 ICE 候选端口，但是考虑到没有可用的候选端口，必须使用默认的端口值 9 (Discard)，如 RFC8840 4.1.1 节所示。
 - 为了正确地指示使用 DTLS， profile 必须设置为 "UDP/TLS/RTP/SAVPF"，如 [RFC5764] 8节所规定的。
 - 如果已为相关的 RtpTransceiver 设置了编解码器首选项，则必须按相应的顺序生成媒体格式，并且必须排除编解码器首选项中不存在的任何编解码器。
 - 除上述限制外，媒体格式必须包括 [RFC7874] 第3节和 [RFC7742] 第5节中规定的强制性音频/视频编解码器。
 
-m-line 后面必须紧跟着 "c=" 行，如[RFC4566] 5.7节所述。同样，由于没有候选项可用，"c=" 行必须包含默认值 "IN IP4 0.0.0.0"，如 [RFC8840] 4.1.1 节所定义。
+m-section 后面必须紧跟着 "c=" 行，如[RFC4566] 5.7节所述。同样，由于没有候选项可用，"c=" 行必须包含默认值 "IN IP4 0.0.0.0"，如 [RFC8840] 4.1.1 节所定义。
 
-[RFC8859] 将 SDP 属性分类。为了 bundling 时不必要的重复，类别相同或传输属性不需要在 bundling 的 "m-line" 中重复，[RFC8843]7.1.3 节中有说明。这包括 m-line，bundling 已经协商好，仍然是需要的，以及“m=”部分标记为 bundle-only。
+[RFC8859] 将 SDP 属性分类。为了 bundling 时不必要的重复，类别相同或传输属性不需要在 bundling 的 "m-section" 中重复，[RFC8843]7.1.3 节中有说明。这包括 m-section，bundling 已经协商好，仍然是需要的，以及“m=”部分标记为 bundle-only。
 
-以下属性，不是相同或运输的类别，必须包含在每个 m-line：
+以下属性，不是相同或运输的类别，必须包含在每个 m-section：
 
 - "a=mid" 行，如 [RFC5888] 4 节中所述。所有的 MID 值必须以一种不泄漏用户信息的方式生成，例如，随机或使用每个 PeerConnection 计数器，并且应该是3字节或更少，以允许它们有效地适合在[RFC8843]章节15.2中定义的RTP头扩展。注意，这并没有设置RtpTransceiver mid属性，因为这只在应用描述时才会发生。此时，生成的MID值可以被认为是“建议的”MID。
 - 方向属性，与关联的 RtpTransceiver 的方向属性相同。
-- 对于媒体 m-line，"a=rtpmap" 和 "a=fmtp" 行描述的每一种媒体格式，如 [RFC4566] 6 节和 [RFC3264] 5.1 节所述。
+- 对于媒体 m-section，"a=rtpmap" 和 "a=fmtp" 行描述的每一种媒体格式，如 [RFC4566] 6 节和 [RFC3264] 5.1 节所述。
 - 对于每个需要使用 RTP 重传的主编解码器，对应的 "a=rtpmap" 指示主编解码器的时钟速率的 "rtx"，对应的 "a=fmtp" 指示主编解码器的有效负载类型，如 [RFC4588] 8.1 节所述。
 - 对于每个支持的前向纠错 (FEC) 机制，"a=rtpmap" 和 "a=fmtp" 行，如 [RFC4566] 6 节所述。必须支持的 FEC 机制在 [RFC8854] 7 节中指定，每种媒体类型的具体用法在第 4 节和第 5 节中概述。
-- 如果这个 m-line 用于每个包的媒体持续时间可配置的媒体，例如，音频，一个 "a=maxptime" 表示可以封装在每个包中的最大媒体量，以毫秒为单位，如 [RFC4566] 6节中所规定的。该值被设置为 m-line 中包含的所有编解码器的最大持续时间值中的最小值。
+- 如果这个 m-section 用于每个包的媒体持续时间可配置的媒体，例如，音频，一个 "a=maxptime" 表示可以封装在每个包中的最大媒体量，以毫秒为单位，如 [RFC4566] 6节中所规定的。该值被设置为 m-section 中包含的所有编解码器的最大持续时间值中的最小值。
 - 如果这个“m=”部分用于视频媒体，并且已知可以解码的图像的大小有限制，增加 "a=imageattr" 行，如 3.6 节所述。
 - 对于每个支持的 RTP 报头扩展，一个 "a=extmap" 行，如[RFC5285] 5 节中指定的。应该/必须支持的报头扩展列表在 [RFC8834] 5.2 节中指定。任何需要加密的头部扩展必须在 [RFC6904] 4 节中指定。
 - 对于每个支持的 RTCP 反馈机制，一个 "a=rtcp-fb”行，如[RFC4585] 4.2 节所述。应该/必须支持的 RTCP 反馈机制列表在 [RFC8834] 5.1 节中指定。
 - 如果 RtpTransceiver 是 sendrecv 或 sendonly 方向:
   - 对于通过 addTrack 或 addTransceiver 创建的每个 MediaStream，一个 "a=msid" 行，如 [RFC8830] 2 节中指定的，但省略了 "appdata" 字段。
 - 如果 RtpTransceiver 是 sendrecv 或 sendonly 方向，并且应用程序已经为一个编码指定了 rid-id，或者在 RtpSenders 的参数中指定了多个编码，则为每个指定的编码指定一个 "a=rid" 行。"a=rid" 行在 [RFC8851] 中指定，它的方向必须是 "send"。如果应用程序已经选择了 rid-id，它必须被使用；否则 rid-id 必须由实现生成。rid-ids 生成不能泄露用户信息，例如随机或使用 每个 PeerConnection 计数器( [RFC8852] 3.3节)，并且应该 3 个字节或更少，让他们有效地融入RTP报头中定义扩展 [RFC8852] 3.3节。如果没有指定编码，或者只指定了一个编码但没有指定 rid-id，则不会生成 "a=rid" 行。
-- 如果 RtpTransceiver 是 sendrecv 或 sendonly 方向，并且产生了一个以上的 "a=rid" 行，一个 "a=simulcast" 行，方向 "send"，定义在 [RFC8853] 5.1 节。关联的 rid-id 集合必须包含 m-line 的 "a=rid"行中使用的所有 rid-id。
-- 如果这个 PeerConnection的 bundle policy 被设置为 "max-bundle" 并且这不是第一个 m-line ，或者这个 bundle policy 被设置为 "balanced" 并且这不是这个媒体类型的第一个 m-line，需要 "a=bundle-only" 行。
+- 如果 RtpTransceiver 是 sendrecv 或 sendonly 方向，并且产生了一个以上的 "a=rid" 行，一个 "a=simulcast" 行，方向 "send"，定义在 [RFC8853] 5.1 节。关联的 rid-id 集合必须包含 m-section 的 "a=rid"行中使用的所有 rid-id。
+- 如果这个 PeerConnection的 bundle policy 被设置为 "max-bundle" 并且这不是第一个 m-section ，或者这个 bundle policy 被设置为 "balanced" 并且这不是这个媒体类型的第一个 m-section，需要 "a=bundle-only" 行。
 
-以下属性，它们属于 IDENTICAL 或 TRANSPORT 类别，但必须只出现在 m-line 中，这些部分要么有唯一的地址，要么与 bundle 标签相关联。(在最初的 offer 中，这意味着那些 m-line 不包含 "a=bundle-only" 属性。)
+以下属性，它们属于 IDENTICAL 或 TRANSPORT 类别，但必须只出现在 m-section 中，这些部分要么有唯一的地址，要么与 bundle 标签相关联。(在最初的 offer 中，这意味着那些 m-section 不包含 "a=bundle-only" 属性。)
 
 - "a=ice-ufrag" 和 "a=ice-pwd" 行，参见[RFC8839]章节5.4。
 - 对于每个所需的摘要算法，每个端点的证书都有一个或多个 "a=fingerprint" 行，如 [RFC8122] 5节所述。
@@ -657,11 +657,11 @@ m-line 后面必须紧跟着 "c=" 行，如[RFC4566] 5.7节所述。同样，由
 - 如果 RTP/RTCP 复用策略为 "require"，则在 [RFC8858] 4节中指定 "a=rtcp-mux-only" 行。
 - 一个 "a=rtcp-rsize" 行，在[RFC5506] 5 节中指定。
 
-最后，如果创建了数据通道，则必须为数据生成 m-line。\<media> 必须设置为 "application"，必须设置为 "UDP/DTLS/SCTP" [RFC8841]。\<fmt> 的值必须设置为 "webrtc-datchannel"，如 [RFC8841] 4.2.2 节所述。
+最后，如果创建了数据通道，则必须为数据生成 m-section。\<media> 必须设置为 "application"，必须设置为 "UDP/DTLS/SCTP" [RFC8841]。\<fmt> 的值必须设置为 "webrtc-datchannel"，如 [RFC8841] 4.2.2 节所述。
 
-在数据 m-line，一个 "a=mid" 行必须被生成，并包括在上面描述的，连同一个 "a=sctp-port" 行引用 SCTP 端口号，如 [RFC8841] 5.1 节中定义；并且如果合适的话，一个 "a=max-message-size" 行，在[RFC8841] 6.1 节定义。
+在数据 m-section，一个 "a=mid" 行必须被生成，并包括在上面描述的，连同一个 "a=sctp-port" 行引用 SCTP 端口号，如 [RFC8841] 5.1 节中定义；并且如果合适的话，一个 "a=max-message-size" 行，在[RFC8841] 6.1 节定义。
 
-如上所述，只有当数据 m-line 部分有一个唯一的地址或与 bundle 标签相关联(例如，如果它是唯一的 m-line)时，下列 IDENTICAL 或 TRANSPORT 属性才会被包含:
+如上所述，只有当数据 m-section 部分有一个唯一的地址或与 bundle 标签相关联(例如，如果它是唯一的 m-section)时，下列 IDENTICAL 或 TRANSPORT 属性才会被包含:
 
 - "a=ice-ufrag"
 - "a=ice-pwd"
@@ -669,7 +669,7 @@ m-line 后面必须紧跟着 "c=" 行，如[RFC4566] 5.7节所述。同样，由
 - "a=setup"
 - "a=tls-id"
 
-一旦所有的 m-line 被生成，一个会话级的 "a=group" 属性必须被添加，在 [RFC5888] 中规定。这个属性必须具有 "BUNDLE" 的语义，并且必须包含每个 m-line 的 MID。这样做的结果是，JSEP 实现将所有 m-line 作为一个 bundle group 提供。然而，m-line 是否为 bundle-only，取决于 bundle 策略。
+一旦所有的 m-section 被生成，一个会话级的 "a=group" 属性必须被添加，在 [RFC5888] 中规定。这个属性必须具有 "BUNDLE" 的语义，并且必须包含每个 m-section 的 MID。这样做的结果是，JSEP 实现将所有 m-section 作为一个 bundle group 提供。然而，m-section 是否为 bundle-only，取决于 bundle 策略。
 
 下一步是生成会话级别的 LS 同步组，定义在[RFC5888] 7 节。对于每个被多个 RtpTransceiver 引用的 MediaStream (通过将这些 MediaStream 作为参数传递给 addTrack 和 addTransceiver 方法)，必须添加一组类型为 "LS" 的 group，该 group 包含每个 RtpTransceiver 的 MID 值。
 
@@ -698,36 +698,36 @@ SDP 允许应该在媒体级的属性既放在会话级又放在媒体级，即�
 如果前面使用 setLocalDescription 提供应用，但相应的来自远端的 answer 尚未应用，这意味着 PeerConnection 仍在 "have-local-offer" 状态，offer 的生成将遵循以下规则：
 
 - "s=" 和 "t=" 行必须保持不变。
-- 如果有任何 RtpTransceiver 被添加，并且在当前本地描述或远程描述中存在一个 "m=" 的 0 端口区域，m-line 必须被回收，为添加的 RtpTransceiver 生成一个 m-line ，就像 m-line 被添加到会话描述中(包括一个新的 MID 值)，并将其放在与 m-line 相同的索引和 0 端口。
-- 如果 RtpTransceiver 被停止并且没有与 m-line 相关联，则绝对不能为它生成 m-line 。这阻止了 RtpTransceiver 的 m-line 被回收，并在之前的 offer/answer 交换中用于新的 RtpTransceiver，如上所述。
-- 如果 RtpTransceiver 已经停止并与一个 m-line 相关联，并且 m-line 没有被回收，如上所述，一个 m-line 必须为它生成与端口设置为 0 和删除所有 "a=msid" 行。
+- 如果有任何 RtpTransceiver 被添加，并且在当前本地描述或远程描述中存在一个 "m=" 的 0 端口区域，m-section 必须被回收，为添加的 RtpTransceiver 生成一个 m-section ，就像 m-section 被添加到会话描述中(包括一个新的 MID 值)，并将其放在与 m-section 相同的索引和 0 端口。
+- 如果 RtpTransceiver 被停止并且没有与 m-section 相关联，则绝对不能为它生成 m-section 。这阻止了 RtpTransceiver 的 m-section 被回收，并在之前的 offer/answer 交换中用于新的 RtpTransceiver，如上所述。
+- 如果 RtpTransceiver 已经停止并与一个 m-section 相关联，并且 m-section 没有被回收，如上所述，一个 m-section 必须为它生成与端口设置为 0 和删除所有 "a=msid" 行。
 - 对于没有停止的 RtpTransceiver，"a=msid" 行必须保持不变，如果它们存在于当前的描述中，无论 RtpTransceiver 的方向或 track 的变化。如果在当前描述中没有 "a=msid"行，"a=msid" 行(s)必须根据与初始 offer 相同的规则生成。
-- 每一行 "m=" 和 "c=" 必须填写端口，相关的 RTP profile，和 m-line 的默认候选地址，如[RFC8839]，4.2.1.2 节和 5.1.2 节所述。如果还没有收集 RTP 候选项，则必须仍然使用默认值，如上所述。
+- 每一行 "m=" 和 "c=" 必须填写端口，相关的 RTP profile，和 m-section 的默认候选地址，如[RFC8839]，4.2.1.2 节和 5.1.2 节所述。如果还没有收集 RTP 候选项，则必须仍然使用默认值，如上所述。
 - 每一行 "a=mid" 必须保持一致。
-- "a=ice-ufrag" 和 "a=ice-pwd" 必须保持不变，除非 ICE 配置发生了改变(例如，改变了支持的 STUN/TURN 服务器或 ICE 候选策略)或 icerstart 选项(5.2.3.1 节)被指定。如果 m-line 被捆绑到另一个 m-line 中，它仍然不能包含任何 ICE 凭证。
-- 如果 m-line 没有被捆绑到另一个 m-line 中，它的 "a=rtcp" 属性行必须被填充默认 rtcp 候选的端口和地址，如 RFC5761 5.1.3 节所示。如果还没有收集 RTCP 候选项，则必须使用默认值，如 5.2.1 节所述。
-- 如果 m-line 没有捆绑到另一个 m-line，对于在最近的收集阶段(参见章节3.5.1)收集的每个候选，必须添加一个 "a=candidate" 行，如 [RFC8839] 5.1 节所定义。如果该 m-line 的候选收集已经完成，则必须添加一个 "a=end-of-candidates" 属性，如 [RFC8840] 8.2 节所述。如果 m-line 被捆绑到另一个 m-line 中，那么 "a=candidate" 和 "a=end-of-candidates" 都必须被省略。
+- "a=ice-ufrag" 和 "a=ice-pwd" 必须保持不变，除非 ICE 配置发生了改变(例如，改变了支持的 STUN/TURN 服务器或 ICE 候选策略)或 icerstart 选项(5.2.3.1 节)被指定。如果 m-section 被捆绑到另一个 m-section 中，它仍然不能包含任何 ICE 凭证。
+- 如果 m-section 没有被捆绑到另一个 m-section 中，它的 "a=rtcp" 属性行必须被填充默认 rtcp 候选的端口和地址，如 RFC5761 5.1.3 节所示。如果还没有收集 RTCP 候选项，则必须使用默认值，如 5.2.1 节所述。
+- 如果 m-section 没有捆绑到另一个 m-section，对于在最近的收集阶段(参见章节3.5.1)收集的每个候选，必须添加一个 "a=candidate" 行，如 [RFC8839] 5.1 节所定义。如果该 m-section 的候选收集已经完成，则必须添加一个 "a=end-of-candidates" 属性，如 [RFC8840] 8.2 节所述。如果 m-section 被捆绑到另一个 m-section 中，那么 "a=candidate" 和 "a=end-of-candidates" 都必须被省略。
 - 对于仍然存在的 RtpTransceiver，"a=rid" 行必须保持不变。
 - 对于仍然存在的 RtpTransceiver，任何 "a=simulcast" 行必须保持不变。
 
 如果之前的 offer 是使用 setLocalDescription 应用的，而来自远端相应的 answer 已经使用 setRemoteDescription 应用，这意味着 PeerConnection 是在 "have-remote-pranswer" 状态或 "stable" 状态，根据协商的会话描述，按照上面提到的 "have-local-offer" 状态的步骤生成报价。
 
-此外，对于新 offer 中每一个现有的、不可回收的、不可拒绝的 m-line，根据当前本地或远程描述中相应的 m-line 的内容，视情况作出以下调整:
+此外，对于新 offer 中每一个现有的、不可回收的、不可拒绝的 m-section，根据当前本地或远程描述中相应的 m-section 的内容，视情况作出以下调整:
 
-- m-line 和相应的 "a=rtpmap" 和 "a=fmtp" 行必须只包含没有被相关 RtpTransceiver 的编解码器首选项排除的媒体格式，而且必须包括所有当前可用的格式。先前提供但不再提供的媒体格式(例如，共享硬件编解码器)可能被排除在外。
-- 除非已为相关联的 RtpTransceiver 设置了编解码器首选项，否则 m-line 上的媒体格式必须按照与最近的 answer 相同的顺序生成。任何媒体格式，没有出现在最近的 answer 必须添加在所有现有的格式之后。
+- m-section 和相应的 "a=rtpmap" 和 "a=fmtp" 行必须只包含没有被相关 RtpTransceiver 的编解码器首选项排除的媒体格式，而且必须包括所有当前可用的格式。先前提供但不再提供的媒体格式(例如，共享硬件编解码器)可能被排除在外。
+- 除非已为相关联的 RtpTransceiver 设置了编解码器首选项，否则 m-section 上的媒体格式必须按照与最近的 answer 相同的顺序生成。任何媒体格式，没有出现在最近的 answer 必须添加在所有现有的格式之后。
 - RTP 头部扩展必须只包含那些在最近的 answer 中出现的。
 - RTCP 反馈机制必须只包括最近的 answer 中出现的那些，除了引用新添加的媒体格式的特定于格式的机制。
 - 如果最近的 answer 包含了 "a=rtcp-mux" 行，那么 "a=rtcp" 行绝对不能被添加。
 - "a=rtcp-mux" 必须与最近的 answer 一致。
 - 不能添加 "a=rtcp-mux-only" 行。
 - "a=rtcp-rsize" 行不能添加，除非出现在最近的 anwer 中。
-- 不能添加 "a=bundle-only" 行，定义在 [RFC8843] 6 节。相反，JSEP 实现必须简单地省略绑定了 m-line 的 IDENTICAL 和 TRANSPORT 类别中的参数，如 [RFC8843] 7.1.3 节所述。
-- 注意，如果媒体 m-line 被捆绑到数据 m-line 中，那么某些 TRANSPORT 和 IDENTICAL 的属性可能会出现在数据 m-line 中，即使它们只适合于媒体 m-line (例如，"a=rtcp-mux")。这在初始 offer 中不可能发生，因为在初始 offer 中，JSEP 实现总是在数据 m-line 之前列出媒体 m-line，而且至少有一个媒体 m-line 将没有 "a=bundle-only" 属性。因此，在最初的 offer 中，任何 "a=bundle-only" 的 m-line 将被捆绑到前面的非 bundle-only 媒体 m-line 中。
+- 不能添加 "a=bundle-only" 行，定义在 [RFC8843] 6 节。相反，JSEP 实现必须简单地省略绑定了 m-section 的 IDENTICAL 和 TRANSPORT 类别中的参数，如 [RFC8843] 7.1.3 节所述。
+- 注意，如果媒体 m-section 被捆绑到数据 m-section 中，那么某些 TRANSPORT 和 IDENTICAL 的属性可能会出现在数据 m-section 中，即使它们只适合于媒体 m-section (例如，"a=rtcp-mux")。这在初始 offer 中不可能发生，因为在初始 offer 中，JSEP 实现总是在数据 m-section 之前列出媒体 m-section，而且至少有一个媒体 m-section 将没有 "a=bundle-only" 属性。因此，在最初的 offer 中，任何 "a=bundle-only" 的 m-section 将被捆绑到前面的非 bundle-only 媒体 m-section 中。
 
-"a=group:BUNDLE" 属性必须包含在最近的 answer 中 BUNDLE 组中指定的 MID 标识符，减去任何被标记为被拒绝的 m-line，加上任何新添加或重新启用的 m-line。换句话说，bundle 属性必须包含所有之前绑定的 m-line，只要它们还是活动状态，以及任何新的 m-line。
+"a=group:BUNDLE" 属性必须包含在最近的 answer 中 BUNDLE 组中指定的 MID 标识符，减去任何被标记为被拒绝的 m-section，加上任何新添加或重新启用的 m-section。换句话说，bundle 属性必须包含所有之前绑定的 m-section，只要它们还是活动状态，以及任何新的 m-section。
 
-"a=group:LS" 属性生成与首次 offer 相同的方式，有额外的规定，任何 LS 同步组出现在最近的 answer 必须继续存在并必须包含任何以前现有 MID，只要确定 m-line 仍然存在并且没有被拒绝, group 仍然包含至少两个 MID 标识符。这确保了任何同步的 "recvonly" m-line 在新的 offer 中继续同步。
+"a=group:LS" 属性生成与首次 offer 相同的方式，有额外的规定，任何 LS 同步组出现在最近的 answer 必须继续存在并必须包含任何以前现有 MID，只要确定 m-section 仍然存在并且没有被拒绝, group 仍然包含至少两个 MID 标识符。这确保了任何同步的 "recvonly" m-section 在新的 offer 中继续同步。
 
 #### 5.2.3. Options Handling
 
@@ -755,7 +755,7 @@ createOffer 方法接受一个 RTCOfferOptions 对象作为参数。如果存在
 
 当提供远程描述后第一次调用 createAnswer 时，结果被称为初始 answer。如果没有安装远程描述，则无法生成答案，并且必须返回一个错误。
 
-请注意，远程描述 SDP 可能不是由 JSEP 端点创建的，可能不符合 5.2 节中列出的所有要求。在许多情况下，这不是问题。然而，如果任何强制性的 SDP 属性缺失，或者上面列出的强制性使用的功能不存在，这必须被视为一个错误，并且必须导致受影响的 m-line 被标记为拒绝。
+请注意，远程描述 SDP 可能不是由 JSEP 端点创建的，可能不符合 5.2 节中列出的所有要求。在许多情况下，这不是问题。然而，如果任何强制性的 SDP 属性缺失，或者上面列出的强制性使用的功能不存在，这必须被视为一个错误，并且必须导致受影响的 m-section 被标记为拒绝。
 
 生成初始答案的第一步是生成会话级属性。这里的过程是相同的，表明在上面 5.2.1 节中，除了 "a=ice-options" 和 "trickle" 选项，在 [RFC8840] 4.1.3 节中被定义, 和 "ice2" 选项在 [RFC8445] 10 节中被定义，包括这样一个选项如果出现在 offer 中。
 
@@ -810,25 +810,88 @@ createOffer 方法接受一个 RTCOfferOptions 对象作为参数。如果存在
 
 7.2 节中的例子展示了一个更复杂的 "LS" group 生成示例。
 
-下一步是为远程 offer 中出现的每个 m-line 生成一个 m-line，如 [RFC3264] 6 节中所述。出于讨论的目的，offer 中的任何会话级属性如果也是有效的媒体级属性则被认为出现在每个 m-line 中。每个提供的 m-line 将有一个相关的 RtpTransceiver，如 5.10 节所述。如果 RtpTransceivers 比 m-line 多，不匹配的 RtpTransceiver 将需要在后续的 offer 关联。
+下一步是为远程 offer 中出现的每个 m-section 生成一个 m-section，如 [RFC3264] 6 节中所述。出于讨论的目的，offer 中的任何会话级属性如果也是有效的媒体级属性则被认为出现在每个 m-section 中。每个提供的 m-section 将有一个相关的 RtpTransceiver，如 5.10 节所述。如果 RtpTransceivers 比 m-section 多，不匹配的 RtpTransceiver 将需要在后续的 offer 关联。
 
-对于每个 offer 的 m-line，如果下列条件符合，对应的 answer 中 m-line 必须通过设置 \<port> 为 0 标记为拒绝(在 [RFC3264] 6节中定义)，进一步处理可以跳过 m-line:
+对于每个 offer 的 m-section，如果下列条件符合，对应的 answer 中 m-section 必须通过设置 \<port> 为 0 标记为拒绝(在 [RFC3264] 6节中定义)，进一步处理可以跳过 m-section:
 
 - 关联的 RtpTransceiver 已经停止。
 - 没有提供既支持又被编解码器首选项(如果适用的话)允许的媒体格式。
-- bundle 策略是 "max-bundle"，不是第一个 m-line，也不是和第一个 m-line 在同一个 bundle group 中。
-- bundle 策略是 "balanced"，不是该媒体类型的第一个 m-line，也不是和第一个 m-line 在同一个 bundle group 中。
-- 这个 m-line 在一个 bundle group 中，并且 offer 中标记的 m-line 由于上述原因之一被拒绝。这要求 bundle group 中所有 m-line 被拒绝，如 [RFC8843] 7.3.3 节所述。
+- bundle 策略是 "max-bundle"，不是第一个 m-section，也不是和第一个 m-section 在同一个 bundle group 中。
+- bundle 策略是 "balanced"，不是该媒体类型的第一个 m-section，也不是和第一个 m-section 在同一个 bundle group 中。
+- 这个 m-section 在一个 bundle group 中，并且 offer 中标记的 m-section 由于上述原因之一被拒绝。这要求 bundle group 中所有 m-section 被拒绝，如 [RFC8843] 7.3.3 节所述。
 
-否则，answer 中的每个 m-line 必须按照 [RFC3264] 6.1 节中的规定生成。对于 m-line 本身，必须遵守以下规则:
+否则，answer 中的每个 m-section 必须按照 [RFC3264] 6.1 节中的规定生成。对于 m-section 本身，必须遵守以下规则:
 
-- \<port> 值通常会被设置为 m-line 的默认的 ICE 候选端口，但是考虑到还没有可用的候选端口，必须使用默认的值 9 (Discard)，如 [RFC8840] 4.1.1 节所示。
-- \<proto> 字段必须被设置为与在 offer 中对应的 m-line 完全匹配。
+- \<port> 值通常会被设置为 m-section 的默认的 ICE 候选端口，但是考虑到还没有可用的候选端口，必须使用默认的值 9 (Discard)，如 [RFC8840] 4.1.1 节所示。
+- \<proto> 字段必须被设置为与在 offer 中对应的 m-section 完全匹配。
 - 如果已为相关的 RtpTransceiver 设置了编解码器首选项，则媒体格式必须按相应的顺序生成，而不管提供了什么，并且必须排除编解码器首选项中没有出现的任何编解码器。
-- 否则，m-line 上的媒体格式必须按照当前远程描述中提供的格式的顺序生成，不包括当前不支持的格式。当前远程描述中不存在的任何当前可用的媒体格式必须添加到所有现有格式之后。
-- 在任何一种情况下，answer 中的媒体格式必须包括 offer 中包含的至少一种格式，但可以包括在本地支持但 offer 中不包含的格式，如 [RFC3264] 6.1 节所述。如果不存在通用的格式， m-line 将被拒绝。
+- 否则，m-section 上的媒体格式必须按照当前远程描述中提供的格式的顺序生成，不包括当前不支持的格式。当前远程描述中不存在的任何当前可用的媒体格式必须添加到所有现有格式之后。
+- 在任何一种情况下，answer 中的媒体格式必须包括 offer 中包含的至少一种格式，但可以包括在本地支持但 offer 中不包含的格式，如 [RFC3264] 6.1 节所述。如果不存在通用的格式， m-section 将被拒绝。
+
+m-section 后面必须紧跟着 "c=" 行，如 [RFC4566] 5.7 节所述。同样，由于没有候选项可用，"c=" 行必须包含默认值 "IN IP4 0.0.0.0"，如 [RFC8840] 4.1.3 节所定义。
+
+如果 offer 支持 bundle，所有 bundle 的 m-section 必须使用相同的 ICE 证书和候选人；所有未 bundle 的 m-section 必须使用唯一的 ICE 证书和候选人。每个 m-section 必须包含以下属性(不同于 IDENTICAL 或 TRANSPORT):
+
+- 当且仅当 offer 中出现 "a=mid" 行，如[RFC5888] 9.1 节所述。MID 值必须与 offer 中指定的值匹配。
+- 方向属性，通过应用 [RFC3264] 6.1 节中提供的方向规则来确定，然后与相关的 RtpTransceiver 的方向相交。例如，在 m-section 被提供为 "sendonly" 和本地 RtpTransceiver 被设置为 "sendrecv" 的情况下，answer 的结果是 "recvonly" 方向。
+- 对于 m-section，"a=rtpmap"和 "a=fmtp" 行上的每一种媒体格式，如 [RFC4566] 6 节和 [RFC3264] 6.1 节所述。
+- 如果 "rtx" 存在于 offer，则需要相应的 "a=rtpmap" 指示 "rtx" 主要编解码器的时钟频率和一个 "a=fmtp" 引用声明引用的的负载类型, [RFC4588] 8.1 节定义。
+- 对于每个受支持的 FEC 机制，"a=rtpmap" 和 "a=fmtp" 行，如 [RFC4566] 6 节所述。必须支持的 FEC 机制在 [RFC8854] 7 节中指定，每种媒体类型的具体用法在第 4 节和第 5 节中概述。
+- 如果这个 m-section 是针对每个包的媒体持续时间可配置的媒体，例如，音频，需要增加 "a=maxptime" 行，5.2 节所述。
+- 如果这个 m-section 用于视频媒体，并且已知可以解码的图像的大小有限制，需要增加 "a=imageattr" 行，如 3.6 节所述。
+- 对于 offer 中每个支持的 RTP 头部扩展，需要增加 "a=extmap“ 行，如 [RFC5285] 5 节中所规定的。支持的报头扩展列表在 [RFC8834] 5.2 节中指定。任何需要加密的报头扩展在 [RFC6904] 4 节中指定。
+- 对于每个支持的 RTCP 反馈机制，在 offer 中，"a=rtcp-fb" 行，如[RFC4585] 4.2 节所述。支持的 RTCP 反馈机制列表在 [RFC8834] 5.1 节中指定。
+- 如果 RtpTransceiver 有一个 sendrecv 或 sendonly 方向:
+  - 对于通过 addTrack 或 addTransceiver 创建的每个 MediaStream，一个 "a=msid" 行，如在[RFC8830] 2 节中指定的，但省略了 "appdata" 字段。
+
+如果一个 m-section 没有捆绑到另一个 m-section 必须包含以下属性( IDENTICAL 或 TRANSPORT 类别):
+
+- "a=ice-ufrag" 和 "a=ice-pwd" 行，参见[RFC8839] 5.4 节。
+- 对于每个所需的摘要算法，每个端点的证书都有一个或多个 "a=fingerprint" 行，如 [RFC8122] 5 节所述。
+- "a=setup" 行，如 [RFC4145] 4 节中规定的，并在 [RFC5763] 5 节中澄清了用于 DTLS-SRTP 场景的用法。answer 中的角色值必须是 "active" 或 "passive"。当 offer 包含 "actpass" 值时，就像 JSEP 端点的情况一样，ansswer 应该使用 "active" 角色。来自非 JSEP 端点的 offer 可以发送 "a=setup" 的其他值，在这种情况下，answer 必须使用与 offer 中的值一致的值。
+- "a=tls-id" 行，在[RFC8842] 5.3 节中指定。
+- 如果在 offer 中出现 "a=rtcp-mux" 行，如 [RFC5761] 5.1.3 节所述。否则，"a=rtcp" 行，如[RFC3605] 2.1 节中指定的，包含默认值 "9 in IP4 0.0.0.0" (因为还没有收集候选项)。
+- 如果在 offer 中出现 "a=rtcp-rsize" 行，如[RFC5506]章节5所述。
+
+如果提供了一个数据通道，则必须为数据 m-section。\<media> 字段必须设置为 "application"，\<fmt> 字段必须设置为与 offer 中的字段完全匹配。
+
+在数据 m-section，一个 "a=mid" 行必须被生成，并包括在上面描述的，连同一个 "a=sctp-port" 行引用 SCTP 端口号，在 [RFC8841] 5.1 节中定义；并且可以增加 "a=max-message-size" 行，在 [RFC8841] 6.1 节中定义。
+
+如上所述，只有当数据 m-section 没有捆绑到另一个 m-section 时，才会包含 IDENTICAL 或 TRANSPORT 类别的以下属性:
+
+- "a=ice-ufrag"
+- "a=ice-pwd"
+- "a=fingerprint"
+- "a=setup"
+- "a=tls-id"
+
+注意，如果媒体 m-section 被捆绑到数据 m-section 中，那么某些 TRANSPORT 和 IDENTICAL 属性也可能出现在数据 m-section 中，即使它们只适合于媒体 m-section (例如，"a=rtcp-mux")。
+
+如果提供了具有 "BUNDLE" 语义的 "a=group" 属性，则必须按照 [RFC5888] 的规定添加相应的会话级 "a=group" 属性。这些属性必须具有 "BUNDLE" 语义，并且必须包含所有来自所提供的 BUNDLE 组中没有被拒绝的中间标识符。请注意，不管 offer 中是否存在 "a=bundle-only"，answer 中所有的 m-section 都不能有 "a=bundle-only" 行。
+
+如果在会话级别显式地定义为有效，那么所有 m-section 之间的公共属性可以移动到会话级别。
+
+在创建 offer 时被禁止的属性也在创建 answer 时被禁止。
 
 #### 5.3.2. Subsequent Answers
+
+当 createAnswer 在第二次(或更晚)时被调用，或者在已经安装了本地描述之后被调用时，处理过程与初始答案略有不同。
+
+如果之前的 answer 没有使用 setLocalDescription 应用，这意味着 PeerConnection 仍然处于 "have-remote-offer" 状态，则必须遵循生成初始 answer 的步骤，受以下限制:
+
+- "o=" 行的字段必须保持不变，除了 \<session-version> 字段，如果会话描述以任何方式改变以前生成的 answer，该字段必须递增。
+
+如果之前有任何会话描述被提供给 setLocalDescription，那么 answer 将会按照上面的 "have-remote-offer" 状态的步骤生成，还有这些例外情况:
+
+- "s=" 和 "t=" 行必须保持不变。
+- 每一行 "m=" 和 "c=" 必须填写 m-section 的默认候选端口和地址，如[RFC8839] 4.2.1.2 节所述。注意，在某些情况下，m-section 协议可能与默认候选协议不匹配，因为 m-section 协议的值必须匹配 offer 中提供的内容，如上所述。
+- 每一行 "a=ice-ufrag" 和 "a=iec-pwd" 必须保持不变，除非 m-section 正在重启，在这种情况下，新的 ICE 证书必须创建，如 [RFC8839] 4.4.1.1.1 节所述。如果 m-section 被捆绑到另一个 m-section中，它仍然不能包含任何 ICE 凭证。
+- 每个 "a=tls-id" 行必须保持不变，除非 offer 的 "a=tls-id" 行改变了，在这种情况下，必须创建一个新的 tls-id 值，如 [RFC8842] 5.2 节所述。
+- 每个 "a=setup" 行必须使用与现有的 DTLS 关联一致的 "active" 或 "passive" 角色。
+- 必须使用 RTCP 多路复用，当且仅当 m-section 之前使用了 RTCP 多路复用时，插入 "a=rtcp-mux" 行。
+- 如果 m-section 没有捆绑到另一个m-section 并且 RTCP 复用未启用，"a=rtcp-mux" 属性行必须填写默认 RTCP 候选端口和地址。如果还没有收集 RTCP 候选项，则必须使用默认值，如上面 5.3.1 节所述。
+- 如果 m-section 没有捆绑到另一个 m-section，对于在最近(参见章节3.5.1)收集的每个候选，必须添加一个 "a=candidate" 行，如 [RFC8839] 5.1 节中定义。如果该 section 的候选收集已经完成，则必须添加一个 "a=end-of-candidates" 属性，如 [RFC8840] 8.2 节所述。如果 m-section 被捆绑到另一个 m-section 中，那么 "a=candidate" 和 "a=end-of-candidates" 都必须被省略。
+- 对于没有停止的 RtpTransceiver，"a=msid" 行必须保持不变，无论 RtpTransceiver 的方向或 track 发生了什么变化。如果当前描述中没有 "a=msid" 行，"a=msid" 行必须按照与初始 answer 相同的规则生成。
 
 #### 5.3.3. Options Handling
 
