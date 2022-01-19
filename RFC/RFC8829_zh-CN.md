@@ -524,7 +524,7 @@ stop 方法停止 RtpTransceiver。这将导致以后调用 createOffer 为关�
 
 #### 4.2.2. stopped
 
-stopped属性指示收发器是否已经停止，可以通过调用停止，也可以通过应用拒绝关联的“m=”部分的回答。在这两种情况下，它都被设置为“true”，否则将被设置为“false”。
+stopped 属性指示收发器是否已经停止，可以通过调用停止，也可以通过应用拒绝关联的 m-section 的 answer。在这两种情况下，它都被设置为 "true"，否则将被设置为 "false"。
 
 一个停止的 RtpTransceiver 不发送任何 RTP 或 RTCP，也不处理任何流入的 RTP 或 RTCP，并且无法重启。
 
