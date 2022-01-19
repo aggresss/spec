@@ -325,7 +325,7 @@ PeerConnection 构造函数允许应用程序为媒体会话指定全局参数�
 如果指定了 ICE 候选策略，它的功能如 3.5.3 节所述，导致 JSEP 实现只向应用程序显示被允许的候选策略(包括任何实现内部过滤)，并且只使用这些候选策略进行连接检查。可用的策略集合如下:
 
 - all:
-所有被执行政策允许的候选人将被收集和使用。
+所有被执行政策允许的候选将被收集和使用。
 - relay:
 除中继候选外，所有其他候选将被过滤掉。这将隐藏远程 peer 可能从接收到的候选对象确定的位置信息。根据应用程序部署和选择中继服务器的方式，这可能会将位置混淆到城市级甚至全球级。
 默认的 ICE 候选策略必须设置为 "all"，因为这通常是理想的策略，而且通常也会显著减少应用程序对 TURN 服务器资源的使用。
@@ -482,7 +482,7 @@ cantrickleiceccandidates 属性表示远端是否支持接收 Trickle ICE 项。
 SDP 已经收到另一方的指示，表明它可以支持 Trickle ICE。
 - false:
 SDP 已经从另一方收到指示，它不能支持 Trickle ICE。
-如 3.5.2 节所述，JSEP 实现总是为应用程序单独提供候选，这与 Trickle ICE 所需要的是一致的。然而，应用程序可以使用 canTrickleIceCandidates 属性来确定他们的对等端是否能够真正地进行 Trickle ICE，也就是说，发送最初的 offer 或 answer 是否安全，然后候选人被收集。因为 "true" 是唯一明确表示远程 Trickle ICE 支持的值，所以一个比较 canTrickleIceCandidates 和 "true" 的应用程序在初始 offer 时默认会尝试 Half Trickle ICE，在与 Trickle ICE 兼容的代理进行后续交互时默认会尝试 Full Trickle ICE。
+如 3.5.2 节所述，JSEP 实现总是为应用程序单独提供候选，这与 Trickle ICE 所需要的是一致的。然而，应用程序可以使用 canTrickleIceCandidates 属性来确定他们的对等端是否能够真正地进行 Trickle ICE，也就是说，发送最初的 offer 或 answer 是否安全，然后候选被收集。因为 "true" 是唯一明确表示远程 Trickle ICE 支持的值，所以一个比较 canTrickleIceCandidates 和 "true" 的应用程序在初始 offer 时默认会尝试 Half Trickle ICE，在与 Trickle ICE 兼容的代理进行后续交互时默认会尝试 Full Trickle ICE。
 
 #### 4.1.18. setConfiguration
 
@@ -490,7 +490,7 @@ setConfiguration 方法允许 PeerConnection 的全局配置(最初由构造函�
 
 - 对 STUN/TURN 服务器的任何更改都会影响到下一个收集阶段。如果一个 ICE 收集阶段已经开始或完成，将设置 3.5.1 节中提到的 "needs-ice-restart" 标识。这将导致下一次调用 createOffer 来生成新的 ICE 凭证，目的是强制 ICE 重启并开始一个新的收集阶段，在这个阶段中将使用新的服务器。如果 ICE 候选池的大小为非零且尚未应用本地描述，则将丢弃任何现有的候选池，并从新服务器收集新的候选池。
 - 对 ICE 候选策略的任何更改都会影响下一个收集阶段。如果一个 ICE 收集阶段已经开始或完成，"needs-ice-restart" 标识将被设置。无论哪种方式，对策略的更改都不会对候选池产生影响，因为在出现收集阶段之前，应用程序无法使用池中的候选池，因此仍然可以对任何池中的候选池执行任何必要的过滤。
-- 应用本地描述后，不能改变 ICE 候选池的大小。如果本地描述还没有被应用，任何对 ICE 候选池大小的更改都会立即生效；如果增加，则预先收集更多的候选人;如果减少，则丢弃现在多余的候选项。
+- 应用本地描述后，不能改变 ICE 候选池的大小。如果本地描述还没有被应用，任何对 ICE 候选池大小的更改都会立即生效；如果增加，则预先收集更多的候选;如果减少，则丢弃现在多余的候选项。
 - 在 PeerConnection 建立后，bundle 和 rtcp 复用策略不能被修改。
 
 调用此方法可能导致对ICE代理的状态进行更改。
@@ -830,7 +830,7 @@ createOffer 方法接受一个 RTCOfferOptions 对象作为参数。如果存在
 
 m-section 后面必须紧跟着 "c=" 行，如 [RFC4566] 5.7 节所述。同样，由于没有候选项可用，"c=" 行必须包含默认值 "IN IP4 0.0.0.0"，如 [RFC8840] 4.1.3 节所定义。
 
-如果 offer 支持 bundle，所有 bundle 的 m-section 必须使用相同的 ICE 证书和候选人；所有未 bundle 的 m-section 必须使用唯一的 ICE 证书和候选人。每个 m-section 必须包含以下属性(不同于 IDENTICAL 或 TRANSPORT):
+如果 offer 支持 bundle，所有 bundle 的 m-section 必须使用相同的 ICE 证书和候选；所有未 bundle 的 m-section 必须使用唯一的 ICE 证书和候选。每个 m-section 必须包含以下属性(不同于 IDENTICAL 或 TRANSPORT):
 
 - 当且仅当 offer 中出现 "a=mid" 行，如[RFC5888] 9.1 节所述。MID 值必须与 offer 中指定的值匹配。
 - 方向属性，通过应用 [RFC3264] 6.1 节中提供的方向规则来确定，然后与相关的 RtpTransceiver 的方向相交。例如，在 m-section 被提供为 "sendonly" 和本地 RtpTransceiver 被设置为 "sendrecv" 的情况下，answer 的结果是 "recvonly" 方向。
