@@ -701,7 +701,7 @@ SDP 允许应该在媒体级的属性既放在会话级又放在媒体级，即�
 - 如果有任何 RtpTransceiver 被添加，并且在当前本地描述或远程描述中存在一个 "m=" 的 0 端口区域，m-section 必须被回收，为添加的 RtpTransceiver 生成一个 m-section ，就像 m-section 被添加到会话描述中(包括一个新的 MID 值)，并将其放在与 m-section 相同的索引和 0 端口。
 - 如果 RtpTransceiver 被停止并且没有与 m-section 相关联，则绝对不能为它生成 m-section 。这阻止了 RtpTransceiver 的 m-section 被回收，并在之前的 offer/answer 交换中用于新的 RtpTransceiver，如上所述。
 - 如果 RtpTransceiver 已经停止并与一个 m-section 相关联，并且 m-section 没有被回收，如上所述，一个 m-section 必须为它生成与端口设置为 0 和删除所有 "a=msid" 行。
-- 对于没有停止的 RtpTransceiver，"a=msid" 行必须保持不变，如果它们存在于当前的描述中，无论 RtpTransceiver 的方向或 track 的变化。如果在当前描述中没有 "a=msid"行，"a=msid" 行(s)必须根据与初始 offer 相同的规则生成。
+- 对于没有停止的 RtpTransceiver，"a=msid" 行必须保持不变，如果它们存在于当前的描述中，无论 RtpTransceiver 的方向或 track 的变化。如果在当前描述中没有 "a=msid" 行，"a=msid" 行(s)必须根据与初始 offer 相同的规则生成。
 - 每一行 "m=" 和 "c=" 必须填写端口，相关的 RTP profile，和 m-section 的默认候选地址，如[RFC8839]，4.2.1.2 节和 5.1.2 节所述。如果还没有收集 RTP 候选项，则必须仍然使用默认值，如上所述。
 - 每一行 "a=mid" 必须保持一致。
 - "a=ice-ufrag" 和 "a=ice-pwd" 必须保持不变，除非 ICE 配置发生了改变(例如，改变了支持的 STUN/TURN 服务器或 ICE 候选策略)或 icerstart 选项(5.2.3.1 节)被指定。如果 m-section 被捆绑到另一个 m-section 中，它仍然不能包含任何 ICE 凭证。
