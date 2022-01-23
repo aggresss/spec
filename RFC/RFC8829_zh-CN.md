@@ -593,7 +593,7 @@ SRTP 密钥的 SDP 安全描述机制 [RFC4568] 不能被使用，如在 [RFC882
 
 ### 5.2. Constructing an Offer
 
-当 createOfferv被调用时，必须创建一个新的 SDP 描述，包含在 [RFC8834] 中指定的功能。这个过程的具体细节如下所述。
+当 createOffer 被调用时，必须创建一个新的 SDP 描述，包含在 [RFC8834] 中指定的功能。这个过程的具体细节如下所述。
 
 #### 5.2.1. Initial Offers
 
