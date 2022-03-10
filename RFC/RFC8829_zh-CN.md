@@ -1,6 +1,6 @@
 # JavaScript Session Establishment Protocol (JSEP)
 
-> 原文 [https://datatracker.ietf.org/doc/html/rfc8829](https://datatracker.ietf.org/doc/html/rfc8829)
+> 原文 [https://www.rfc-editor.org/rfc/rfc8829.html](https://www.rfc-editor.org/rfc/rfc8829.html)
 
 ## 摘要
 
