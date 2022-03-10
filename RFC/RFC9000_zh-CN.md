@@ -29,4 +29,30 @@ QUIC 连接并不严格绑定到单个网络路径。连接迁移使用连接标
 
 建立连接后，会提供多个终止连接的选项。应用程序可以管理一个安全的关闭，端点可以协商一个超时时间，错误可以导致立即断开连接，并且在一个端点失去状态后提供了一种无状态机制来终止连接。
 
-### 1.1.
+### 1.1. 文档结构
+
+本文档描述了QUIC核心协议，其结构如下:
+
+- 流是 QUIC 提供基本服务的抽象
+  - Section 02 描述流的核心概念
+  - Section 03 提供流状态的参考模型
+  - Section 04 概述了流量控制的操作
+- 连接是 QUIC 端点通信的上下文
+  - Section 05 描述连接的核心概念
+  - Section 06 描述版本协商
+  - Section 07 详细说明连接的建立过程
+  - Section 08 描述地址验证和关键的拒绝服务缓解措施
+  - Section 09 描述端点如何将连接迁移到新的网络路径
+  - Section 10 列出终止打开连接的选项
+  - Section 11 提供流和连接错误处理指南
+- 数据包和帧是 QUIC 通信的基本单位
+  - Section 12 描述数据包和帧的概念
+  - Section 13 定义数据的传输、重传和确认模型
+  - Section 14 指定数据报携带 QUIC 包大小的管理规则。
+- 最后，QUIC协议元素的编码细节描述如下
+  - Section 15 (versions)
+  - Section 16 (integer encoding)
+  - Section 17 (packet headers)
+  - Section 18 (transport parameters)
+  - Section 19 (frames)
+  - Section 20 (errors)
