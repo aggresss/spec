@@ -56,3 +56,13 @@ QUIC 连接并不严格绑定到单个网络路径。连接迁移使用连接标
   - Section 18 (transport parameters)
   - Section 19 (frames)
   - Section 20 (errors)
+
+随附的文档描述了 QUIC 的丢失检测和拥塞控制 [QUIC-RECOVERY]，以及 TLS 和其他加密机制 [QUIC-TLS] 的使用。
+
+本文档定义了 QUIC version 1，它符合 [QUIC-INVARIANTS] 中的协议不变量。
+
+要参考 QUIC version 1，请引用本文档。如需参考 QUIC 有限的版本无关属性集可以引用 [QUIC-INVARIANTS]。
+
+### 1.2. 术语和定义
+
+本文件中的关键词“必须”、“不得”、“必需”、“应”、“不应”、“建议”、“不建议”、“可”和“可选”在所有大写字母出现时（如图所示）应按照 BCP 14[RFC2119] [RFC8174] 所述进行解释。
