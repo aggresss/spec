@@ -202,3 +202,125 @@ QUIC 实现应该提供应用程序可以指示流的相对优先级的方法。
 
 本节中显示的状态机提供了大量的信息。本文档使用流状态来描述不同类型帧的发送时间和方式，以及接收不同类型帧时的预期反应。尽管这些状态机在实现 QUIC 时很有用，但这些状态并不是用来约束实现的。实现可以定义不同的状态机，只要它的行为与实现这些状态的实现一致。
 
+> 注意:在某些情况下，单个事件或操作可能导致多个状态的转换。例如，在发送流中设置 FIN 位可以导致两个状态的转换:从 "Ready" 状态到 "Send" 状态，以及从 "Send" 状态到"Data Sent" 状态。
+
+### 3.1. 发送流状态
+
+图 2 显示了流中向对端发送数据的部分的状态。
+
+```diagram
+      o
+       | Create Stream (Sending)
+       | Peer Creates Bidirectional Stream
+       v
+   +-------+
+   | Ready | Send RESET_STREAM
+   |       |-----------------------.
+   +-------+                       |
+       |                           |
+       | Send STREAM /             |
+       |      STREAM_DATA_BLOCKED  |
+       v                           |
+   +-------+                       |
+   | Send  | Send RESET_STREAM     |
+   |       |---------------------->|
+   +-------+                       |
+       |                           |
+       | Send STREAM + FIN         |
+       v                           v
+   +-------+                   +-------+
+   | Data  | Send RESET_STREAM | Reset |
+   | Sent  |------------------>| Sent  |
+   +-------+                   +-------+
+       |                           |
+       | Recv All ACKs             | Recv ACK
+       v                           v
+   +-------+                   +-------+
+   | Data  |                   | Reset |
+   | Recvd |                   | Recvd |
+   +-------+                   +-------+
+```
+
+图2: 发送部分流的状态
+
+应用程序打开端点发起的流的发送部分(客户端输入 0 和 2，服务器输入 1 和 3)。"Ready" 状态表示一个新创建的流，该流能够接受来自应用程序的数据。流数据可能在这种状态下被缓冲以准备发送。
+
+发送第一个 STREAM 或 STREAM_DATA_BLOCKED 帧会导致流的发送部分进入 "Send" 状态。一个实现可以选择延迟分配流 ID 到流，直到它发送第一个流帧并进入这个状态，这可以允许更好的流优先级。
+
+对端发起的双向流的发送部分(服务器为 type 0，客户端为 type 1)在接收部分创建时开始处于 "Ready" 状态。
+
+在 "Send" 状态下，终端在 stream 帧中传输流数据并在必要时重新传输。终端遵守对等端设置的流控制限制，并继续接受和处理 MAX_STREAM_DATA 帧。如果终端被流控制限制 (4.1 节)阻止发送，处于 "Send" 状态的终端会生成 STREAM_DATA_BLOCKED 帧。
+
+当应用程序表示所有的流数据已经发送完毕，并且发送了一个包含 FIN 位的流帧后，流的发送部分进入 "Data Sent" 状态。在这种状态下，终端只在必要时重新传输流数据。在这种状态下，终端不需要检查流控制限制或为流发送 STREAM_DATA_BLOCKED 帧。MAX_STREAM_DATA 帧可能被接收到，直到对等端接收到最终的流偏移量。在这种状态下，终端可以安全地忽略从对等端接收到的任何 MAX_STREAM_DATA 帧。
+
+一旦所有流数据被成功确认，流的发送部分进入 "Data Recvd" 状态，这是一种终端状态。
+
+从任何 "Ready"、"Send" 或 "Data Sent" 状态中，应用程序可以发出信号，表示它希望放弃流数据的传输。或者，一个端点可能从它的对等端接收一个 STOP_SENDING 帧。在这两种情况下，终端发送一个 RESET_STREAM 帧，使流进入 "Reset Sent" 状态。
+
+终端可以发送 RESET_STREAM 作为提到流的第一个帧；这会导致流的发送部分打开，然后立即切换到 "Reset Sent" 状态。
+
+一旦包含 RESET_STREAM 的数据包被确认，流的发送部分进入 "Reset Recvd" 状态，这是一个终端状态。
+
+### 3.2. 接收流状态
+
+图 3 显示了从对端接收数据的流部分的状态。流中接收部分的状态只反映了对端流中发送部分的部分状态。流的接收部分不跟踪发送部分无法观察到的状态，例如 "Ready" 状态。相反，流的接收部分跟踪向应用程序发送的数据，其中一些数据是发送方无法观察到的。
+
+```diagram
+       o
+       | Recv STREAM / STREAM_DATA_BLOCKED / RESET_STREAM
+       | Create Bidirectional Stream (Sending)
+       | Recv MAX_STREAM_DATA / STOP_SENDING (Bidirectional)
+       | Create Higher-Numbered Stream
+       v
+   +-------+
+   | Recv  | Recv RESET_STREAM
+   |       |-----------------------.
+   +-------+                       |
+       |                           |
+       | Recv STREAM + FIN         |
+       v                           |
+   +-------+                       |
+   | Size  | Recv RESET_STREAM     |
+   | Known |---------------------->|
+   +-------+                       |
+       |                           |
+       | Recv All Data             |
+       v                           v
+   +-------+ Recv RESET_STREAM +-------+
+   | Data  |--- (optional) --->| Reset |
+   | Recvd |  Recv All Data    | Recvd |
+   +-------+<-- (optional) ----+-------+
+       |                           |
+       | App Read All Data         | App Read Reset
+       v                           v
+   +-------+                   +-------+
+   | Data  |                   | Reset |
+   | Read  |                   | Read  |
+   +-------+                   +-------+
+```
+
+图 3: 接收部分流的状态
+
+当第一个 stream、STREAM_DATA_BLOCKED 或 RESET_STREAM 帧被接收到时，对端(客户端类型为 1 和 3，服务器类型为 0 和 2)发起的流的接收部分被创建。对于对端发起的双向流，接收流发送部分的 MAX_STREAM_DATA 或 STOP_SENDING 帧也会创建接收部分。流接收部分的初始状态是 "Recv"。
+
+对于双向流，当终端发起的发送部分(客户端输入0，服务器输入1)进入 "Ready" 状态时，接收部分进入 "Recv" 状态。
+
+当从对等端接收到 MAX_STREAM_DATA 或 STOP_SENDING 帧时，终端打开一个双向流。收到一个未打开的流的 MAX_STREAM_DATA 帧表明远端已经打开了流并提供了流控制信用。接收一个未打开流的 STOP_SENDING 帧表示远端不再希望接收这个流上的数据。如果包丢失或重新排序，任何一个帧都可能在 STREAM 或 STREAM_DATA_BLOCKED 帧之前到达。
+
+在创建流之前，必须先创建所有相同类型且流 ID 号较低的流。这确保了流的创建顺序在两个端点上是一致的。
+
+在 "Recv" 状态下，终端接收到 STREAM 和 STREAM_DATA_BLOCKED 帧。传入的数据将被缓冲，并可以按照正确的顺序重新组装成交付给应用程序的数据。当应用程序使用数据和缓冲区空间可用时，端点发送MAX_STREAM_DATA帧以允许对等端发送更多的数据。
+
+当接收到一个带有 FIN 位的流帧时，流的最终大小是已知的；参见 4.5 节。然后，流的接收部分进入 "Size Known" 状态。在这种状态下，终端不再需要发送 MAX_STREAM_DATA 帧；它只接收流数据的任何重传。
+
+一旦流的所有数据被接收，接收部分进入 "Data Recvd" 状态。这可能是由于接收到相同的流帧导致过渡到 "Size Known" 的结果。在接收到所有数据之后，流中的任何 STREAM 或 STREAM_DATA_BLOCKED 帧都可以被丢弃。
+
+"Data Recvd" 状态一直持续到流数据被交付给应用程序。一旦流数据被交付，流进入“数据读取”状态，这是一个终端状态。
+
+接收到“Recv”或“Size Known”状态的RESET_STREAM帧会导致流进入 "Data Read" 状态。这可能会导致中断向应用程序发送流数据。
+
+当 RESET_STREAM 被接收时(即在 "Data Recvd" 状态)，所有的流数据都可能已经被接收。类似地，在接收到 RESET_STREAM 帧("Reset Recvd" 状态)后，流数据仍然可以到达。实现可以根据自己的选择自由地管理这种情况。
+
+发送 RESET_STREAM 意味着终端不能保证流数据的交付；然而，如果接收到 RESET_STREAM，没有要求流数据不被发送。一个实现可以中断流数据的交付，丢弃任何没有被使用的数据，并发出接收 RESET_STREAM 的信号。RESET_STREAM 信号可能被抑制或保留，如果流数据被完全接收，并被缓冲以供应用程序读取。如果 RESET_STREAM 被抑制了，流的接收部分仍然保留在 "Data Recvd" 中。
+
+一旦应用程序接收到指示流被重置的信号，流的接收部分转换到 "Reset Read" 状态，这是一个终止状态。
