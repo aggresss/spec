@@ -10,6 +10,10 @@
 
 - [https://xiph.org/vorbis/](https://xiph.org/vorbis/)
 
+## FLAC
+
+- [https://xiph.org/flac/](https://xiph.org/flac/)
+
 ## Speex
 
 - [https://www.speex.org/](https://www.speex.org/)
