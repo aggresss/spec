@@ -110,7 +110,6 @@ RFC | 名称 | 备注
 [7202](https://datatracker.ietf.org/doc/html/rfc7202) | Securing the RTP Framework: Why RTP Does Not Mandate a Single Media Security Solution | RTP的安全机制的补充说明
 [7656](https://datatracker.ietf.org/doc/html/rfc7656) | A Taxonomy of Semantics and Mechanisms for Real-Time Transport Protocol (RTP) Sources | RTP在webrtc中的应用场景
 [7667](https://datatracker.ietf.org/doc/html/rfc7667) | RTP Topologies | 在MCU等复杂系统中，RTP流的设计规范
-[7741](https://datatracker.ietf.org/doc/html/rfc7741) | RTP Payload Format for VP8 Video | 负载为vp8的定义
 [7798](https://datatracker.ietf.org/doc/html/rfc7798) | RTP Payload Format for High Efficiency Video Coding (HEVC) | 负载为HEVC的定义
 [8082](https://datatracker.ietf.org/doc/html/rfc8082) | Using Codec Control Messages in the RTP Audio-Visual Profile with Feedback with Layered Codecs | 基于4585实时RTCP消息，来控制分层的音视频编码器的机制，对于5104协议的补充
 [8083](https://datatracker.ietf.org/doc/html/rfc8083) | Multimedia Congestion Control: Circuit Breakers for Unicast RTP Sessions | RTP的拥塞处理之码流环回的处理
