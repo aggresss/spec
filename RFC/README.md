@@ -25,6 +25,7 @@ RFC | 名称
 [RFC5245](https://datatracker.ietf.org/doc/html/rfc5245) | Interactive Connectivity Establishment (ICE): A Protocol for Network Address Translator (NAT) Traversal for Offer/Answer Protocols
 [RFC5389](https://datatracker.ietf.org/doc/html/rfc5389) | Session Traversal Utilities for NAT (STUN)
 [RFC5766](https://datatracker.ietf.org/doc/html/rfc5766) | Traversal Using Relays around NAT (TURN): Relay Extensions to Session Traversal Utilities for NAT (STUN)
+[RFC4960](https://datatracker.ietf.org/doc/html/rfc4960) | Stream Control Transmission Protocol (SCTP)
 
 ## RTP/RTCP
 
