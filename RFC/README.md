@@ -26,6 +26,7 @@ RFC | 名称
 [RFC5389](https://datatracker.ietf.org/doc/html/rfc5389) | Session Traversal Utilities for NAT (STUN)
 [RFC5766](https://datatracker.ietf.org/doc/html/rfc5766) | Traversal Using Relays around NAT (TURN): Relay Extensions to Session Traversal Utilities for NAT (STUN)
 [RFC4960](https://datatracker.ietf.org/doc/html/rfc4960) | Stream Control Transmission Protocol (SCTP)
+[RFC9000](https://datatracker.ietf.org/doc/html/rfc9000) | QUIC: A UDP-Based Multiplexed and Secure Transport
 
 ## RTP/RTCP
 
