@@ -279,3 +279,35 @@ WHIP 端点和 Media Servers 可能不在同一服务器上，因此可以对传
 
 在高负载的情况下，WHIP 端点可能返回一个 "503 Service Unavailable" 状态码，表明服务器目前由于临时过载或计划维护而无法处理请求，这种情况可能会在一段延迟后缓解。WHIP 端点可能会发送一个 "Retry-After" 报头字段，指示用户代理在发出后续请求之前应该等待的最短时间。
 
+### 4.4. STUN/TURN 服务器配置
+
+WHIP 端点可以返回 STUN/TURN 服务器配置 URL 和客户端可以使用的凭据，在 "201 Created" 响应中向 WHIP 端点 URL 发送 POST 请求。
+
+每个 STUN/TURN 服务器将使用 "Link" 报头字段 [RFC8288] 返回，其中 "rel" 属性值为 "ice-server"。链接目标 URI 是 [RFC7064] 和 [RFC7065] 中定义的服务器 URL。凭据编码在 Link 目标属性中如下所示:
+
+- username: 如果 Link 报头字段表示一个 TURN 服务器，并且凭据类型为 "password"，那么该属性指定与该 TURN 服务器一起使用的用户名。
+- credential: 如果 "credential-type" 属性缺失或有一个 "password" 值，credential 属性表示一个长期的身份验证密码，如 [RFC8489] 第 10.2 节所述。
+- credential-type: 如果 Link 报头字段表示一个 TURN 服务器，那么该属性指定在 TURN 服务器请求授权时应该如何使用凭据属性值。如果该属性不存在，则默认值为 "password"。
+
+```text
+ Link: <stun:stun.example.net>; rel="ice-server"
+     Link: <turn:turn.example.net?transport=udp>; rel="ice-server";
+           username="user"; credential="myPassword"; credential-type="password"
+     Link: <turn:turn.example.net?transport=tcp>; rel="ice-server";
+           username="user"; credential="myPassword"; credential-type="password"
+     Link: <turns:turn.example.net?transport=tcp>; rel="ice-server";
+           username="user"; credential="myPassword"; credential-type="password"
+```
+
+图5: ICE 服务配置示例
+
+注意: "ice-server" 的 "rel" 属性值和目标属性的命名遵循 W3C WebRTC 推荐使用的名称。[REC-webrtc-20210126] RTCConfiguration dictionary 4.2.1。"ice-server" 的 "rel" 属性值没有加上 "urn:ietf:params:whip:" 的前缀，因此它可以被其他可能使用这种机制来配置 STUN/TURN 服务器使用的规范重用。
+
+有一些 WebRTC 实现不支持在本地 Offer 创建后更新 STUN/TURN 服务器配置，如 [RFC8829] 第 4.1.18 节所述。为了支持这些客户端，在 POST 请求发送之前，WHIP 端点还可以在发送到 WHIP 端点 URL 的 OPTIONS 请求的响应中包含 STUN/TURN 服务器配置。
+
+生成 TURN 服务器凭据可能需要执行对外部提供者的请求，这既会增加 OPTION 请求处理的延迟，又会增加处理该请求所需的处理。为了防止这种情况，如果 OPTION 请求是 CORS 的预发送请求，也就是说，如果 OPTION 请求不包含具有 "POST" 值的访问控制请求方法，并且访问控制请求头部 HTTP 头不包含 "Link" 值，则 WHIP 端点不应返回 STUN/TURN 服务器配置。
+
+也可以用广播服务或 WHIP 客户机上的外部 TURN 提供程序提供的长期凭证配置 STUN/TURN 服务器 URL，覆盖 WHIP 端点提供的值。
+
+### 4.5 身份验证和授权
+
