@@ -311,3 +311,42 @@ WHIP 端点可以返回 STUN/TURN 服务器配置 URL 和客户端可以使用�
 
 ### 4.5 身份验证和授权
 
+WHIP 端点和资源可能要求使用 HTTP 授权报头字段和承载令牌对 HTTP 请求进行身份验证，如 [RFC6750] 2.1节所述。WHIP 客户端必须实现这种认证和授权机制，并在发送到 WHIP 端点或资源的所有 HTTP 请求中发送 HTTP 授权报头字段 (CORS 的 preflight OPTIONS 请求除外)。
+
+WHIP 端点和资源可能要求使用 HTTP 授权报头字段和承载令牌对 HTTP 请求进行身份验证，如 [RFC6750] 2.1 节所述。WHIP 客户端必须实现这种认证和授权机制，并在发送到 WHIP 端点或资源的所有 HTTP 请求中发送 HTTP authorization 报头字段。
+
+承载标记的性质、语法和语义，以及如何将其分发到客户机，超出了本文档的范围。可以使用的令牌类型的一些例子是，但不限于，根据 [RFC6750] 和 [RFC8725] 的 JWT 令牌，或存储在数据库中的共享秘密。令牌通常与 WHIP 端点 URL 一起提供给最终用户，并在 WHIP 客户机上进行配置(类似于 RTMP URL 和流密钥的分发方式)。
+
+WHIP 端点和资源可以通过在用于 WHIP 端点或资源的 URL 中编码身份验证令牌来执行身份验证和授权。如果 WHIP 客户端没有配置为使用承载令牌，HTTP Authorization 报头字段在任何请求中都不能被发送。
+
+### 4.6. Simulcast 和 SVC
+
+Simulcast [RFC8853] 和 可扩展视频编码(SVC)，包括 K-SVC(也称为 "S模式"，在这种模式下，多个编码在同一个 SSRC 上发送)，都可以通过在 SDP Offer/Answer 中协商得到媒体服务器和 WHIP 客户端的支持。
+
+如果客户端支持 Simulcast，并且想要发布它，它必须根据 [RFC8853] 5.3节中的程序在 SDP 提供中协商支持。接受 Simulcast Offer 的服务器必须根据程序 [RFC8853] 5.3.2 节创建 Answer。
+
+### 4.7. 协议的扩展
+
+为了支持为 WHIP 协议定义的未来扩展，定义了一个用于注册和宣布新扩展的公共过程。
+
+WHIP 服务器支持的协议扩展必须在发送到 WHIP 端点的初始 HTTP POST 请求的 "201 Created" 响应中发布给 WHIP 客户端。WHIP 端点必须为每个扩展返回一个 "Link" 报头字段，带有扩展"rel" 类型属性和用于接收与该扩展相关的请求的 HTTP 资源的 URI。
+
+协议扩展对于 WHIP 客户端和服务器都是可选的。WHIP 客户端必须忽略任何具有未知 "rel" 属性值的 Link 属性，WHIP 服务器必须不要求使用任何扩展。
+
+每个协议扩展必须在 IANA 注册一个唯一的 "rel" 属性值，以前缀: "urn:ietf:params:whip:ext" 开头，如 {urn-whip-subspace} 中定义的那样。
+
+例如，考虑到使用 https://html.spec.whatwg.org/multipage/server-sent-events.html#server-sent-events 中指定的服务器发送事件的服务器到客户端通信的潜在扩展，连接到已发布流的服务器端事件资源的 URL 可以在初始 HTTP "201 Created" 响应中返回，该响应带有 "Link" 头字段和 "urn:ietf:params:whip:ext:example:server-sent-events" 的 "rel" 属性。(本文档不指定该扩展名，仅作为示例。)
+
+在这种理论上的情况下，HTTP POST 请求的 HTTP 201 响应应该如下所示:
+
+```text
+HTTP/1.1 201 Created
+Content-Type: application/sdp
+Location: https://whip.example.com/resource/id
+Link: <https://whip.ietf.org/publications/213786HF/sse>;
+      rel="urn:ietf:params:whip:ext:example:server-side-events"
+```
+
+## 5. 安全注意事项
+
+HTTPS 应被使用，以保持 WebRTC 安全模型。
