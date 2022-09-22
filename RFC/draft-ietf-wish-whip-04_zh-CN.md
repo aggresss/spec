@@ -1,4 +1,4 @@
-# WebRTC-HTTP ingestion protocol (WHIP)
+# WebRTC-HTTP Ingestion Protocol (WHIP)
 
 > 原文 [https://www.ietf.org/archive/id/draft-ietf-wish-whip-04.html](https://www.ietf.org/archive/id/draft-ietf-wish-whip-04.html)
 
