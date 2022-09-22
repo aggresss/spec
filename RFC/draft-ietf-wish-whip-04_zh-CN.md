@@ -72,3 +72,144 @@ WebRTC-HTTP 接入协议(WHIP) 使用 HTTP POST 请求执行单次 SDP Offer/Ans
 
 ```
 
+图1: WHIP 会话建立和注销
+
+## 4. 协议操作
+
+为了建立一个接入会话，WHIP 客户机将根据 JSEP 规则生成一个 SDP Offer，并对配置的 WHIP 端点 URL 执行一个 HTTP POST 请求。
+
+HTTP POST 请求的内容类型为 "application/sdp"，并包含作为主体的 SDP Offer。WHIP 端点将生成一个 SDP Answer 并返回一个 "201 Created" 响应，内容类型为 "application/ SDP"，SDP Answer 作为主体，Location 报头字段指向新创建的资源。
+
+SDP Offer 应该使用 "sendonly" 属性，SDP Answer 必须使用 "recvonly" 属性。
+
+```text
+POST /whip/endpoint HTTP/1.1
+Host: whip.example.com
+Content-Type: application/sdp
+Content-Length: 1326
+
+v=0
+o=- 5228595038118931041 2 IN IP4 127.0.0.1
+s=-
+t=0 0
+a=group:BUNDLE 0 1
+a=extmap-allow-mixed
+a=msid-semantic: WMS
+m=audio 9 UDP/TLS/RTP/SAVPF 111
+c=IN IP4 0.0.0.0
+a=rtcp:9 IN IP4 0.0.0.0
+a=ice-ufrag:zjkk
+a=ice-pwd:bP+XJMM09aR8AiX1jdukzR6Y
+a=ice-options:trickle
+a=fingerprint:sha-256 DA:7B:57:DC:28:CE:04:4F:31:79:85:C4:31:67:EB:27:58:29:ED:77:2A:0D:24:AE:ED:AD:30:BC:BD:F1:9C:02
+a=setup:actpass
+a=mid:0
+a=bundle-only
+a=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid
+a=sendonly
+a=msid:- d46fb922-d52a-4e9c-aa87-444eadc1521b
+a=rtcp-mux
+a=rtpmap:111 opus/48000/2
+a=fmtp:111 minptime=10;useinbandfec=1
+m=video 9 UDP/TLS/RTP/SAVPF 96 97
+c=IN IP4 0.0.0.0
+a=rtcp:9 IN IP4 0.0.0.0
+a=ice-ufrag:zjkk
+a=ice-pwd:bP+XJMM09aR8AiX1jdukzR6Y
+a=ice-options:trickle
+a=fingerprint:sha-256 DA:7B:57:DC:28:CE:04:4F:31:79:85:C4:31:67:EB:27:58:29:ED:77:2A:0D:24:AE:ED:AD:30:BC:BD:F1:9C:02
+a=setup:actpass
+a=mid:1
+a=bundle-only
+a=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:10 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id
+a=extmap:11 urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id
+a=sendonly
+a=msid:- d46fb922-d52a-4e9c-aa87-444eadc1521b
+a=rtcp-mux
+a=rtcp-rsize
+a=rtpmap:96 VP8/90000
+a=rtcp-fb:96 ccm fir
+a=rtcp-fb:96 nack
+a=rtcp-fb:96 nack pli
+a=rtpmap:97 rtx/90000
+a=fmtp:97 apt=96
+
+HTTP/1.1 201 Created
+ETag: "38sdf4fdsf54:EsAw"
+Content-Type: application/sdp
+Content-Length: 1400
+Location: https://whip.example.com/resource/id
+
+v=0
+o=- 1657793490019 1 IN IP4 127.0.0.1
+s=-
+t=0 0
+a=group:BUNDLE 0 1
+a=extmap-allow-mixed
+a=ice-lite
+a=msid-semantic: WMS *
+m=audio 9 UDP/TLS/RTP/SAVPF 111
+c=IN IP4 0.0.0.0
+a=rtcp:9 IN IP4 0.0.0.0
+a=ice-ufrag:526be20a538ee422
+a=ice-pwd:2e13dde17c1cb009202f627fab90cbec358d766d049c9697
+a=fingerprint:sha-256 F7:EB:F3:3E:AC:D2:EA:A7:C1:EC:79:D9:B3:8A:35:DA:70:86:4F:46:D9:2D:CC:D0:BC:81:9F:67:EF:34:2E:BD
+a=candidate:1 1 UDP 2130706431 198.51.100.1 39132 typ host
+a=setup:passive
+a=mid:0
+a=bundle-only
+a=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid
+a=recvonly
+a=rtcp-mux
+a=rtcp-rsize
+a=rtpmap:111 opus/48000/2
+a=fmtp:111 minptime=10;useinbandfec=1
+m=video 9 UDP/TLS/RTP/SAVPF 96 97
+c=IN IP4 0.0.0.0
+a=rtcp:9 IN IP4 0.0.0.0
+a=ice-ufrag:526be20a538ee422
+a=ice-pwd:2e13dde17c1cb009202f627fab90cbec358d766d049c9697
+a=fingerprint:sha-256 F7:EB:F3:3E:AC:D2:EA:A7:C1:EC:79:D9:B3:8A:35:DA:70:86:4F:46:D9:2D:CC:D0:BC:81:9F:67:EF:34:2E:BD
+a=candidate:1 1 UDP 2130706431 198.51.100.1 39132 typ host
+a=setup:passive
+a=mid:1
+a=bundle-only
+a=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid
+a=extmap:10 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id
+a=extmap:11 urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id
+a=recvonly
+a=rtcp-mux
+a=rtcp-rsize
+a=rtpmap:96 VP8/90000
+a=rtcp-fb:96 ccm fir
+a=rtcp-fb:96 nack
+a=rtcp-fb:96 nack pli
+a=rtpmap:97 rtx/90000
+a=fmtp:97 apt=96
+```
+
+图2：HTTP POST 进行 Offer/Answer 操作示例
+
+一旦建立了会话，ICE consent freshness[RFC7675] 机制将用于检测会话两端的突然断开和 DTLS 中断。
+
+要显式终止会话，WHIP 客户端必须对初始 HTTP POST 的 Location 报头字段中返回的资源 URL 执行一个 HTTP DELETE 请求。当收到 HTTP DELETE 请求时，WHIP 资源将被移除，Media Server 上的资源将被释放，ICE 和 DTLS 会话将被终止。
+
+媒体服务器终止会话必须遵循[RFC7675] 5.2 节中立即撤销同意的程序。
+
+WHIP 端点必须对资源 URL 上的任何 HTTP GET、HEAD 或 PUT 请求返回 HTTP 405 响应，以便为本协议规范的未来版本保留其使用。
+
+WHIP 资源必须对资源 URL 上的任何 HTTP GET、HEAD、POST 或 PUT 请求返回 HTTP 405 响应，以便为本协议规范的未来版本保留其使用。
+
+### 4.1 ICE 和 NAT 支持
+
+WHIP 客户的 Initial Offer 可以在 ICE 的完整收集和 ICE 候选人的完整名单完成后发送，也可以只包含本地候选人(甚至是空的候选人名单)。
+
+为了简化协议，一旦发送了 SDP Answer，就不支持从 Media Server ICE 候选对象交换继续收集的 trickle 候选对象。在响应客户请求之前，WHIP 端点应收集媒体服务器的所有 ICE 候选人，SDP Answer 应包含媒体服务器的 ICE 候选人的完整列表。媒体服务器可以使用 ICE lite，而 WHIP 客户端必须实现完整的 ICE。
+
+WHIP客户端可以通过发送一个HTTP PATCH 请求到 WHIP 资源 URL，请求正文包含 MIME 类型为 "application/trickle-ice-sdpfrag" 的 SDP 片段，如 [RFC8840] 中指定的，来执行 Trickle ICE 或者 ICE Restart [RFC8863]。当用于 Trickle ICE 时，此 PATCH 消息体将包含新的 ICE 候选项；当用于 ICE Restart 时，它将包含一个新的 ICE ufrag/pwd 对。
+
+对于 WHIP 资源，Trickle ICE 和 ICE Restart 支持是可选的。如果 WHIP 资源不支持 Trickle ICE 或 ICE Restart，它必须对任何 HTTP PATCH 请求返回 405 Method Not Allowed 响应。如果 WHIP 资源支持 Trickle ICE 或 ICE Restart，但不同时支持两者，它必须对不支持的 HTTP PATCH 请求返回 501 Not Implemented。
+
+由于 WHIP 客户端发送的 HTTP PATCH 请求可能会被 WHIP 资源乱序接收，因此 WHIP 资源必须生成一个唯一的强关联实体标签，根据 [RFC9110] 2.3 节标识 ICE 会话。标识初始 ICE 会话的实体标记的初始值必须在向 WHIP 端点的初始 POST 请求 201 响应的 ETag 报头字段中返回。它还必须在触发 ICE Restart 的任何 PATCH 请求的 200 OK 中返回。
+
