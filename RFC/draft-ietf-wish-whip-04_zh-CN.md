@@ -238,3 +238,44 @@ a=end-of-candidates
 
 HTTP/1.1 204 No Content
 ```
+
+图3: Trickle ICE 请求
+
+根据 [RFC9110] 3.1 节的规定，WHIP 客户端发送执行 ICE Restart 的 PATCH 请求必须包含一个 "If-Match" 报头字段，字段值为 "*" 。
+
+如果 HTTP PATCH 请求导致 ICE Restart，WHIP 资源将返回一个 "200 OK"，其中包含 "application/trickle-ice-sdpfrag" 主体，其中包含新的 ICE 用户名片段和密码。响应可以有选择地包含 Media Server 的新 ICE 候选集，新的实体标记对应 ETag 响应报头字段中的新 ICE 会话。
+
+如果 ICE 请求不能被 WHIP 资源满足，资源必须返回适当的 HTTP 错误码，并且绝对不能立即终止会话。WHIP 客户端可以通过发出一个 HTTP DELETE 请求来重新执行 ICE 重启或终止会话。在这两种情况下，如果 ICE 协议由于 ICE 重启失败而失效(根据 [RFC7675] 第5.1节)，会话必须被终止。
+
+```text
+PATCH /resource/id HTTP/1.1
+Host: whip.example.com
+If-Match: "*"
+Content-Type: application/trickle-ice-sdpfrag
+Content-Length: 54
+
+a=ice-ufrag:ysXw
+a=ice-pwd:vw5LmwG4y/e6dPP/zAP9Gp5k
+
+HTTP/1.1 200 OK
+ETag: "289b31b754eaa438:ysXw"
+Content-Type: application/trickle-ice-sdpfrag
+Content-Length: 102
+
+a=ice-lite
+a=ice-ufrag:289b31b754eaa438
+a=ice-pwd:0b66f472495ef0ccac7bda653ab6be49ea13114472a5d10a
+```
+
+图4: ICE Restart 请求
+
+因为 WHIP 客户端需要知道与 ICE 会话相关联的实体标记，以便发送新的 ICE 候选对象，所以它必须在接收到对初始 POST 请求或带有新实体标记值的 PATCH 请求的HTTP响应之前缓冲所有收集的候选对象。一旦知道了实体标签的值，WHIP 客户端应该发送一个聚合的 HTTP PATCH 请求，包含它目前缓冲过的所有候选 ICE。
+
+在网络不稳定的情况下，ICE Restart 的 HTTP PATCH 请求和响应可能会被乱序接收。为了缓解这种情况，当客户端执行 ICE Restart 时，它必须丢弃任何先前的 ICE username/pwd frag，并忽略从挂起的 HTTP PATCH 请求接收到的任何进一步的 HTTP PATCH 响应。客户端必须只应用在响应中收到的 ICE 信息来响应最后发送的请求。如果客户端和服务器上的 ICE 信息不匹配(因为一个无序的请求)，那么 STUN 请求将包含无效的 ICE 信息，并且将被服务器拒绝。当 WHIP 客户端检测到这种情况时，它应该向服务器发送一个新的ICE Restart 请求。
+
+### 4.3. 负载均衡和重定向
+
+WHIP 端点和 Media Servers 可能不在同一服务器上，因此可以对传入的请求进行负载均衡，发送到不同的 Media Servers。WHIP 客户端应通过 "307 Temporary Redirect" 支持 HTTP 重定向，如 [RFC9110] 第 6.4.7 节所述。WHIP 资源 URL 必须是最终 URL，发送给它的 PATCH 和 DELETE 请求不需要支持重定向。
+
+在高负载的情况下，WHIP 端点可能返回一个 "503 Service Unavailable" 状态码，表明服务器目前由于临时过载或计划维护而无法处理请求，这种情况可能会在一段延迟后缓解。WHIP 端点可能会发送一个 "Retry-After" 报头字段，指示用户代理在发出后续请求之前应该等待的最短时间。
+
