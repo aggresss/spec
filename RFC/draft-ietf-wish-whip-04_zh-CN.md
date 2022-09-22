@@ -209,7 +209,32 @@ WHIP 客户的 Initial Offer 可以在 ICE 的完整收集和 ICE 候选人的�
 
 WHIP客户端可以通过发送一个HTTP PATCH 请求到 WHIP 资源 URL，请求正文包含 MIME 类型为 "application/trickle-ice-sdpfrag" 的 SDP 片段，如 [RFC8840] 中指定的，来执行 Trickle ICE 或者 ICE Restart [RFC8863]。当用于 Trickle ICE 时，此 PATCH 消息体将包含新的 ICE 候选项；当用于 ICE Restart 时，它将包含一个新的 ICE ufrag/pwd 对。
 
-对于 WHIP 资源，Trickle ICE 和 ICE Restart 支持是可选的。如果 WHIP 资源不支持 Trickle ICE 或 ICE Restart，它必须对任何 HTTP PATCH 请求返回 405 Method Not Allowed 响应。如果 WHIP 资源支持 Trickle ICE 或 ICE Restart，但不同时支持两者，它必须对不支持的 HTTP PATCH 请求返回 501 Not Implemented。
+对于 WHIP 资源，Trickle ICE 和 ICE Restart 支持是可选的。如果 WHIP 资源不支持 Trickle ICE 或 ICE Restart，它必须对任何 HTTP PATCH 请求返回 "405 Method Not Allowed" 响应。如果 WHIP 资源支持 Trickle ICE 或 ICE Restart，但不同时支持两者，它必须对不支持的 HTTP PATCH 请求返回 "501 Not Implemented" 。
 
 由于 WHIP 客户端发送的 HTTP PATCH 请求可能会被 WHIP 资源乱序接收，因此 WHIP 资源必须生成一个唯一的强关联实体标签，根据 [RFC9110] 2.3 节标识 ICE 会话。标识初始 ICE 会话的实体标记的初始值必须在向 WHIP 端点的初始 POST 请求 201 响应的 ETag 报头字段中返回。它还必须在触发 ICE Restart 的任何 PATCH 请求的 200 OK 中返回。
 
+根据 [RFC9110] 3.1 节的规定，WHIP 客户端在发送 PATCH 请求执行 Trickle ICE 时必须包含一个 "If-Match" 报头字段，其中包含最新的已知实体标签。当 WHIP 资源收到 PATCH 请求时，它必须根据 [RFC9110] 3.1 节的规定，将指定的实体标签值与资源的当前实体标签值进行比较，如果不匹配，则返回 "412 Precondition Failed" 响应。
+
+当不需要匹配特定的 ICE 会话时，WHIP 客户端不应该使用实体标记验证，例如在发起 DELETE 请求以终止会话时。
+
+一个 WHIP 资源接收到一个带有新的 ICE 候选项的 PATCH 请求，但不执行ICE Restart，必须返回一个 "204 No Content" 的无正文响应。如果 Media Server 不支持候选传输或无法解析连接地址，它必须接受带有 204 响应的 HTTP 请求，并静默丢弃候选。
+
+```text
+PATCH /resource/id HTTP/1.1
+Host: whip.example.com
+If-Match: "38sdf4fdsf54:EsAw"
+Content-Type: application/trickle-ice-sdpfrag
+Content-Length: 548
+
+a=ice-ufrag:EsAw
+a=ice-pwd:P2uYro0UCOQ4zxjKXaWCBui1
+m=audio RTP/AVP 0
+a=mid:0
+a=candidate:1387637174 1 udp 2122260223 192.0.2.1 61764 typ host generation 0 ufrag EsAw network-id 1
+a=candidate:3471623853 1 udp 2122194687 198.51.100.1 61765 typ host generation 0 ufrag EsAw network-id 2
+a=candidate:473322822 1 tcp 1518280447 192.0.2.1 9 typ host tcptype active generation 0 ufrag EsAw network-id 1
+a=candidate:2154773085 1 tcp 1518214911 198.51.100.2 9 typ host tcptype active generation 0 ufrag EsAw network-id 2
+a=end-of-candidates
+
+HTTP/1.1 204 No Content
+```
