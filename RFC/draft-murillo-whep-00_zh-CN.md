@@ -351,4 +351,57 @@ ETag: "38sdf4fdsf54:EsAw"
 
 如果 WHEP 资源在 HTTP POST Expire header 响应中指定的时间之前没有收到 HTTP PATCH 请求，它应该删除该资源，并对之后收到的 WHEP 资源 URL 上的任何请求响应一个 "404 not Found" 响应。
 
+### 4.3. 常规的流程
 
+WHEP 资源可能需要进行实时发布，以便允许 WHEP 播放器开始查看流。在这种情况下，WHEP 资源将对 WHEP 客户端发出的 POST 请求返回一个 409 冲突响应，并带有一个 Retry-After 报头，指示发送新请求前的秒数。WHEP玩家可以周期性地尝试连接到 WHEP 资源，以指数回调周期，初始值为 409 冲突响应 Header 中的 Retry-After 值。
+
+一旦建立了会话，ICE consent freshness [RFC7675] 将用于检测会话的任何一方的突然断开和 DTLS 销毁。
+
+要显式终止会话，WHEP 播放器必须对初始 HTTP POST 的 Location 报头字段中返回的资源 URL 执行一个 HTTP DELETE 请求。在接收到 HTTP DELETE 请求时，将删除媒体服务器上的 WHEP 资源并释放资源，终止ICE 和 DTLS 会话。
+
+媒体服务器终止会话必须遵循 [RFC7675] 5.2 节中立即撤销同意的操作流程。
+
+WHEP 端点必须对资源 URL 上的任何 HTTP GET、HEAD 或 PUT 请求返回 HTTP 405 响应，以便为本协议规范的未来版本保留其使用。
+
+WHEP 资源必须对资源 URL 上的任何 HTTP GET、HEAD、POST 或 PUT 请求返回 HTTP 405 响应，以便为本协议规范的未来版本保留其使用。
+
+### 4.4 ICE 和 NAT 支持
+
+WHEP Player 提供的 SDP 可以在完整的 ICE 集合和完整的 ICE 候选人列表完成后发送，也可以只包含本地候选人(甚至是空的候选人列表)。
+
+为了简化协议，一旦发送了 SDP Answer，就不支持从 Media Server ICE 候选对象交换聚集的 trickle 候选对象。在响应客户端请求之前，WHEP 端点应收集媒体服务器的所有 ICE 候选者，SDP Answer 应包含媒体服务器的 ICE 候选者的完整列表。媒体服务器可以使用 ICE lite，而 WHEP 播放器必须实现完整的 ICE。
+
+WHEP 播放器可以通过向 WHEP 资源 URL 发送 HTTP PATCH 请求来执行 trickle ICE 或 ICE restart [RFC8863]，请求的主体包含 MIME 类型为 "application/trickle-ice-sdprag" 的 SDP 片段，如 [RFC8840] 所指定的。当用于 trickle ICE 时，此 PATCH 消息体将包含新的 ICE 候选项；当用于重新启动 ICE 时，它将包含一个新的 ICE ufrag/pwd 对。
+
+WHEP 播放器在 SDP Offer/Answer 完成之前不能发送任何 ICE 候选或重新启动 ICE。因此，如果 WHEP 播放器在 SDP Offer/Answer 中不作为 Offer 提供者，在收到包含SDP Answer 的 200 OK HTTP PATCH 请求响应之前，它绝对不能发送任何用于 trickle ICE 或重启 ICE 的 HTTP PATCH 请求。
+
+对于 WHEP 资源，trickle ICE 和 ICE restart 支持是可选的。如果 WHEP 资源不支持 trickle ICE或 ICE restart，它必须对任何 HTTP PATCH 请求返回 405 Method not Allowed 响应。如果 WHEP 资源支持 trickle ICE 或 ICE restart，但不同时支持两者，它必须为不支持的 HTTP PATCH 请求返回 501 not Implemented。
+
+由于 WHEP 播放器发送的 HTTP PATCH 请求可能会被 WHEP 资源乱序接收，因此 WHEP 资源必须根据 [RFC9110] 2.3 节生成一个唯一的强实体标签来标识 ICE 会话。标识初始 ICE 会话的实体标签的初始值必须在对 WHEP 端点的初始 POST 请求的 201 响应中的 ETag 报头字段中返回，如果 WHEP 播放器作为 SDP Offer 提供者，或者在包含 SDP Answer 的 HTTP PATCH 响应中返回。它还必须在触发 ICE 重新启动的任何 PATCH 请求的 200 OK 中返回。
+
+WHEP 播放器发送执行 trickle ICE 的PATCH请求时，必须包含一个 "If-Match" 报头字段，根据 [RFC9110] 3.1 节的规定，包含最新的已知实体标签。当 WHEP 资源收到 PATCH 请求时，它必须根据 [RFC9110] 3.1 节将指定的实体标签值与资源的当前实体标签值进行比较，如果不匹配，则返回 "412 Precondition Failed" 响应。
+
+WHEP player 不应该在不需要匹配特定的 ICE 会话时使用实体标签验证，例如在发起 DELETE 请求终止会话时。
+
+WHEP 资源收到一个带有新的 ICE 候选项的 PATCH 请求，但不执行 ICE 重新启动，必须返回一个 "204 No Content" 的无正文响应。如果Media Server不支持候选传输或无法解析连接地址，它必须接受带有204响应的HTTP请求，并静默丢弃候选。
+
+```txt
+PATCH /resource/id HTTP/1.1
+Host: whep.example.com
+If-Match: "38sdf4fdsf54:EsAw"
+Content-Type: application/trickle-ice-sdpfrag
+Content-Length: 548
+
+a=ice-ufrag:EsAw
+a=ice-pwd:P2uYro0UCOQ4zxjKXaWCBui1
+m=audio RTP/AVP 0
+a=mid:0
+a=candidate:1387637174 1 udp 2122260223 192.0.2.1 61764 typ host generation 0 ufrag EsAw network-id 1
+a=candidate:3471623853 1 udp 2122194687 198.51.100.1 61765 typ host generation 0 ufrag EsAw network-id 2
+a=candidate:473322822 1 tcp 1518280447 192.0.2.1 9 typ host tcptype active generation 0 ufrag EsAw network-id 1
+a=candidate:2154773085 1 tcp 1518214911 198.51.100.2 9 typ host tcptype active generation 0 ufrag EsAw network-id 2
+a=end-of-candidates
+
+HTTP/1.1 204 No Content
+
+```
