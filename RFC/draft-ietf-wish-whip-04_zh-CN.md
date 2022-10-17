@@ -42,7 +42,7 @@ IETF RTCWEB 工作组标准化了 JSEP([RFC8829])，这是一种用于控制多�
 
 ## 3. 概述
 
-WebRTC-HTTP 接入协议(WHIP) 使用 HTTP POST 请求执行单次 SDP Offer/Answer，以便在编码器/媒体生产者(WHIP 客户端)和广播接收端点(媒体服务器)之间建立 ICE/DTLS 会话。
+WebRTC-HTTP Ingest Protocol (WHIP) 使用 HTTP POST 请求执行单次 SDP Offer/Answer，以便在编码器/媒体生产者(WHIP 客户端)和广播接收端点(媒体服务器)之间建立 ICE/DTLS 会话。
 
 一旦 ICE/DTLS 会话建立，媒体将从编码器/媒体生成器(WHIP客户端)单向流向广播接收端点(媒体服务器)。为了降低复杂性，不支持 SDP 重新协商，因此在完成通过 HTTP 的初始 SDP Offer/Answer 后，不能添加或删除任何 track 或 stream 。
 
