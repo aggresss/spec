@@ -383,7 +383,7 @@ WHEP 播放器发送执行 trickle ICE 的PATCH请求时，必须包含一个 "I
 
 WHEP player 不应该在不需要匹配特定的 ICE 会话时使用实体标签验证，例如在发起 DELETE 请求终止会话时。
 
-WHEP 资源收到一个带有新的 ICE 候选项的 PATCH 请求，但不执行 ICE 重新启动，必须返回一个 "204 No Content" 的无正文响应。如果Media Server不支持候选传输或无法解析连接地址，它必须接受带有204响应的HTTP请求，并静默丢弃候选。
+WHEP 资源收到一个带有新的 ICE 候选项的 PATCH 请求，但不执行 ICE 重新启动，必须返回一个 "204 No Content" 的无正文响应。如果 Media Server 不支持候选传输或无法解析连接地址，它必须接受带有 204 响应的 HTTP 请求，并静默丢弃候选。
 
 ```txt
 PATCH /resource/id HTTP/1.1
@@ -404,4 +404,94 @@ a=end-of-candidates
 
 HTTP/1.1 204 No Content
 
+```
+图 5: Trickle ICE 请求
+
+WHEP 播放器发送用于执行 ICE 重启的 PATCH 请求时，必须包含一个字段值为 "*" 的 "If-Match" 报头字段，按照 [RFC9110] 3.1 节的规定。
+
+如果 HTTP PATCH 请求导致 ICE 重新启动，WHEP 资源将返回一个 "200 OK"，其中包含 "application/trickle-ice-sdprag" 主体，其中包含新的 ICE 用户名片段和密码。响应可以有选择地包含 Media Server的新 ICE 候选集，新的实体标记对应 ETag 响应报头字段中的新 ICE 会话。
+
+如果 ICE 请求不能被 WHEP 资源满足，WHEP 资源必须返回一个适当的 HTTP 错误码，并且绝对不能立即终止会话。WHEP 播放器可以重试执行一个新的 ICE 重启或通过发出一个 HTTP DELETE 请求来终止会话。在这两种情况下，如果 ICE 协议由于 ICE 重启失败而失效(根据RFC7675第5.1节)，会话必须被终止。
+
+```txt
+PATCH /resource/id HTTP/1.1
+Host: whep.example.com
+If-Match: "*"
+Content-Type: application/trickle-ice-sdpfrag
+Content-Length: 54
+
+a=ice-ufrag:ysXw
+a=ice-pwd:vw5LmwG4y/e6dPP/zAP9Gp5k
+
+HTTP/1.1 200 OK
+ETag: "289b31b754eaa438:ysXw"
+Content-Type: application/trickle-ice-sdpfrag
+Content-Length: 102
+
+a=ice-lite
+a=ice-ufrag:289b31b754eaa438
+a=ice-pwd:0b66f472495ef0ccac7bda653ab6be49ea13114472a5d10a
+
+```
+
+图 6：ICE 重启请求
+
+因为 WHEP 播放器需要知道与 ICE 会话相关联的实体标记，以便发送新的 ICE 候选对象，所以它必须在接收到对初始 POST 请求或带有新实体标记值的 PATCH 请求的 HTTP 响应之前缓冲所有收集的候选对象。一旦它知道了实体标签的值，WHEP 播放器应该发送一个聚合的 HTTP PATCH 请求，包含它目前缓冲的所有 ICE 候选。
+
+在网络不稳定的情况下，ICE 重启 HTTP PATCH 请求和响应可能会被乱序接收。为了缓解这种情况，当客户端执行 ICE 重新启动时，它必须丢弃任何先前的 ICE用户名/pwd片段，并忽略从挂起的 HTTP PATCH 请求接收到的任何进一步的 HTTP PATCH 响应。客户端必须只应用在响应中收到的 ICE 信息来响应最后发送的请求。如果客户端和服务器上的 ICE 信息不匹配(因为一个无序的请求)，那么 STUN 请求将包含无效的 ICE 信息，并且将被服务器拒绝。当 WHEP 播放器检测到这种情况时，它应该向服务器发送一个新的 ICE 重启请求。
+
+### 4.5. WebRTC 约束
+
+在特定情况下的媒体消费从流媒体服务,可以进行一些假设的服务器端简化了 WebRTC 合规负担，WebRTC-gateway 文档中详细说明 [I-D.draft-ietf-rtcweb-gateways]。
+
+为了减少在播放器和媒体服务器中实现 WHEP 的复杂性，WHEP 对 WebRTC 的使用施加了以下限制:
+
+WHEP 播放器和 WHEP 端点都应该使用 SDP bundle [RFC9143]。每个 "m=" Section 必须是单个 BUNDLE 组的一部分。因此，当 WHEP 播放器或 WHEP 端点发送 SDP Offer 时，它必须在每个绑定的 "m=" Section 包含 "bundle-only" 属性。WHEP 播放器和媒体服务器必须根据 [RFC9143] 第 9 节的规定支持与 BUNDLE 组关联的多路媒体。此外，根据 [RFC9143]，WHEP 播放器和媒体服务器将对所有捆绑的媒体使用RTP/RTCP 多路复用。WHEP 播放器和媒体服务器应该包括 "rtcp-mux-only" 属性在每个绑定的 "m=" section。
+
+作为一个给定的流的编解码器可能不会被媒体服务器当 WHEP player 开始接收媒体流，如果作为 SDP Answer 提供者 WHEP 端点，它必须包括所有的编解码器提供支持的 SDP Answer 关于将不做任何假设的编解码器发送。
+
+trickle ICE 和 ICE restart 的支持是可选的，如 WHEP player 和媒体服务器的 4.1 节中所解释的。
+
+### 4.6. 负载平衡和重定向
+
+WHEP 端点和媒体服务器可能不在同一服务器上，因此可以对传入的请求进行负载平衡，发送到不同的媒体服务器。WHEP 播放器应通过 "307 Temporary Redirect response code" 支持 HTTP 重定向，如 [RFC9110] 第 6.4.7 节所述。WHEP 资源 URL 必须是最终的 URL，对于发送给它的 PATCH 和 DELETE 请求，不需要支持重定向。
+
+在高负载的情况下，WHEP 端点可能返回一个 503(Service Unavailable) 状态码，表明服务器目前由于临时过载或计划维护而无法处理请求，这种情况可能会在一段延迟后缓解。WHEP 端点可能会发送一个 Retry-After 报头字段，指示用户代理在发出后续请求之前应该等待的最小时间。
+
+### 4.7. STUN/TURN 服务配置
+
+WHEP 端点可以在 "201 Created" 响应中返回 STUN/TURN 服务器配置 URL 和客户端可用的凭证，以响应对 WHEP 端点 URL 的 HTTP POST 请求。
+
+每个 STUN/TURN 服务器将使用 "Link" 报头字段 [RFC8288] 返回，其中 "rel" 属性值为 "ice-server"，如 [I-D.draft-ietf-wish-whip] 所指定。
+
+也可以用广播服务或 WHEP 播放器上的外部 TURN 提供程序提供的长期凭证配置 STUN/TURN 服务器 URL，覆盖 WHEP 端点提供的值。
+
+### 4.8. 身份验证和授权
+
+WHEP 端点和资源可能要求使用 HTTP 授权报头字段和承载令牌对 HTTP 请求进行身份验证，如 [RFC6750] 2.1 节所述。WHEP 播放器必须实现这种身份验证和授权机制，并在发送到 WHEP 端点或资源的所有 HTTP 请求中发送 HTTP 授权报头字段，但 CORS 的 preflight OPTIONS 请求除外。
+
+承载标记的性质、语法和语义，以及如何将其分发到客户机，超出了本文档的范围。可以使用的令牌类型的一些例子是，但不限于，根据 [RFC6750] 和 [RFC8725] 的JWT令牌，或存储在数据库中的共享秘密。
+
+WHEP 端点和资源可以通过在 WHEP 端点或资源的 URL 中编码身份验证令牌来执行身份验证和授权。在 WHEP 播放器没有配置为使用承载令牌的情况下，HTTP 授权报头字段在任何请求中都不能被发送。
+
+### 4.9. 协议拓展
+
+为了支持为 WHEP 协议定义的未来扩展，定义了一个用于注册和宣布新扩展的通用过程。
+
+WHEP 服务器支持的协议扩展必须在发送到 WHEP 端点的初始 HTTP POST 请求的 "201 Created" 响应中向 WHEP 播放器发布。WHEP 端点必须为每个扩展返回一个 "Link" 报头字段，带有扩展 "rel" 类型属性和用于接收与该扩展相关的请求的 HTTP 资源的 URI。
+
+协议扩展对于 WHEP 播放器和 WHEP 端点和资源都是可选的。WHEP 玩家必须忽略任何具有未知 "rel" 属性值的链接属性，WHEP 端点和资源必须不要求使用任何扩展。
+
+每个协议扩展必须在 IANA 注册一个唯一的 "rel" 属性值，前缀为: "urn:ietf:params:whep:ext"，如 6.2 节所述。
+
+例如，考虑到使用 https://html.spec.whatwg.org/multipage/server-sent-events.html#server-sent-events 中指定的服务器发送事件的服务器到客户端通信的潜在扩展，连接到已发布流的服务器端事件资源的 URL 可以在初始 HTTP "201 Created" 响应中返回，该响应带有 "Link" 报头字段和 "urn:ietf:params:whep:ext:example:server-sent-events" 的 "rel" 属性。(本文档不指定该扩展名，仅作为示例。)
+
+在这种理论上的情况下，HTTP POST 请求的 HTTP 201 响应应该如下所示:
+
+```txt
+HTTP/1.1 201 Created
+Content-Type: application/sdp
+Location: https://whep.example.org/resource/id
+Link: <https://whep.ietf.org/publications/213786HF/sse>;
+      rel="urn:ietf:params:whep:ext:example:server-side-events"
 ```
