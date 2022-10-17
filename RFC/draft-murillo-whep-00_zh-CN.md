@@ -1,6 +1,6 @@
 # WebRTC-HTTP Egress Protocol (WHEP)
 
-> 原文 https://www.ietf.org/archive/id/draft-murillo-whep-00.html](https://www.ietf.org/archive/id/draft-murillo-whep-00.html)
+> 原文 [https://www.ietf.org/archive/id/draft-murillo-whep-00.html](https://www.ietf.org/archive/id/draft-murillo-whep-00.html)
 
 ## 摘要
 
