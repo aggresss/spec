@@ -59,3 +59,13 @@ RFC | 名称
 [RFC9001](https://datatracker.ietf.org/doc/html/rfc9001) | Using TLS to Secure QUIC
 [RFC9002](https://datatracker.ietf.org/doc/html/rfc9002) | QUIC Loss Detection and Congestion Control
 [RFC9221](https://datatracker.ietf.org/doc/html/rfc9221) | An Unreliable Datagram Extension to QUIC
+
+### HTTP
+
+RFC | 名称
+---|---
+[RFC9110](https://datatracker.ietf.org/doc/html/rfc9110) | HTTP Semantics
+[RFC9111](https://datatracker.ietf.org/doc/html/rfc9111) | HTTP Caching
+[RFC9112](https://datatracker.ietf.org/doc/html/rfc9112) | HTTP/1.1
+[RFC9113](https://datatracker.ietf.org/doc/html/rfc9113) | HTTP/2
+[RFC9114](https://datatracker.ietf.org/doc/html/rfc9114) | HTTP/3
