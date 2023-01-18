@@ -55,6 +55,18 @@ HTTP 语义还包括描述接收者打算如何解释内容的表示元数据、
 
 ### 1.4. Specifications Obsoleted by This Document
 
+Title | Reference | See
+--|--|--
+HTTP Over TLS | [RFC2818] | B.1
+HTTP/1.1 Message Syntax and Routing [*] | [RFC7230] | B.2
+HTTP/1.1 Semantics and Content | [RFC7231] | B.3
+HTTP/1.1 Conditional Requests | [RFC7232] | B.4
+HTTP/1.1 Range Requests | [RFC7233] | B.5
+HTTP/1.1 Authentication | [RFC7235] | B.6
+HTTP Status Code 308 (Permanent Redirect) | [RFC7538] | B.7
+HTTP Authentication-Info and Proxy-Authentication-Info Response Header Fields | [RFC7615] | B.8
+HTTP Client-Initiated Content-Encoding | [RFC7694] | B.9
+
 ## 2. Conformance
 
 ### 2.1. Syntax Notation
