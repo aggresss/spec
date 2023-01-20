@@ -4,7 +4,7 @@
 
 ## 摘要
 
-## 1. 介绍
+## 1. Introduction
 
 ## 2. Overview of Cache Operation
 
