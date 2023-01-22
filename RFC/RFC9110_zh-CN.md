@@ -237,19 +237,110 @@ HTTP 允许使用中介体通过连接链来满足请求。HTTP “中介”有�
                   <             <
 ```
 
+如果允许缓存存储响应消息的副本以用于响应后续请求，则响应是“可缓存的”。即使响应是可缓存的，客户机或源服务器也可能对何时可以将缓存的响应用于特定请求设置额外的约束。缓存行为和可缓存响应的HTTP要求在[CACHING]中定义。
 
+在万维网上和大型组织内部部署了各种各样的缓存体系结构和配置。其中包括全国层次结构的代理缓存，以节省带宽和降低延迟，使用网关缓存优化流行站点的区域和全球分布的内容交付网络，广播或组播缓存条目的协作系统，在脱机或高延迟环境中使用的预取缓存条目的存档，等等。
 
 ### 3.9. Example Message Exchange
 
+下面的例子说明了一个典型的 HTTP/1.1 消息交换，用于 URI "http://www.example.com/hello.txt" 上的 GET 请求(章节9.3.1):
+
+Client request:
+
+```
+GET /hello.txt HTTP/1.1
+User-Agent: curl/7.64.1
+Host: www.example.com
+Accept-Language: en, mi
+```
+
+Server response:
+
+```
+HTTP/1.1 200 OK
+Date: Mon, 27 Jul 2009 12:28:53 GMT
+Server: Apache
+Last-Modified: Wed, 22 Jul 2009 19:15:56 GMT
+ETag: "34aa387-d-1568eb00"
+Accept-Ranges: bytes
+Content-Length: 51
+Vary: Accept-Encoding
+Content-Type: text/plain
+
+Hello World! My content includes a trailing CRLF.
+```
+
 ## 4. Identifiers in HTTP
+
+统一资源标识符 (URI) [URI]在整个 HTTP 中用作标识资源的手段(章节3.1)。
 
 ### 4.1. URI References
 
+URI 引用用于定位请求、指示重定向和定义关系。
+
+“URI-reference”、“absolute-URI”、“relative-part”、“authority”、“port”、“host”、“path-abempty”、“segment”、“query” 等定义均采用 URI 泛型语法。为可以包含非空路径组件的协议元素定义了“绝对路径”规则。(此规则与 RFC3986 中的 path-abempty 规则略有不同，后者允许使用空路径，而path-absolute规则不允许以 “//” 开头的路径。) “partial-URI” 规则是为可以包含相对 URI 但不包含片段组件的协议元素定义的。
+
+```
+  URI-reference = <URI-reference, see [URI], Section 4.1>
+  absolute-URI  = <absolute-URI, see [URI], Section 4.3>
+  relative-part = <relative-part, see [URI], Section 4.2>
+  authority     = <authority, see [URI], Section 3.2>
+  uri-host      = <host, see [URI], Section 3.2.2>
+  port          = <port, see [URI], Section 3.2.3>
+  path-abempty  = <path-abempty, see [URI], Section 3.3>
+  segment       = <segment, see [URI], Section 3.3>
+  query         = <query, see [URI], Section 3.4>
+
+  absolute-path = 1*( "/" segment )
+  partial-URI   = relative-part [ "?" query ]
+```
+
+HTTP 中允许 URI 引用的每个协议元素都将在其 ABNF 生成中指示该元素是否允许任何形式的引用 (URI-reference)、是否只允许绝对形式的 URI (absolute-URI)、是否只允许路径和可选查询组件(partial-URI)，或以上几种类型的某种组合。除非另有说明，否则URI引用将相对于目标URI进行解析(章节7.1)。
+
+建议所有发送方和接收方至少支持协议元素中长度为8000字节的uri。注意，这意味着某些结构和在线表示(例如，HTTP/1.1中的请求行)在某些情况下必然会更大。
+
 ### 4.2. HTTP-Related URI Schemes
+
+IANA在 <https://www.iana.org/assignments/uri-schemes/> 维护 URI 方案 [BCP35] 的注册表。尽管请求可能针对任何URI方案，但以下方案是HTTP服务器固有的:
+
+URI Scheme | Description | Section
+--|--|--
+http | Hypertext | Transfer Protocol | 4.2.1
+https | Hypertext Transfer Protocol Secure | 4.2.2
+
+请注意，“http” 或 “https” URI的存在并不意味着始终有一个 http 服务器在标识的原点侦听连接。任何人都可以创建 URI，无论服务器是否存在，以及服务器当前是否将该标识符映射到资源。注册名称和 IP 地址的委托性质将创建一个联邦名称空间，无论是否存在 HTTP 服务器。
 
 #### 4.2.1. http URI Scheme
 
+这里定义了 “http” URI方案，用于在分层命名空间内创建标识符，该命名空间由侦听给定端口上 TCP ([TCP]) 连接的潜在 http 源服务器所治理。
+
+```
+http-URI = "http" "://" authority path-abempty [ "?" query ]
+```
+
+“http”URI的源服务器由授权组件标识，它包括一个主机标识符([URI]，章节3.2.2)和可选端口号([URI]，章节3.2.3)。如果端口子组件为空或没有给出，TCP端口80(为WWW服务预留的端口)是默认的。原点决定了谁有权权威地响应以已标识资源为目标的请求，如第4.3.2节所定义。
+
+发送方绝对不能生成带有空主机标识符的“http”URI。处理此类URI引用的接收方必须将其视为无效而拒绝。
+
+分层路径组件和可选查询组件在源服务器的名称空间中标识目标资源。
+
 #### 4.2.2. https URI Scheme
+
+这里定义了 “https” URI 方案，用于在分层命名空间内创建标识符，该命名空间由潜在的源服务器管理，侦听给定端口上的 TCP 连接，并能够建立已为 HTTP 通信提供安全保护的TLS ([TLS13])连接。在这种情况下，“安全的”具体指的是服务器已经被认证为代表所识别的授权机构，并且与该服务器的所有HTTP通信都具有客户机和服务器都可接受的机密性和完整性保护。
+
+```
+ https-URI = "https" "://" authority path-abempty [ "?" query ]
+```
+
+“https”URI的源服务器由授权组件标识，它包括一个主机标识符([URI]，章节3.2.2)和可选端口号([URI]，章节3.2.3)。如果端口子组件为空或未给出，则TCP端口443 (HTTP over TLS的预留端口)是默认值。原点决定了谁有权权威地响应以标识资源为目标的请求，如第4.3.3节中定义的那样。
+
+发送方绝对不能生成带有空主机标识符的“https”URI。处理此类URI引用的接收方必须将其视为无效而拒绝。
+
+分层路径组件和可选查询组件在源服务器的名称空间中标识目标资源。
+
+客户端必须确保其对“https”资源的HTTP请求在通信之前是安全的，并且它只接受对这些请求的安全响应。请注意，客户端和服务器可以接受的加密机制的定义通常是协商的，并且可以随着时间的推移而改变。
+
+通过“https”方案提供的资源与“http”方案没有共享标识。它们是具有独立名称空间的不同起源。然而，对HTTP的扩展被定义为应用于具有相同主机的所有源，例如Cookie协议[Cookie]，允许一个服务设置的信息影响与匹配主机域中的其他服务的通信。这种扩展的设计应该非常谨慎，以防止从安全连接获得的信息在不安全的上下文中被无意地交换。
 
 #### 4.2.3. http(s) Normalization and Comparison
 
