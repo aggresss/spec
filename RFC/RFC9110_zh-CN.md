@@ -363,9 +363,17 @@ HTTP 不需要使用特定的方法来确定等价性。例如，缓存键可以
    http://EXAMPLE.com:/%7esmith/home.html
 ```
 
-可以假设规范化(使用任何方法)后等价的两个 HTTP uri 标识相同的资源，并且任何 HTTP 组件都可以执行规范化。因此，不同的资源不应该被标准化后等效的HTTP URI标识(使用[URI]章节6.2中定义的任何方法)。
+可以假设规范化(使用任何方法)后等价的两个 HTTP uri 标识相同的资源，并且任何 HTTP 组件都可以执行规范化。因此，不同的资源不应该被标准化后等效的 HTTP URI 标识(使用[URI]章节6.2中定义的任何方法)。
 
 #### 4.2.4. Deprecation of userinfo in http(s) URIs
+
+授权的 URI 通用语法还包括 userinfo 子组件([URI]， Section 3.2.1)，用于在 URI 中包含用户身份验证信息。在该子组件中，不建议使用 “user:password” 格式。
+
+有些实现将 userinfo 组件用于身份验证信息的内部配置，例如在命令调用选项、配置文件或书签列表中，尽管这种使用可能会暴露用户标识符或密码。
+
+当在消息中生成 “http” 或 “https” URI 引用作为目标 URI 或字段值时，发送方绝对不能生成 userinfo 子组件(及其“@”分隔符)。
+
+在使用来自不可信源的 “http” 或 “https” URI 引用之前，接收方应该解析 userinfo 并将其作为错误处理;这很可能是为了网络钓鱼攻击而被用来掩盖授权。
 
 #### 4.2.5. http(s) References with Fragment Identifiers
 
