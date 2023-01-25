@@ -471,6 +471,8 @@ IP版本4的地址是4个字节，IP版本6的地址是16个字节。没有为�
 
 ## 5. Fields
 
+HTTP使用“字段”以可扩展的名称/值对的形式提供具有注册密钥名称空间的数据。字段在消息的头和尾部分中发送和接收(第6节)。
+
 ### 5.1. Field Names
 
 ### 5.2. Field Lines and Combined Field Value
