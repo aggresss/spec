@@ -558,15 +558,17 @@ Example-URIs: "http://example.com/a.html,foo",
 Example-Dates: "Sat, 04 May 1996", "Wed, 14 Sep 2005"
 ```
 
-### 5.6. Common Rules for Defining Field Values
-
 注意，双引号分隔符几乎总是用于带引号的字符串(第5.6.4节);在双引号内使用不同的语法可能会引起不必要的混淆。
 
 许多字段(如Content-Type，在章节8.3中定义)使用一种通用的参数语法，允许参数值使用不带引号(token)和带引号(quote-string)语法(章节5.6.6)。使用通用语法允许接收者重用现有的解析器组件。当允许两种形式时，参数值的含义应该是相同的，无论它是作为一个标记还是一个带引号的字符串接收。
 
-> 注意:为了定义字段值语法，本规范使用一个以字段名命名的ABNF规则来定义该字段值的允许语法(在从底层消息传递语法中提取该值并将多个实例组合到一个列表之后)。
+> 注意:为了定义字段值语法，本规范使用一个以字段名命名的 ABNF 规则来定义该字段值的允许语法(在从底层消息传递语法中提取该值并将多个实例组合到一个列表之后)。
+
+### 5.6. Common Rules for Defining Field Values
 
 #### 5.6.1. Lists (#rule ABNF Extension)
+
+
 
 ##### 5.6.1.1. Sender Requirements
 
