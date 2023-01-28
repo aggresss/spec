@@ -568,23 +568,231 @@ Example-Dates: "Sat, 04 May 1996", "Wed, 14 Sep 2005"
 
 #### 5.6.1. Lists (#rule ABNF Extension)
 
+对 [RFC5234] 的 ABNF 规则的 #rule 扩展用于提高一些基于列表的字段值定义的可读性。
 
+定义了一个结构 “#”，类似于 “*”，用于定义以逗号分隔的元素列表。完整形式为 "<n>#<m>element"，表示至少<n>，最多<m>元素，每个元素由单个逗号(",")和可选的空格(OWS，定义于章节5.6.3)分隔。
 
 ##### 5.6.1.1. Sender Requirements
 
+在任何使用列表结构的产品中，发送方绝对不能生成空列表元素。换句话说，发送方必须生成满足以下语法的列表:
+
+```
+  1#element => element *( OWS "," OWS element )
+```
+
+或者
+
+```
+  #element => [ 1#element ]
+```
+对于 n >= 1 并且 m > 1:
+
+```
+  <n>#<m>element => element <n-1>*<m-1>( OWS "," OWS element )
+```
+
+附录 A 显示了列表结构展开后为发送者收集的 ABNF。
+
 ##### 5.6.1.2. Recipient Requirements
+
+空元素不影响当前元素的计数。接收方必须解析并忽略合理数量的空列表元素:足够处理发送方合并值时的常见错误，但又不能过多到可以用作拒绝服务机制的程度。换句话说，接收方必须接受满足以下语法的列表:
+
+```
+  #element => [ element ] *( OWS "," OWS [ element ] )
+```
+
+请注意，由于可能存在空列表元素，RFC 5234 ABNF不能强制列表元素的基数，因此所有情况的映射就像没有指定基数一样。
+
+例如，给定这些 ABNF 结果:
+
+```
+  example-list      = 1#example-list-elmt
+  example-list-elmt = token ; see Section 5.6.2
+```
+
+下面是 example-list 的有效值(不包括双引号，双引号仅用于定界):
+
+```
+  "foo,bar"
+  "foo ,bar,"
+  "foo , ,bar,charlie"
+```
+
+相反，以下值将无效，因为示例列表生成至少需要一个非空元素:
+
+```
+  ""
+  ","
+  ",   ,"
+```
 
 #### 5.6.2. Tokens
 
+令牌是不包括空格或分隔符的短文本标识符。
+
+```
+  token          = 1*tchar
+
+  tchar          = "!" / "#" / "$" / "%" / "&" / "'" / "*"
+                 / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
+                 / DIGIT / ALPHA
+                 ; any VCHAR, except delimiters
+```
+
+许多 HTTP 字段值是使用通用语法组件定义的，由空格或特定的分隔字符分隔。分隔符从令牌中不允许的 US-ASCII 可视字符集中选择 (DQUOTE 和 "()，/:;<=>?@[\]{}")。
+
 #### 5.6.3. Whitespace
+
+该规范使用三个规则来表示线性空白的使用: OWS(可选空白)、RWS(必需空白) 和 BWS(“坏”空白)。
+
+OWS 规则用于可能出现零个或多个线性空白八位字节的地方。对于协议元素，可选的空白是为了提高可读性，发送方应该生成可选的空白作为单个 SP; 否则，发送方不应该生成可选的空白，除非在消息过滤过程中需要覆盖无效或不需要的协议元素。
+
+当至少需要一个线性空白字节来分隔字段令牌时，使用 RWS 规则。发送方应该将 RWS 生成为单个 SP。
+
+OWS 和 RWS 与单个 SP 具有相同的语义。任何已知定义为 OWS 或 RWS 的内容都可以在解释或向下游转发消息之前被单个 SP 替换。
+
+BWS 规则用于仅由于历史原因而允许可选空格的语法。发送方绝对不能在消息中生成 BWS。在解释协议元素之前，接收方必须解析这种糟糕的空白并将其删除。
+
+BWS 没有语义。任何已知定义为 BWS 的内容都可以在解释它或向下游转发消息之前删除。
+
+```
+  OWS            = *( SP / HTAB )
+                 ; optional whitespace
+  RWS            = 1*( SP / HTAB )
+                 ; required whitespace
+  BWS            = OWS
+                 ; "bad" whitespace
+```
 
 #### 5.6.4. Quoted Strings
 
+如果使用双引号引用文本字符串，则将其解析为单个值。
+
+```
+  quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+  qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
+```
+
+反斜杠("\")可以在引用字符串和注释结构中用作单字节引用机制。处理带引号字符串值的接收方必须处理带引号对，就像它被反斜杠后面的字节所取代一样。
+
+```
+  quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
+```
+发送方不应该在带引号的字符串中生成带引号对，除非需要在该字符串中引用 DQUOTE 和 反斜杠字节。发送方不应该在注释中生成引号对，除非需要引用括号["("和")]以及注释中出现的反斜杠字节。
+
 #### 5.6.5. Comments
+
+注释可以通过用圆括号括起注释文本来包含在某些 HTTP 字段中。注释只允许在字段值定义中包含 “comment” 的字段中使用。
+
+```
+  comment        = "(" *( ctext / quoted-pair / comment ) ")"
+  ctext          = HTAB / SP / %x21-27 / %x2A-5B / %x5D-7E / obs-text
+```
 
 #### 5.6.6. Parameters
 
+参数是名称/值对的实例;它们通常用于字段值中，作为向项附加辅助信息的通用语法。每个参数通常由紧接在前面的分号分隔。
+
+```
+  parameters      = *( OWS ";" OWS [ parameter ] )
+  parameter       = parameter-name "=" parameter-value
+  parameter-name  = token
+  parameter-value = ( token / quoted-string )
+```
+参数名称不区分大小写。参数值可能区分大小写，也可能不区分大小写，这取决于参数名称的语义。参数和一些等效形式的例子可以在媒体类型(章节8.3.1)和Accept报头字段(章节12.5.1)中看到。
+
+与生成的令牌匹配的参数值可以作为令牌传输，也可以在引号字符串中传输。加引号和不加引号的值是等价的。
+
+> 注意:参数不允许 “=” 字符周围有空格(甚至是“坏”空格)。
+
 #### 5.6.7. Date/Time Formats
+
+在 1995 年之前，服务器通常使用三种不同的格式来通信时间戳。为了与旧的实现兼容，这里定义了这三个实现。首选格式是 Internet 消息格式 [RFC5322] 使用的日期和时间规范的固定长度和单区域子集。
+
+```
+  HTTP-date    = IMF-fixdate / obs-date
+```
+
+一个首选格式的例子:
+
+```
+  Sun, 06 Nov 1994 08:49:37 GMT    ; IMF-fixdate
+```
+
+两种过时格式的例子:
+
+```
+  Sunday, 06-Nov-94 08:49:37 GMT   ; obsolete RFC 850 format
+  Sun Nov  6 08:49:37 1994         ; ANSI C's asctime() format
+```
+
+解析 HTTP 字段中的时间戳值的接收方必须接受所有三种 HTTP-date 格式。当发送方生成一个包含一个或多个定义为 HTTP-date 的时间戳的字段时，发送方必须以 IMF-fixdate 格式生成这些时间戳。
+
+HTTP-date 值将时间表示为协调世界时(UTC)的一个实例。前两种格式用格林尼治标准时间的三个字母缩写 “GMT” 表示 UTC，这是 UTC 名称的前身; asctime 格式的值被假定为 UTC。
+
+“时钟” 是一种能够提供合理的 UTC 当前时刻近似值的实现。时钟实现应该使用 NTP ([RFC5905]) 或一些类似的协议来与 UTC 同步。
+
+首选格式：
+
+```
+  IMF-fixdate  = day-name "," SP date1 SP time-of-day SP GMT
+  ; fixed length/zone/capitalization subset of the format
+  ; see Section 3.3 of [RFC5322]
+
+  day-name     = %s"Mon" / %s"Tue" / %s"Wed"
+               / %s"Thu" / %s"Fri" / %s"Sat" / %s"Sun"
+
+  date1        = day SP month SP year
+               ; e.g., 02 Jun 1982
+
+  day          = 2DIGIT
+  month        = %s"Jan" / %s"Feb" / %s"Mar" / %s"Apr"
+               / %s"May" / %s"Jun" / %s"Jul" / %s"Aug"
+               / %s"Sep" / %s"Oct" / %s"Nov" / %s"Dec"
+  year         = 4DIGIT
+
+  GMT          = %s"GMT"
+
+  time-of-day  = hour ":" minute ":" second
+               ; 00:00:00 - 23:59:60 (leap second)
+
+  hour         = 2DIGIT
+  minute       = 2DIGIT
+  second       = 2DIGIT
+
+```
+
+过时的格式：
+
+```
+  obs-date     = rfc850-date / asctime-date
+```
+
+```
+  rfc850-date  = day-name-l "," SP date2 SP time-of-day SP GMT
+  date2        = day "-" month "-" 2DIGIT
+               ; e.g., 02-Jun-82
+
+  day-name-l   = %s"Monday" / %s"Tuesday" / %s"Wednesday"
+               / %s"Thursday" / %s"Friday" / %s"Saturday"
+               / %s"Sunday"
+```
+
+```
+  asctime-date = day-name SP date3 SP time-of-day SP year
+  date3        = month SP ( 2DIGIT / ( SP 1DIGIT ))
+               ; e.g., Jun  2
+```
+
+HTTP-date 区分大小写。注意，[CACHING] 的 4.2 节对缓存接收者放宽了限制。
+
+发送方绝对不能在 HTTP-date 中生成除语法中明确包含的 SP 之外的额外空白。日-名称、日、月、年和时间的语义与具有相应名称的 Internet Message Format 构造的语义相同([RFC5322]，章节 3.3)。
+
+接收到 rfc850-date 格式的时间戳值(使用两位数年份)的接收者必须将看起来超过 50 年的时间戳解释为表示过去最近的年份，并且具有相同的后两位数字。
+
+除非字段定义另有限制，否则鼓励时间戳值的接收者健壮地解析时间戳。例如，消息有时会通过 HTTP 从非 HTTP 源转发，该源可能生成 Internet 消息格式定义的任何日期和时间规范。
+
+> 注意:HTTP 对时间戳格式的要求只适用于它们在协议流中的使用。实现不需要在用户表示、请求日志记录等方面使用这些格式。
 
 ## 6. Message Abstraction
 
