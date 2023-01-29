@@ -19,7 +19,7 @@
 
 > 注意：规则名称不区分大小写。
 
-规则名称 <rulename>, <Rulename>, <RULENAME>, <rUlENamE> 表示同一规则。
+规则名称 `<rulename>`, `<Rulename>`, `<RULENAME>`, `<rUlENamE>` 表示同一规则。
 
 不像原始的 BNF，尖括号("<"，">")是不需要的。但是，只要尖括号的存在便于识别规则名的使用，就可以在规则名周围使用尖括号。这通常局限于自由格式的规则名称引用，或者区分组合成一个字符串而不是由空白分隔的部分规则，如下面关于重复的讨论中所示。
 
@@ -31,7 +31,7 @@
     name = elements crlf
 ```
 
-其中 <name> 是规则名称，<elements> 是一个或多个规则名称或终端规范，<crlf> 是行结束符(carriage return followed by line feed)。等号将名称与规则的定义分开。根据本文档中定义的各种操作符进行组合（例如 alternative 和 repetition），这些元素形成一个或多个规则名称 与/或 值定义的序列
+其中 `<name>` 是规则名称，`<elements>` 是一个或多个规则名称或终端规范，`<crlf>` 是行结束符(carriage return followed by line feed)。等号将名称与规则的定义分开。根据本文档中定义的各种操作符进行组合（例如 alternative 和 repetition），这些元素形成一个或多个规则名称 与/或 值定义的序列
 为了方便查看，规则定义是左对齐的。当一条规则需要多行时，接续行会缩进。左对齐和缩进是相对于 ABNF 规则的第一行，不需要匹配文档的左外边距。
 
 ### 2.3. Terminal Values
@@ -82,7 +82,7 @@ ABNF 允许直接指定用引号括起来的字面文本字符串。因此:
     rulename = "aBc"
 ```
 
-将匹配 “abc”, “Abc”, “aBc”, “abC”, “ABc”, “aBC”, “AbC”, “ABC”。
+将匹配 "abc", "Abc", "aBc", "abC", "ABc", "aBC", "AbC", "ABC"。
 
 要指定区分大小写的规则，请分别指定字符。
 例如:
@@ -106,25 +106,174 @@ ABNF 允许直接指定用引号括起来的字面文本字符串。因此:
 
 ## 3. Operators
 
-### 3.1. Concatenation: Rule1 Rule2
+### 3.1. Concatenation: `Rule1 Rule2`
 
-### 3.2. Alternatives: Rule1 / Rule2
+通过列出一系列规则名称，规则可以定义一个简单的、有序的值字符串(即，连续字符的连接)。例如:
 
-### 3.3. Incremental Alternatives: Rule1 =/ Rule2
+```
+foo = %x61 ; a
+bar = %x62 ; b
+mumble = foo bar foo
+```
 
-### 3.4. Value Range Alternatives: %c##-##
+所以，规则 `<mumble>` 匹配小写字符串 "aba"。
 
-### 3.5. Sequence Group: (Rule1 Rule2)
+线性空白：拼接是 ABNF 解析模型的核心。连续字符(值)的字符串根据 ABNF 中定义的规则进行解析。对于互联网规范，允许线性空白符(空格和水平制表符)自由和隐式地穿插在主要结构周围已经有了一些历史，例如分隔特殊字符或原子字符串。
+
+> 注意: 这个ABNF规范没有对线性空白空间的隐式规范作出规定。
+
+任何希望允许分隔符或字符串段周围有线性空格的语法都必须明确指定它。在“核心”规则中提供这种空白通常很有用，这些空白可以在更高层次的规则中使用。“核心”规则可以构成词法分析器，也可以只是主要规则集的一部分。
+
+### 3.2. Alternatives: `Rule1 / Rule2`
+
+由正斜杠(“/”)分隔的元素是可选的。因此,
+
+```
+foo / bar
+```
+
+将接受 `<foo>` 或 `<bar>`。
+
+> 注意: 包含字母字符的引号字符串是一种特殊形式，用于指定替代字符，并被解释为非终结符，表示包含字符的组合字符串的集合，该组合字符串按照指定的顺序，但可以使用任意大小写混合。
+
+### 3.3. Incremental Alternatives: `Rule1 =/ Rule2`
+
+有时，以片段的形式指定一组备选方案是很方便的。也就是说，初始规则可以匹配一个或多个备选项，后面的规则定义将添加到备选项集合中。这对于派生自同一父规则集的其他独立规范特别有用，例如经常与参数列表一起发生。ABNF 通过以下结构允许这种增量定义:
+
+```
+    oldrule =/ additional-alternatives
+```
+
+所以规则集:
+
+```
+    ruleset = alt1 / alt2
+    ruleset =/ alt3
+    ruleset =/ alt4 / alt5
+```
+
+等同于：
+
+```
+ruleset = alt1 / alt2 / alt3 / alt4 / alt5
+```
+
+### 3.4. Value Range Alternatives: `%c##-##`
+
+可以使用破折号("-")来简洁地指定可选数值的范围。因此:
+
+```
+DIGIT = %x30-39
+```
+
+等价于:
+
+```
+    DIGIT = "0" / "1" / "2" / "3" / "4" / "5" / "6" /
+        "7" / "8" / "9"
+```
+
+不能在同一个字符串中指定连接的数值和数值范围。数值可以使用点符号表示法进行连接，也可以使用虚线表示法指定一个取值范围。因此，要在行尾序列之间指定一个可打印字符，可以这样写:
+
+```
+    char-line = %x0D.0A %x20-7E %x0D.0A
+```
+
+### 3.5. Sequence Group: `(Rule1 Rule2)`
+
+括号中的元素被视为单个元素，其内容是严格有序的。因此,
+
+```
+    elem (foo / bar) blat
+```
+
+匹配 (elem foo blat) 或 (elem bar blat)，并且
+
+```
+    elem foo / bar blat
+```
+
+匹配 (elem foo) 或 (bar blat)。
+
+> 注意: 强烈建议使用分组表示法，而不是依赖于正确阅读直接替换，当替换由多个规则名称或字面量组成时。
+
+因此，建议使用以下格式:
+
+```
+    (elem foo) / (bar blat)
+```
+
+这样可以避免普通读者的误解。
+
+序列组表示法也用于自由文本中，以从普通文本中设置元素序列。
 
 ### 3.6. Varriable Repetition: *Rule
 
-### 3.7. Specific Repetition: nRule
+元素前面的运算符"*"表示重复。完整的表格是:
 
-### 3.8. Optional Sequence: \[RULE\]
+```
+    <a>*<b>element
+```
 
-### 3.9. Comment: ; Comment
+其中 `<a>` 和 `<b>` 是可选的十进制值，表示该元素至少出现 `<a>` 次，最多出现 `<b>` 次。
+默认值为 0 和 无穷大，因此：
+
+- `*<element>` 允许任何数字，包括 0;
+- `1*<element>` 需要至少一个;
+- `3*3<element>` 允许正好为 3;
+- `1*2<element>` 允许一个或两个。
+
+### 3.7. Specific Repetition: `nRule`
+
+以下形式的规则:
+
+```
+    <n>element
+```
+
+等价于
+
+```
+    <n>*<n>element
+```
+
+也就是说，`<element>` 出现了 `<n>` 次。因此，`2DIGIT` 是一个2位数，而 `3ALPHA` 是一个由3个字母字符组成的字符串。
+
+### 3.8. Optional Sequence: `[RULE]`
+
+使用方括号将可选元素括起来：
+
+```
+    [foo bar]
+```
+
+等价于
+
+```
+ *1(foo bar)
+```
+
+### 3.9. Comment: `; Comment`
+
+注释从分号开始，一直到行尾。这是在规范中同时包含有用注释的一种简单方法。
 
 ### 3.10. Operator Precedence
+
+上述各种机制的优先级如下，从最高(绑定最严格)的顶部到最低(绑定最宽松)的底部:
+
+```
+    Rule name, prose-val, Terminal value
+    Comment
+    Value range
+    Repetition
+    Grouping, Optional
+    Concatenation
+    Alternative
+```
+
+替代操作符与拼接操作符随意混合使用，可能会让人感到困惑。
+
+> 同样，建议使用分组操作符来创建显式的连接组。
 
 ## 4. ABNF Definition of ABNF
 
