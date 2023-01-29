@@ -207,7 +207,7 @@ DIGIT = %x30-39
 
 序列组表示法也用于自由文本中，以从普通文本中设置元素序列。
 
-### 3.6. Varriable Repetition: *Rule
+### 3.6. Varriable Repetition: `*Rule`
 
 元素前面的运算符"*"表示重复。完整的表格是:
 
@@ -277,18 +277,98 @@ DIGIT = %x30-39
 
 ## 4. ABNF Definition of ABNF
 
+注意：
+
+1. 这种语法要求相对严格的规则格式。因此，包含在规范中的规则集版本可能需要预处理，以确保它可以被ABNF解析器解释。
+2. 此语法使用附录 B 中提供的规则。
+
+```
+rulelist = 1*( rule / (*c-wsp c-nl) )
+
+
+```
+
 ## 5. Security Considerations
+
+安全性被认为与本文档无关。
 
 ## 6. References
 
 ### 6.1. Normative References
 
+- [US-ASCII] American National Standards Institute, "Coded Character Set -- 7-bit American Standard Code for Information Interchange", ANSI X3.4, 1986.
 ### 6.2. Informative References
+
+- [RFC733] Crocker, D., Vittal, J., Pogran, K., and D. Henderson, "Standard for the format of ARPA network text messages", RFC 733, November 1977.
+- [RFC822] Crocker, D., "Standard for the format of ARPA Internet text messages", STD 11, RFC 822, August 1982.
 
 ## Appendix A. Acknowledgements
 
+ABNF 的语法最初在 [RFC733] 中指定。SRI International 的 Ken L. Harrenstien 负责将 BNF 重新编码为一个增强的 BNF，使表示更小，更容易理解。
+
+这个最近的项目是为了剔除 [RFC822] 中被非电子邮件规范作者反复引用的部分，即增强 BNF 的描述。工作组没有简单、盲目地将现有的文本转换为单独的文件，而是选择仔细考虑现有规范和过去 15 年来提供的相关规范的不足和好处，并因此寻求加强。这使得该项目变得比最初设想的更加雄心勃勃。有趣的是，修改后的结果与最初的修改并没有太大的不同，不过一些决定，比如删除列表表示法，还是让人感到意外。
+
+该规范的“分离”版本是 DRUMS 工作组的一部分，由 Jerome Abela、Harald Alvestrand、Robert Elz、Roger Fajman、Aviva Garrett、Tom Harsch、Dan Kohn、Bill McQuillan、Keith Moore、Chris Newman、Pete Resnick 和 Henning Schulzrinne 做出的重要贡献。
+
+特别感谢 Julian Reschke 将该标准草案转换为 XML 源格式。
+
 ## Appendix B. Core ABNF of ABNF
+
+本附录包含一些常用的基本规则。基本规则都是大写的。注意，这些规则只适用于 7 位 ASCII 编码的 ABNF，或 7 位 ASCII 超集的字符集。
 
 ### B.1. Core Rules
 
+包含大写形式的基本规则，例如 SP, HTAB, CRLF, DIGIT, ALPHA 等：
+
+```
+    ALPHA = %x41-5A / %x61-7A ; A-Z / a-z
+
+    BIT = "0" / "1"
+
+    CHAR = %x01-7F
+                ; any 7-bit US-ASCII
+                ; excluding NUL
+
+    CR = %x0D
+                ; carriage return
+
+    CRLF = CR LF
+                ; Internet standard newline
+
+    CTL = %x00-1F / %x7F
+                ; controls
+
+    DIGIT = %x30-39
+                ; 0-9
+
+    DQUOTE = %x22
+                ; " (Double Quote)
+
+    HEXDIG = DIGIT / "A" / "B" / "C" / "D" / "E" / "F"
+
+    HTAB = %x09
+                ; horizontal tab
+    LF = %x0A
+                ; linefeed
+
+    LWSP = *(WSP / CRLF WSP)
+                ; Use of this linear-white-space rule permits lines containing only white space
+                ; that are no longer legal in mail headers and have caused interoperability problems
+                ; in other contexts.
+                ; Do not use when defining mail headers and use with caution in other contexts.
+
+    OCTET = %x00-FF
+                ; 8 bits of data
+
+    SP = %x20
+
+    VCHAR = %x21-7E
+                ; visible (printing) characters
+
+    WSP = SP / HTAB
+                ; white space
+```
+
 ### B.2. Common Encoding
+
+在外部，数据表示为 "network virtual ASCII" (即 8 位字段中的 7 位 US-ASCII)，高位(第 8 位)设置为 0。字符串的值是按“网络字节顺序”排列的，左边表示高值的字节，首先通过网络发送。
