@@ -1,6 +1,6 @@
 # ASCII / ISO 8859-1 (Latin-1) Table
 
-## US-ASCII Entities
+## ASCII / ISO 8859-1 (Latin-1) Table with HTML Entity Names
 
 Character Reference | Hex | Character | Entity Name           | Abbr. | Description
 --------------------|-----|-----------|-----------------------|-------|--
@@ -261,6 +261,8 @@ Character Reference | Hex | Character | Entity Name           | Abbr. | Descript
 `&#254;`            | FE  | þ         | `&thorn;`             |       | small thorn
 `&#255;`            | FF  | ÿ         | `&yuml;`              |       | small y dieresis or umlaut
 
+> Caret notation is often used to represent control characters on a terminal. On most text terminals, holding down the Ctrl key while typing the second character will type the control character. Sometimes the shift key is not needed, for instance ^@ may be typable with just Ctrl and 2.
+
 ## ABNF Range
 
 ```
@@ -274,8 +276,6 @@ Character Reference | Hex | Character | Entity Name           | Abbr. | Descript
 %xC0-DE                               ; Upper Case Latin-1 Letters
 %xDF-FF                               ; Lower Case Latin-1 Letters
 ```
-
-> Caret notation is often used to represent control characters on a terminal. On most text terminals, holding down the Ctrl key while typing the second character will type the control character. Sometimes the shift key is not needed, for instance ^@ may be typable with just Ctrl and 2.
 
 ## Reference
 
