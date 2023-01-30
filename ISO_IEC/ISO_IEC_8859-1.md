@@ -1,5 +1,7 @@
 # ASCII / ISO 8859-1 (Latin-1) Table
 
+The ISO standard ISO 8859 was the first international standard to formalise a (limited) expansion of the ASCII character set: of the many language variants it encoded, ISO 8859-1 ("ISO Latin 1") – which supports most Western European languages – is best known in the West.
+
 ## ASCII / ISO 8859-1 (Latin-1) Table with HTML Entity Names
 
 Character Reference | Hex | Character | Entity Name           | Abbr. | Description
