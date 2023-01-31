@@ -1281,9 +1281,17 @@ HTTP 在 Content-Type (8.3 节) 和 Accept (12.5.1 节)头字段中使用媒体�
 
 #### 8.3.2. Charset
 
+HTTP使用 "charset" 名称来表示或协商文本表示的字符编码方案([RFC6365]，第 2 节)。在这个文档定义的字段中，字符集名称要么出现在参数中 (Content-Type)，要么出现在 Accept-Encoding 中，以普通标记的形式出现。在这两种情况下，字符集名称的匹配是不区分大小写的。
 
+字符集名称应该按照 [RFC2978] 第 2 节中定义的程序在 IANA "Character Sets" 注册中心(<https://www.iana.org/assignments/character-sets>) 注册。
+
+> 注意:理论上，字符集名称由 [RFC2978] 的 2.3 节中定义的 "mime-charset" ABNF 规则定义(在 [Err1912] 中更正)。该规则允许两个字符不包含在 "token" 中 ("{"和"}")，但在编写本文时，注册的字符集名称都不包含大括号(参见 [Err5433])。
 
 #### 8.3.3. Multipart Types
+
+MIME 提供了许多 "multipart" 类型——将一个或多个表示封装在单个消息体中。正如 [RFC2046] 的 5.1.1 节所定义的，所有的 multipart 类型都有一个共同的语法，并且包括一个边界参数作为媒体类型值的一部分。消息体本身是一个协议元素;发送者必须只生成 CRLF 来表示身体部位之间的换行。
+
+HTTP 消息分帧不使用 multipart 边界作为消息体长度的指示器，尽管生成或处理内容的实现可能会使用它。例如，"multipart/form-data" 类型通常用于在请求中携带表单数据，如 [RFC7578] 所述，而 "multipart/byteranges" 类型由本规范定义，用于 206(Partial Content) 响应(参见15.3.7节)。
 
 ### 8.4. Content-Encoding
 
