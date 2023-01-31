@@ -1586,8 +1586,47 @@ W/"1" | "1" | no match | match
 \>\> Request:
 
 ```
+GET /index HTTP/1.1
+Host: www.example.com
+Accept-Encoding: gzip
+```
+
+在这种情况下，响应可能使用 gzip 内容编码，也可能不使用。如果没有，响应可能如下所示:
+
+\>\> Response:
 
 ```
+HTTP/1.1 200 OK
+Date: Fri, 26 Mar 2010 00:05:00 GMT
+ETag: "123-a"
+Content-Length: 70
+Vary: Accept-Encoding
+Content-Type: text/plain
+
+Hello World!
+Hello World!
+Hello World!
+Hello World!
+Hello World!
+```
+
+另一种使用 gzip 内容编码的方式是:
+
+\>\> Response:
+
+```
+HTTP/1.1 200 OK
+Date: Fri, 26 Mar 2010 00:05:00 GMT
+ETag: "123-b"
+Content-Length: 43
+Vary: Accept-Encoding
+Content-Type: text/plain
+Content-Encoding: gzip
+
+...binary data...
+```
+
+> 注意:内容编码是表示数据的属性，因此内容编码表示的强实体标记必须与未编码表示的实体标记不同，以防止缓存更新和范围请求期间的潜在冲突。相比之下，传输编码([HTTP/1.1] 第 7 节)仅在消息传输期间适用，不会产生不同的实体标签。
 
 ## 9. Methods
 
