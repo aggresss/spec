@@ -1926,19 +1926,184 @@ Expect: 100-continue
 
 #### 10.1.2. From
 
+"From” 头字段包含控制请求用户代理所属用户的互联网电子邮件地址。地址应该是机器可用的，如 [RFC5322] 3.4节中的 "mailbox" 所定义:
+
+```
+  From    = mailbox
+
+  mailbox = <mailbox, see [RFC5322], Section 3.4>
+```
+
+示例：
+
+```
+From: spider-admin@example.org
+```
+
+From 报头字段很少由非机器人的用户代理发送。用户代理不应该在没有用户明确配置的情况下发送 From header 字段，因为这可能会与用户的隐私利益或他们网站的安全策略相冲突。
+
+机器人用户代理应该发送有效的 From header 字段，以便在服务器出现问题时联系负责运行机器人的人，例如机器人发送了过多、不必要或无效的请求。
+
+服务器不应该使用 From 头字段进行访问控制或身份验证，因为它的值应该对接收或观察请求的任何人可见，并且通常记录在日志文件和错误报告中，没有任何隐私要求。
+
 #### 10.1.3. Referer
+
+"Referer" [sic] 头字段允许用户代理指定获取目标 URI 的资源的 URI 引用(即 "referrer"，尽管字段名称拼写错误)。在生成 Referer 字段值时，用户代理不能包含 URI 引用 [URI] 的 fragment 和 userinfo 组件(如果有的话)。
+
+```
+  Referer = absolute-URI / partial-URI
+```
+
+字段值要么是 absolute-URI 要么是 partial-URI。在后一种情况下(第4节)，引用的 URI 是相对于目标 URI 的([URI]，第 5 节)。
+
+Referer 头字段允许服务器生成指向其他资源的反向链接，用于简单分析、日志记录、优化缓存等。它还允许查找过时或输入错误的链接以进行维护。有些服务器使用 Referer 首部字段作为拒绝其他网站链接(所谓的 "deep linking" )或 restricting cross-site request forgery(CSRF) 的手段，但并非所有请求都包含它。
+
+例子:
+
+```
+Referer: http://www.example.org/hypertext/Overview.html
+```
+
+如果目标 URI 是从没有自己的 URI 的源获得的(例如，来自用户键盘的输入，或用户书签/收藏夹中的条目)，用户代理必须排除 Referer 头字段或将其发送为 "about:blank" 的值。
+
+Referer 头字段的值不需要表示引用资源的完整 URI;用户代理可以截断引用源以外的部分。
+
+Referer 头字段有可能揭示有关用户请求上下文或浏览历史的信息，如果引用资源的标识符揭示了个人信息(如帐户名称)或被认为是机密的资源(如在防火墙后或在受保护的服务内部)，这就是隐私问题。当引用资源是本地“文件”或“数据” URI 时，大多数通用用户代理不发送 Referer 头字段。如果引用资源是通过安全协议访问的，并且请求目标的来源与引用资源的来源不同，则用户代理不应该发送 Referer 头字段，除非引用资源明确允许发送 Referer。如果引用资源是通过安全协议访问的，则用户代理不能在不安全的 HTTP 请求中发送 Referer 头字段。有关其他安全注意事项，请参见 17.9 节。
+
+众所周知，一些中介会不加区别地从传出请求中删除引用头字段。这有一个不幸的副作用，即干扰了针对 CSRF 攻击的防护，对用户的危害要大得多。希望限制引用者信息泄露的中介和用户代理扩展应将其更改限制在特定的编辑范围内，如用假名替换内部域名或截断查询和/或路径组件。当字段值与目标 URI 共享相同的方案和主机时，中介不应该修改或删除 Referer 头字段。
 
 #### 10.1.4. TE
 
+"TE" 头字段描述了客户端关于传输编码和 trailer 部分的能力(为了区别于已经存在的 Transfer-Encoding，可以理解为 Accept-Transfer-Encoding)。
+
+如 6.5 节所述，在请求中发送的带有 "trailers" 成员的 TE 字段表示客户端不会丢弃 trailer 字段。
+
+TE 也在 HTTP/1.1 中用于通知服务器客户端能够在响应中接受哪些传输编码。截至本文发布，只有 HTTP/1.1 使用传输编码(参见 [HTTP/1.1] 第 7 节)。
+
+TE 字段值是一个成员列表，每个成员( trailer 除外)由一个可选权重的传输编码名称令牌组成，表示客户端对该传输编码的相对偏好(章节12.4.2)，以及该传输编码的可选参数。
+
+```
+  TE                 = #t-codings
+  t-codings          = "trailers" / ( transfer-coding [ weight ] )
+  transfer-coding    = token *( OWS ";" OWS transfer-parameter )
+  transfer-parameter = token BWS "=" BWS ( token / quoted-string )
+```
+
+TE 的发送端还必须在连接头字段(章节7.6.1)中发送一个 "TE" 连接选项，以通知中间设备不转发该字段。
+
 #### 10.1.5. User-Agent
+
+"User-Agent" 头字段包含发起请求的用户代理的信息，服务器经常使用它来帮助确定报告的互操作性问题的范围，解决或调整响应以避免特定的用户代理限制，以及分析有关浏览器或操作系统使用情况。用户代理应该在每个请求中发送一个User-Agent 首部字段，除非特别配置不这样做。
+
+```
+  User-Agent = product *( RWS ( product / comment ) )
+```
+
+User-Agent 字段值由一个或多个产品标识符组成，每个标识符后面跟着零个或多个注释(第 5.6.5 节)，这些注释标识了用户代理软件及其重要子产品。按照惯例，产品标识符按其对识别用户代理软件的重要性降序排列。每个产品标识符由名称和可选版本组成。
+
+```
+  product         = token ["/" product-version]
+  product-version = token
+```
+
+发送方应将所生成的产品识别码限制在识别产品所需的范围内;发送方不得在产品标识中产生广告或其他非必要信息。发送方不应生成非版本标识符的 product-version 信息(即相同产品名的连续版本只能在产品标识符的 product-version 部分不同)。
+
+例子:
+
+```
+User-Agent: CERN-LineMode/2.15 libwww/2.17b3
+```
+
+用户代理不应该生成包含不必要的细粒度细节的 User-Agent 头字段，并且应该限制第三方添加子产品。过长的和详细的用户代理字段值会增加请求延迟，并增加用户被违背其意愿识别的风险(“指纹识别”)。
+
+同样，我们也鼓励实现不要使用其他实现的产品令牌来声明与它们的兼容性，因为这违背了该字段的目的。如果用户代理伪装成不同的用户代理，接收者可以假设用户有意希望看到为该标识的用户代理定制的响应，即使这些响应可能不适合实际使用的用户代理。
 
 ### 10.2. Response Context Fields
 
+下面的响应头字段提供了关于响应的额外信息，超出了状态码所隐含的内容，包括关于服务器、目标资源或相关资源的信息。
+
 #### 10.2.1. Allow
+
+"Allow" 头字段列出了目标资源所支持的方法集合。这个字段的目的是严格地通知接收者与资源相关联的有效请求方法。
+
+```
+  Allow = #method
+```
+
+示例：
+
+```
+Allow: GET, HEAD, PUT
+```
+
+实际允许的方法集是由原始服务器在每次请求时定义的。源服务器必须在 405(Method Not Allowed) 响应中生成一个 Allow 首部字段，并且可以在任何其他响应中这样做。空的 Allow 字段值表示资源不允许任何方法，如果资源被配置暂时禁用了，在 405 响应中可能会出现这种情况。
+
+代理不能修改 Allow 头字段——它不需要理解所有指示的方法，以便根据通用消息处理规则处理它们。
+
+实际允许的方法集是由原始服务器在每次请求时定义的。源服务器必须在 405(Method Not Allowed) 响应中生成一个 Allow 首部字段，并且可以在任何其他响应中这样做。空的 Allow 字段值表示资源不允许任何方法，如果资源被配置暂时禁用了，在 405 响应中可能会出现这种情况。
+
+代理不能修改 Allow 头字段 —— 它不需要理解所有指示的方法，以便根据通用消息处理规则处理它们。
 
 #### 10.2.2. Location
 
+“Location” 头字段用于在一些响应中引用与响应相关的特定资源。结合请求方法和状态码语义定义关系类型。
+
+```
+  Location = URI-reference
+```
+
+字段值由一个 URI 引用组成。当它具有相对引用([URI]，章节4.2)的形式时，最终值是根据目标 URI ([URI]，章节 5) 来计算的。
+
+对于 201(Created) 响应，Location 值引用由请求创建的主资源。对于 3xx(Redirection) 响应，Location 值指自动重定向请求的首选目标资源。
+
+如果在 3xx(Redirection) 响应中提供的位置值没有片段组件，则用户代理必须处理重定向，就好像该值继承用于生成目标 URI 的 URI 引用的片段组件一样(即重定向继承原始引用的片段，如果有的话)。
+
+例如，为 URI 引用 "http://www.example.org/~tim" 生成的 GET 请求可能会导致 303(See Other) 响应，其中包含 header 字段:
+
+```
+Location: /People.html#tim
+```
+
+这表明用户代理重定向到 "http://www.example.org/People.html#tim"。
+
+同样，为 URI 引用 "http://www.example.org/index.html#larry" 生成的 GET 请求可能会得到包含 header 字段的 301(Moved Permanently) 响应:
+
+```
+Location: http://www.example.net/index.html
+```
+
+这表明用户代理重定向到 "http://www.example.net/index.html#larry"，保留原始片段标识符。
+
+在某些情况下，位置值中的片段标识符不合适。例如，201(Created) 响应中的 Location 头字段应该提供特定于所创建资源的 URI。
+
+> 注意:有些收件人试图从不是有效 URI 引用的位置头字段中恢复。该规范没有强制要求或定义这种处理，但为了健壮性允许这种处理。Location 字段值不能包含成员列表，因为逗号列表分隔符是 URI 引用中的有效数据字符。如果使用多个位置字段行发送无效消息，则路径上的收件人可能会将这些字段行合并为一个值。从这种情况中恢复有效的 Location 字段值很困难，而且不能跨实现互操作。
+
+> 注意: Content-Location 头字段(第8.7节)与 Location 的不同之处在于，Content-Location 指的是所包含的表示形式所对应的最具体的资源。因此，响应可以同时包含 Location 和 Content-Location 头字段。
+
 #### 10.2.3. Retry-After
+
+服务器发送 "Retry-After" 报头字段来表示用户代理在发起后续请求之前应该等待多长时间。当发送 503(Service Unavailable) 响应时，Retry-After 表示服务预期在多长时间内对客户端不可用时。当以任意 3xx(Redirection) 响应发送时，Retry-After 表示用户代理在发出重定向请求之前被要求等待的最小时间。
+
+Retry-After 字段的值可以是 HTTP-date，也可以是接收到响应后的秒数。
+
+```
+  Retry-After = HTTP-date / delay-seconds
+```
+
+delay-seconds 值是一个非负的十进制整数，以秒为单位表示时间。
+
+```
+  delay-seconds  = 1*DIGIT
+```
+
+下面是两个示例：
+
+```
+Retry-After: Fri, 31 Dec 1999 23:59:59 GMT
+Retry-After: 120
+```
+
+在后一个例子中，延迟是2分钟。
 
 #### 10.2.4. Server
 
