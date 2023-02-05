@@ -2240,7 +2240,7 @@ WWW-Authenticate: Basic realm="simple", Newauth realm="apps",
   Authorization = credentials
 ```
 
-如果对请求进行了身份验证，并指定了一个领域，那么相同的凭据将被认为对该领域内的所有其他请求有效(假设身份验证方案本身不需要其他条件，例如凭据根据挑战值或使用同步时钟而变化)。
+如果对请求进行了身份验证，并指定了一个领域，那么相同的凭据将被认为对该领域内的所有其他请求有效(假设身份验证方案本身不需要其他条件，例如凭据根据质询值或使用同步时钟而变化)。
 
 转发请求的代理不能修改该请求中的任何授权头字段。关于 HTTP 缓存处理授权首部字段的细节和要求，请参见 [CACHING] 的第 3.5 节。
 
@@ -2265,9 +2265,37 @@ Authentication-Info 字段可以在任何 HTTP 响应中使用，与请求方法
 
 ##### 11.7.1. Proxy-Authenticate
 
+"Proxy-Authenticate" 报头字段由至少一个质询组成，该质询表示针对此请求适用于代理的认证方案和参数。代理必须在它生成的每个 407(Proxy Authentication Required) 响应中至少发送一个 Proxy-Authenticate 首部字段。
+
+```
+  Proxy-Authenticate = #challenge
+```
+
+与 WWW-Authenticate 不同，Proxy-Authenticate 首部字段只应用于响应链上的下一个出站客户端。这是因为只有选择了给定代理的客户端才可能拥有身份验证所需的凭据。然而，当在同一个管理域中使用多个代理时，例如大型企业网络中的办公室和区域缓存代理，通常由用户代理生成凭据，并通过层次结构传递，直到使用。因此，在这样的配置中，它看起来就像转发了 Proxy-Authenticate，因为每个代理都会发送相同的质询集。
+
+注意，WWW-Authenticate 的解析考虑因素也适用于这个头字段;详情请参见 11.6.1 节。
+
 ##### 11.7.2. Proxy-Authorization
 
+"Proxy-Authorization" 头字段允许客户端向需要身份验证的代理标识自己(或用户)。它的值由凭据组成，凭据包含客户端对代理和/或请求的资源领域的身份验证信息。
+
+```
+  Proxy-Authorization = credentials
+```
+
+与授权不同，Proxy-Authorization 首部字段只应用于下一个请求使用 Proxy-Authorization 首部字段进行身份验证的入站代理。当在一个链中使用多个代理时，Proxy-Authorization 首部字段将由期望接收凭据的第一个入站代理使用。代理可以将凭据从客户端请求转发到下一个代理，如果这是代理合作验证给定请求的机制。
+
 ##### 11.7.3. Proxy-Authentication-Info
+
+"Proxy-Authentication-Info" 响应头字段等同于 Authentication-Info，除了它适用于代理认证(章节11.3)，其语义由相应请求的 Proxy-Authorization 首部字段(章节11.7.2)表示的认证方案定义:
+
+```
+  Proxy-Authentication-Info = #auth-param
+```
+
+然而，与 Authentication-Info 不同的是，Proxy-Authentication-Info 头字段只应用于响应链上的下一个出站客户端。这是因为只有选择了给定代理的客户端才可能拥有身份验证所需的凭据。然而，当在同一个管理域中使用多个代理时，例如大型企业网络中的办公室和区域缓存代理，通常由用户代理生成凭据，并通过层次结构传递，直到使用。因此，在这样的配置中，它看起来就像 Proxy-Authentication-Info 正在被转发，因为每个代理都会发送相同的字段值。
+
+如果认证方案明确允许这样做，Proxy-Authentication-Info 可以作为 trailer 字段发送(章节6.5)。
 
 ## 12. Content Negotiation
 
