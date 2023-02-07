@@ -3089,15 +3089,15 @@ Content-Range 头字段对于不明确描述其语义的状态码没有任何意
 
 当  206(Partial Content) 响应消息包含多个范围的内容时，它们被作为多部分消息体([RFC2046]，章节5.1)中的主体部分传输，媒体类型为 "multipart/byteranges"。
 
-“multipart/byteranges”媒体类型包含一个或多个body部分，每个部分都有自己的Content-Type和Content-Range字段。所需的boundary参数指定用于分隔每个主体部分的边界字符串。
+ "multipart/byteranges" 媒体类型包含一个或多个 body 部分，每个部分都有自己的 Content-Type 和 Content-Range 字段。所需的 boundary 参数指定用于分隔每个主体部分的边界字符串。
 
 实现注意事项:
 
-1. 附加的CRLFs可以在函数体中的第一个边界字符串之前。
+1. 附加的 CRLFs 可以在函数体中的第一个边界字符串之前。
 2. 虽然[RFC2046]允许边界字符串被引用，但一些现有的实现不正确地处理引用的边界字符串。
-3. 许多客户端和服务器都被编码为byteranges规范的早期草案，该规范使用了一种媒体类型“multipart/x-byteranges”，几乎(但不完全)兼容这种类型。
+3. 许多客户端和服务器都被编码为 byteranges 规范的早期草案，该规范使用了一种媒体类型 "multipart/x-byteranges"，几乎(但不完全)兼容这种类型。
 
-尽管名为multipart/byteranges，媒体类型并不局限于字节范围。下面的例子使用了"exampleunit"范围单位:
+尽管名为 multipart/byteranges，媒体类型并不局限于字节范围。下面的例子使用了 "exampleunit" 范围单位:
 
 ```
 HTTP/1.1 206 Partial Content
