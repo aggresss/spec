@@ -3606,47 +3606,246 @@ This service requires use of the HTTP/3.0 protocol.
 
 ## 16. Extending HTTP
 
+HTTP 定义了许多通用的扩展点，可以在不引入新版本的情况下为协议引入功能，包括方法、状态码、字段名称，以及定义字段中的进一步扩展点，如身份验证方案和缓存指令(参见[缓存]第5.2.3节中的缓存控制扩展)。因为HTTP的语义不是版本控制的，所以这些扩展点是持久的;使用的协议版本不会影响它们的语义。
+
+不鼓励版本无关的扩展依赖于正在使用的协议的特定版本，也不鼓励与之交互。如果这是不可避免的，就需要仔细考虑扩展如何跨版本互操作。
+
+此外，特定版本的 HTTP 可能有自己的扩展点，例如 HTTP/1.1 中的传输编码( [HTTP/ 1.1] 的 6.1 节)和 HTTP/2 设置或帧类型([HTTP/2])。这些扩展点是特定于它们所在的协议版本的。
+
+特定于版本的扩展不能覆盖或修改与版本无关的机制或扩展点(如方法或头字段)的语义，除非协议元素明确允许。例如，CONNECT 方法(9.3.6节)允许这样做。
+
+这些指导方针确保了协议的正确运行和可预测，即使路径的一部分实现了不同版本的 HTTP。
+
 ### 16.1. Method Extensibility
 
 #### 16.1.1. Method Registry
 
+The "Hypertext Transfer Protocol (HTTP) Method Registry", maintained by IANA at <https://www.iana.org/assignments/http-methods>, registers method names.
+
+HTTP method registrations MUST include the following fields:
+
+- Method Name (see Section 9)
+- Safe ("yes" or "no", see Section 9.2.1)
+- Idempotent ("yes" or "no", see Section 9.2.2)
+- Pointer to specification text
+
+Values to be added to this namespace require IETF Review (see [RFC8126], Section 4.8).
+
 #### 16.1.2. Considerations for New Methods
+
+标准化的方法是通用的;也就是说，它们可能适用于任何资源，而不仅仅是一种特定的媒体类型、资源类型或应用程序。因此，最好在文档中注册新方法，而不是特定于某个应用程序或数据格式，因为正交技术理应得到正交规范。
+
+由于消息解析(第 6 节)需要独立于方法语义(对 HEAD 的响应除外)，新方法的定义不能更改解析算法或禁止在请求或响应消息上出现内容。新方法的定义可以要求头字段 Content-Length 的值为 “0”，从而指定只允许零长度的内容。
+
+同样，新方法也不能使用特殊的 host:port 和 asterisk 形式的请求 target，它们分别允许 CONNECT 和 OPTIONS(7.1节)。目标 URI 需要绝对形式的完整 URI，这意味着要么需要以绝对形式发送请求目标，要么需要以与其他方法相同的方式从请求上下文重建目标 URI。
+
+一个新的方法定义需要表明它是否安全(9.2.1 节)，幂等(9.2.2 节)，可缓存(9.2.3 节)，与请求内容相关联的语义(如果有的话)，以及该方法对首部字段或状态码语义做了哪些细化。如果新方法是可缓存的，它的定义应该描述缓存如何以及在什么条件下可以存储响应并使用它来满足后续的请求。新方法应该描述它是否可以变成有条件的(13.1 节)，如果可以，当条件为假时服务器如何响应。同样，如果新方法可能对部分响应语义(14.2 节)有一些用处，它也应该记录这一点。
+
+注意:避免定义以 "M-" 开头的方法名，因为这个前缀可能会被误解为具有由 [RFC2774] 分配给它的语义。
 
 ### 16.2. Status Code Extensibility
 
 #### 16.2.1. Status Code Registry
 
+The "Hypertext Transfer Protocol (HTTP) Status Code Registry", maintained by IANA at <https://www.iana.org/assignments/http-status-codes>, registers status code numbers.
+
+A registration MUST include the following fields:
+
+- Status Code (3 digits)
+- Short Description
+- Pointer to specification text
+
+Values to be added to the HTTP status code namespace require IETF Review (see [RFC8126], Section 4.8).
+
 #### 16.2.2. Considerations for New Status codes
+
+当需要表达当前状态码之外的响应语义时，可以注册一个新的状态码。状态码是通用的;它们可能适用于任何资源，而不仅仅是一种特定的媒体类型、某种资源或 HTTP 应用。因此，最好是在文档中注册新的状态码，而不是特定于某个应用程序。
+
+新的状态码必须属于第 15 节中定义的类别之一。为了允许现有的解析器处理响应消息，新的状态码不能禁止内容，尽管它们可以强制要求零长度的内容。
+
+对于尚未广泛部署的新状态码的提议，应该避免为该代码分配一个特定的数字，直到达成明确的共识，该代码将被注册;相反，早期的草案可以使用 "4NN" 或 "3N0" 之类的符号。"3N9"，表示未过早消费的状态码的类别。
+
+新状态码的定义应该解释导致包含该状态码的响应的请求条件(例如，请求头字段和/或方法的组合)，以及对响应头字段的任何依赖(例如，哪些字段是必需的，哪些字段可以修改语义，以及在使用新状态码时哪些字段的语义需要进一步细化)。
+
+默认情况下，状态码只适用于响应所对应的请求。如果状态码适用于更大的适用性范围 —— 例如，对所讨论的资源的所有请求或对服务器的所有请求 —— 则必须明确指定此状态码。在这样做的时候，需要注意的是，并不是所有的客户端都能一致地应用更大的作用域，因为它们可能不理解新的状态码。
+
+新的最终状态码的定义应该指定它是否可启发式缓存。请注意，如果响应具有显式的新鲜信息，则可以缓存任何具有最终状态码的响应。被定义为启发式可缓存的状态码允许在不需要显式新鲜度信息的情况下缓存。同样，如果使用了必须理解的缓存指令，状态码的定义可以对缓存行为进行约束。更多信息请参见 [CACHING] 。
+
+最后，新状态码的定义应该表明该内容是否与标识的资源有任何隐含的关联(第 6.4.2 节)。
 
 ### 16.3. Field Extensibility
 
+HTTP 最广泛使用的扩展点是新首部和尾部字段的定义。
+
+可以定义新字段，以便当接收方理解它们时，它们可以覆盖或增强对先前定义字段的解释，定义请求评估的前提条件，或细化响应的含义。
+
+然而，定义一个字段并不能保证它被部署或被接收方识别。大多数字段的设计都期望接收者可以安全地忽略(但向下游转发)任何无法识别的字段。在其他情况下，发送方理解给定字段的能力可能取决于它之前的通信，可能是在协议版本中，也可能是在之前的消息中发送的字段，或者它使用的特定媒体类型。同样，如果在引入字段时定义了这种检查，那么可以通过 OPTIONS 请求或与定义的知名 URI [RFC8615] 交互来直接检查支持。
+
 #### 16.3.1. Field Name Registry
+
+The "Hypertext Transfer Protocol (HTTP) Field Name Registry" defines the namespace for HTTP field names.
+
+Any party can request registration of an HTTP field. See Section 16.3.2 for considerations to take into account when creating a new HTTP field.
+
+The "Hypertext Transfer Protocol (HTTP) Field Name Registry" is located at <https://www.iana.org/assignments/http-fields/>. Registration requests can be made by following the instructions located there or by sending an email to the "ietf-http-wg@w3.org" mailing list.
+
+Field names are registered on the advice of a designated expert (appointed by the IESG or their delegate). Fields with the status 'permanent' are Specification Required ([RFC8126], Section 4.6).
+
+Registration requests consist of the following information:
+
+Field name:
+
+> The requested field name. It MUST conform to the field-name syntax defined in Section 5.1, and it SHOULD be restricted to just letters, digits, and hyphen ('-') characters, with the first character being a letter.
+
+Status:
+
+> "permanent", "provisional", "deprecated", or "obsoleted".
+
+Specification document(s):
+
+> Reference to the document that specifies the field, preferably including a URI that can be used to retrieve a copy of the document. Optional but encouraged for provisional registrations. An indication of the relevant section(s) can also be included, but is not required.
+
+And optionally:
+
+Comments: Additional information, such as about reserved entries.
+
+The expert(s) can define additional fields to be collected in the registry, in consultation with the community.
+
+Standards-defined names have a status of "permanent". Other names can also be registered as permanent if the expert(s) finds that they are in use, in consultation with the community. Other names should be registered as "provisional".
+
+Provisional entries can be removed by the expert(s) if -- in consultation with the community -- the expert(s) find that they are not in use. The expert(s) can change a provisional entry's status to permanent at any time.
+
+Note that names can be registered by third parties (including the expert(s)) if the expert(s) determines that an unregistered name is widely deployed and not likely to be registered in a timely manner otherwise.
 
 #### 16.3.2. Considerations for New Field Names
 
+HTTP 首部和尾部字段是该协议广泛使用的扩展点。虽然它们可以以一种特别的方式使用，但要更广泛地使用的字段需要仔细地编写文档，以确保互操作性。
+
+特别是，建议定义新字段的规范的作者考虑并在适当的情况下记录以下方面。
+
+- 在什么条件下可以使用; 例如，仅在响应或请求中，在所有消息中，仅在对特定请求方法的响应中，等等。
+- 字段语义是否由上下文进一步细化，例如与某些请求方法或状态码的使用。
+- 所传达信息的适用范围。默认情况下，字段只应用于与它们关联的消息，但有些响应字段被设计为应用于资源的所有表示、资源本身，甚至更广泛的范围。扩展响应字段范围的规范需要仔细考虑一些问题，例如内容协商、 适用性的时间周期，以及(在某些情况下)多租户服务器部署。
+- 在什么条件下允许中间设备插入、删除或修改字段的值。
+- 如果该字段在 trailer 中允许; 默认情况下，它不会(参见 6.5.1 节)。
+- 在连接头字段中列出字段名是否合适，甚至是否需要(即，如果该字段是逐跳的; 参见 7.6.1 节)。
+- 该字段是否引入了任何额外的安全考虑，例如泄露与隐私相关的数据。
+
+如果默认行为不合适，请求头字段还有其他注意事项，需要在文档中说明。
+
+- 是否适合在不同的响应头字段中列出字段名(例如，请求头字段由源服务器的内容选择算法使用;参见 12.5.5 节)。
+- 在 PUT 请求中接收到的字段会被存储(参见 9.3.4 节)。
+- 出于安全考虑，自动重定向请求时需要删除该字段(参见 15.4 节)。
+
 ##### 16.3.2.1. Considerations for New Field Names
 
+建议定义新字段的规范的作者选择一个简短但具有描述性的字段名称。简短的名称可以避免不必要的数据传输;描述性名称可以避免混淆和“占用”可能有更广泛用途的名称。
+
+为此，鼓励使用受限的字段(例如仅限于单个应用程序或用例的首部)使用包含use(或缩写)作为前缀的名称;例如，Foo应用需要一个描述字段，它可能使用"Foo- desc ";“Description”太通用了，而“Foo-Description”又太长了。
+
+虽然定义的字段名语法允许使用任何标记字符，但在实践中，有些实现对字段名中接受的字符有限制。为了实现互操作，新的字段名称应该限制为字母数字字符“-”和“。”，并且应该以字母开头。例如，下划线(“_”)字符在通过非http网关接口时可能会造成问题(参见17.10节)。
+
+字段名不应以“X-”作为前缀;参阅[BCP178]以获得更多信息。
+
+其他前缀有时也用于HTTP字段名;例如，“Accept-”用于许多内容协商头，而“content -”用于6.4节中解释的内容。这些前缀只是帮助识别字段的用途，不会触发自动处理。
+
 ##### 16.3.2.2. Considerations for New Field Values
+
+定义新 HTTP 字段的一个主要任务是规范字段值的语法:发送方应该生成什么，接收方如何根据接收到的内容推断语义。
+
+我们鼓励(但不要求)作者使用本规范中的 ABNF 规则或 [RFC8941] 中的规则来定义新字段值的语法。
+
+建议作者仔细考虑多字段的组合将如何影响他们(见第 5.3 节)。因为发送者可能会错误地发送多个值，而中间设备和 HTTP 库都可以自动执行组合操作，所以这适用于所有字段值 —— 即使只期望一个值。
+
+因此，建议作者对包含逗号的值进行分隔或编码(例如，使用 5.6.4 节的引号字符串规则，[RFC8941] 的字符串数据类型，或特定于字段的编码)。这确保字段数据中的逗号不会与分隔列表值的逗号混淆。
+
+例如，Content-Type 字段 value 只允许在引号括起来的字符串中使用逗号，即使有多个值也可以可靠地解析。Location 字段的值提供了一个不应该模拟的反例:因为 uri 可以包含逗号，所以不可能可靠地将包含逗号的单个值与两个值区分开来。
+
+另外，建议使用单例值字段的作者(参见 5.5 节)在文档中说明如何处理存在多个成员的消息(明智的默认值是忽略该字段，但这可能并不总是正确的选择)。
 
 ### 16.4. Authentication Scheme Extensibility
 
 #### 16.4.1. Authentication Scheme Registry
 
+The "Hypertext Transfer Protocol (HTTP) Authentication Scheme Registry" defines the namespace for the authentication schemes in challenges and credentials. It is maintained at <https://www.iana.org/assignments/http-authschemes>.
+
+Registrations MUST include the following fields:
+
+- Authentication Scheme Name
+- Pointer to specification text
+- Notes (optional)
+
+Values to be added to this namespace require IETF Review (see [RFC8126], Section 4.8).
+
 #### 16.4.2. Consierations for New Authentication Schemes
+
+HTTP身份验证框架的某些方面限制了新的身份验证方案的工作方式:
+
+- 假定 HTTP 身份验证是无状态的:身份验证请求所需的所有信息都必须在请求中提供，而不是依赖于服务器记住之前的请求。基于或绑定到基础连接的身份验证超出了本规范的范围，并且存在固有缺陷，除非采取措施确保该连接不能被经过身份验证的用户以外的任何一方使用(参见第 3.3 节)。
+- 身份验证参数 realm 是为了定义 11.5 节中描述的保护空间而保留的。新方案不能以与该定义不兼容的方式使用它。
+- 引入 “token68” 表示法是为了与现有的身份验证方案兼容，并且每个质询或凭据只能使用一次。因此，新的模式应该使用 auth-param 语法，否则未来的扩展将是不可能的。
+- 挑战和证书的解析由该规范定义，不能被新的认证方案修改。当使用 auth-param 语法时，所有参数应该同时支持标记语法和引号字符串语法，并且语法约束应该在解析后的字段值上定义(即引号字符串处理)。这是必要的，以便接收方可以使用适用于所有身份验证方案的通用解析器。
+    > 注意: “realm” 参数的值语法被限制为引号-字符串，这是一个不好的设计选择，不能用于新参数。
+- 新方案的定义必须定义对未知扩展参数的处理。一般来说，“必须忽略”规则比“必须理解”规则更好，因为否则，在遗留接受者存在的情况下将很难引入新参数。此外，最好描述定义新参数的策略(例如“更新规范”或“使用此注册表”)。
+- 认证方案需要记录在源服务器认证(即使用 WWW-Authenticate )和/或代理认证(即使用 Proxy-Authenticate )中是否可用。
+- 授权首部字段中携带的凭据是特定于用户代理的，因此，在它们出现的请求范围内，对 HTTP 缓存具有与“私有”缓存响应指令([CACHING] 的 5.2.2.7 节)相同的效果。
+- 因此，选择不在 Authorization 首部字段中携带凭据的新认证方案(例如，使用新定义的首部字段)将需要通过强制使用缓存响应指令(例如“private”)来明确禁止缓存。
+- 使用 Authentication-Info、Proxy-Authentication-Info 或任何其他与认证相关的响应头字段的方案需要考虑并记录相关的安全考虑(参见 17.16.4 节)。
 
 ### 16.5. Range Unit Extensibility
 
 #### 16.5.1. Range Unit Registry
 
+The "HTTP Range Unit Registry" defines the namespace for the range unit names and refers to their corresponding specifications. It is maintained at <https://www.iana.org/assignments/http-parameters>.
+
+Registration of an HTTP Range Unit MUST include the following fields:
+
+- Name
+- Description
+- Pointer to specification text
+
+Values to be added to this namespace require IETF Review (see [RFC8126], Section 4.8).
+
 #### 16.5.2. Considerations for New Range Units
+
+其他范围单位，如页面、节、记录、行或时间等特定于格式的边界，在 HTTP 中可以用于特定的应用程序，但在实践中不常用。替代范围单元的实现者应该考虑如何使用内容编码和通用中介。
 
 ### 16.6. Content Coding Extensibility
 
 #### 16.6.1. Content Coding Registry
 
+The "HTTP Content Coding Registry", maintained by IANA at <https://www.iana.org/assignments/http-parameters/>, registers content-coding names.
+
+Content coding registrations MUST include the following fields:
+
+- Name
+- Description
+- Pointer to specification text
+
+Names of content codings MUST NOT overlap with names of transfer codings (per the "HTTP Transfer Coding Registry" located at <https://www.iana.org/assignments/http-parameters/>) unless the encoding transformation is identical (as is the case for the compression codings defined in Section 8.4.1).
+
+Values to be added to this namespace require IETF Review (see Section 4.8 of [RFC8126]) and MUST conform to the purpose of content coding defined in Section 8.4.1.
+
 #### 16.6.2. Considerations for New Content Codings
 
+新的内容编码应该尽可能自描述，在编码格式本身中可以发现可选参数，而不是依赖在传输过程中可能丢失的外部元数据。
+
 ### 16.7. Upgrade Token Registry
+
+The "Hypertext Transfer Protocol (HTTP) Upgrade Token Registry" defines the namespace for protocol-name tokens used to identify protocols in the Upgrade header field. The registry is maintained at <https://www.iana.org/assignments/http-upgrade-tokens>.
+
+Each registered protocol name is associated with contact information and an optional set of specifications that details how the connection will be processed after it has been upgraded.
+
+注册以 “先到先得” 的方式进行(见 [RFC8126] 第4.4节)，并受以下规则约束:
+
+1. 协议-名称令牌一旦注册，就永远保持注册状态。
+2. protocol-name 令牌不区分大小写，并注册到发送方生成的首选大小写。
+3. 登记必须指定登记的责任方。
+4. 注册必须指定一个接触点。
+5. 注册可以命名一组与令牌相关的规范。这些规范不必公开。
+6. 注册应该命名一组与注册时的令牌相关联的预期“协议版本”令牌。
+7. 责任方可以随时变更登记。国际航空公司将保留所有此类更改的记录，并根据要求提供。
+8. IESG 可以重新分配协议令牌的责任。这通常只在无法联系到责任方的情况下使用。
 
 ## 17. Security Considerations
 
