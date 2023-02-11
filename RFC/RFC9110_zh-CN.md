@@ -4012,26 +4012,430 @@ HTTP 依赖底层传输层或会话层连接的安全属性来提供字段的机
 
 ## 18. IANA Considerations
 
+The change controller for the following registrations is: "IETF (iesg@ietf.org) - Internet Engineering Task Force".
+
 ### 18.1. URI Scheme Registration
+
+IANA has updated the "Uniform Resource Identifier (URI) Schemes" registry [BCP35] at <https://www.iana.org/assignments/uri-schemes/> with the permanent schemes listed in Table 2 in Section 4.2.
 
 ### 18.2. Method Registration
 
+IANA has updated the "Hypertext Transfer Protocol (HTTP) Method Registry" at <https://www.iana.org/assignments/http-methods> with the registration procedure of Section 16.1.1 and the method names summarized in the following table.
+
+Method | Safe | Idempotent | Section
+--|--|--|--
+CONNECT | no | no | 9.3.6
+DELETE | no | yes | 9.3.5
+GET | yes | yes | 9.3.1
+HEAD | yes | yes | 9.3.2
+OPTIONS | yes | yes | 9.3.7
+POST | no | no | 9.3.3
+PUT | no | yes | 9.3.4
+TRACE | yes | yes | 9.3.8
+* | no | no | 18.2
+
+The method name "\*" is reserved because using "\*" as a method name would conflict with its usage as a wildcard in some fields (e.g., "Access-Control-Request-Method").
+
 ### 18.3. Status Code Registration
+
+IANA has updated the "Hypertext Transfer Protocol (HTTP) Status Code Registry" at <https://www.iana.org/assignments/http-status-codes> with the registration procedure of Section 16.2.1 and the status code values summarized in the following table.
+
+Value | Description | Section
+--|--|--
+100 | Continue | 15.2.1
+101 | Switching Protocols | 15.2.2
+200 | OK | 15.3.1
+201 | Created | 15.3.2
+202 | Accepted | 15.3.3
+203 | Non-Authoritative Information | 15.3.4
+204 | No Content | 15.3.5
+205 | Reset Content | 15.3.6
+206 | Partial Content | 15.3.7
+300 | Multiple Choices | 15.4.1
+301 | Moved Permanently | 15.4.2
+302 | Found | 15.4.3
+303 | See Other | 15.4.4
+304 | Not Modified | 15.4.5
+305 | Use Proxy | 15.4.6
+306 | (Unused) | 15.4.7
+307 | Temporary Redirect | 15.4.8
+308 | Permanent Redirect | 15.4.9
+400 | Bad Request | 15.5.1
+401 | Unauthorized | 15.5.2
+402 | Payment Required | 15.5.3
+403 | Forbidden | 15.5.4
+404 | Not Found | 15.5.5
+405 | Method Not Allowed | 15.5.6
+406 | Not Acceptable | 15.5.7
+407 | Proxy Authentication Required | 15.5.8
+408 | Request Timeout | 15.5.9
+409 | Conflict | 15.5.10
+410 | Gone | 15.5.11
+411 | Length Required | 15.5.12
+412 | Precondition Failed | 15.5.13
+413 | Content Too Large | 15.5.14
+414 | URI Too Long | 15.5.15
+415 | Unsupported Media Type | 15.5.16
+416 | Range Not Satisfiable | 15.5.17
+417 | Expectation Failed | 15.5.18
+418 | (Unused) | 15.5.19
+421 | Misdirected Request | 15.5.20
+422 | Unprocessable Content | 15.5.21
+426 | Upgrade Required | 15.5.22
+500 | Internal Server Error | 15.6.1
+501 | Not Implemented | 15.6.2
+502 | Bad Gateway | 15.6.3
+503 | Service Unavailable | 15.6.4
+504 | Gateway Timeout | 15.6.5
+505 | HTTP Version Not Supported | 15.6.6
 
 ### 18.4. Field Name Registration
 
+This specification updates the HTTP-related aspects of the existing registration procedures for message header fields defined in [RFC3864]. It replaces the old procedures as they relate to HTTP by defining a new registration procedure and moving HTTP field definitions into a separate registry.
+
+IANA has created a new registry titled "Hypertext Transfer Protocol (HTTP) Field Name Registry" as outlined in Section 16.3.1.
+
+IANA has moved all entries in the "Permanent Message Header Field Names" and "Provisional Message Header Field Names" registries (see <https://www.iana.org/assignments/message-headers/>) with the protocol 'http' to this registry and has applied the following changes:
+
+1. The 'Applicable Protocol' field has been omitted.
+2. Entries that had a status of 'standard', 'experimental', 'reserved', or 'informational' have been made to have a status of 'permanent'.
+3. Provisional entries without a status have been made to have a status of 'provisional'.
+4. Permanent entries without a status (after confirmation that the registration document did not define one) have been made to have a status of 'provisional'. The expert(s) can choose to update the entries' status if there is evidence that another is more appropriate.
+
+IANA has annotated the "Permanent Message Header Field Names" and "Provisional Message Header Field Names" registries with the following note to indicate that HTTP field name registrations have moved:
+
+> Note HTTP field name registrations have been moved to [https://www.iana.org/assignments/http-fields] per [RFC9110].
+
+IANA has updated the "Hypertext Transfer Protocol (HTTP) Field Name Registry" with the field names listed in the following table.
+
+Field Name | Status | Section | Comments
+--|--|--|--
+Accept | permanent | 12.5.1 |
+Accept-Charset | deprecated | 12.5.2 |
+Accept-Encoding | permanent | 12.5.3 |
+Accept-Language | permanent | 12.5.4 |
+Accept-Ranges | permanent | 14.3 |
+Allow | permanent | 10.2.1 |
+Authentication-Info | permanent | 11.6.3 |
+Authorization | permanent | 11.6.2 |
+Connection | permanent | 7.6.1 |
+Content-Encoding | permanent | 8.4 |
+Content-Language | permanent | 8.5 |
+Content-Length | permanent | 8.6 |
+Content-Location | permanent | 8.7 |
+Content-Range | permanent | 14.4 |
+Content-Type | permanent | 8.3 |
+Date | permanent | 6.6.1 |
+ETag | permanent | 8.8.3 |
+Expect | permanent | 10.1.1 |
+From | permanent | 10.1.2 |
+Host | permanent | 7.2 |
+If-Match | permanent | 13.1.1 |
+If-Modified-Since | permanent | 13.1.3 |
+If-None-Match | permanent | 13.1.2 |
+If-Range | permanent | 13.1.5 |
+If-Unmodified-Since | permanent | 13.1.4 |
+Last-Modified | permanent | 8.8.2 |
+Location | permanent | 10.2.2 |
+Max-Forwards | permanent | 7.6.2 |
+Proxy-Authenticate | permanent | 11.7.1 |
+Proxy-Authentication-Info | permanent | 11.7.3 |
+Proxy-Authorization | permanent | 11.7.2 |
+Range | permanent | 14.2 |
+Referer | permanent | 10.1.3 |
+Retry-After | permanent | 10.2.3 |
+Server | permanent | 10.2.4 |
+TE | permanent | 10.1.4 |
+Trailer | permanent | 6.6.2 |
+Upgrade | permanent | 7.8 |
+User-Agent | permanent | 10.1.5 |
+Vary | permanent | 12.5.5 |
+Via | permanent | 7.6.3 |
+WWW-Authenticate | permanent | 11.6.1 |
+* | permanent | 12.5.5 | (reserved)
+
+The field name "*" is reserved because using that name as an HTTP header field might conflict with its special semantics in the Vary header field (Section 12.5.5).
+
+IANA has updated the "Content-MD5" entry in the new registry to have a status of 'obsoleted' with references to Section 14.15 of [RFC2616] (for the definition of the header field) and Appendix B of [RFC7231] (which removed the field definition from the updated specification).
+
 ### 18.5. Authentication Scheme Registration
+
+IANA has updated the "Hypertext Transfer Protocol (HTTP) Authentication Scheme Registry" at <https://www.iana.org/assignments/http-authschemes> with the registration procedure of Section 16.4.1. No authentication schemes are defined in this document.
 
 ### 18.6. Content Coding Registration
 
+IANA has updated the "HTTP Content Coding Registry" at <https://www.iana.org/assignments/http-parameters/> with the registration procedure of Section 16.6.1 and the content coding names summarized in the table below.
+
+Name | Description | Section
+--|--|--
+compress | UNIX "compress" data format [Welch] | 8.4.1.1
+deflate | "deflate" compressed data ([RFC1951]) inside the "zlib" data format ([RFC1950]) | 8.4.1.2
+gzip | GZIP file format [RFC1952] | 8.4.1.3
+identity | Reserved | 12.5.3
+x-compress | Deprecated (alias for compress) | 8.4.1.1
+x-gzip | Deprecated (alias for gzip) | 8.4.1.3
+
 ### 18.7. Range Unit Registration
+
+IANA has updated the "HTTP Range Unit Registry" at <https://www.iana.org/assignments/http-parameters/> with the registration procedure of Section 16.5.1 and the range unit names summarized in the table below.
+
+Range Unit Name | Description | Section
+--|--|--
+bytes | a range of octets | 14.1.2
+none | reserved as keyword to indicate range requests are not supported | 14.3
 
 ### 18.8. Media Type Registration
 
+IANA has updated the "Media Types" registry at <https://www.iana.org/assignments/media-types> with the registration information in Section 14.6 for the media type "multipart/byteranges".
+
+IANA has updated the registry note about "q" parameters with a link to Section 12.5.1 of this document.
+
 ### 18.9. Port Registration
 
+IANA has updated the "Service Name and Transport Protocol Port Number Registry" at <https://www.iana.org/assignments/service-names-port-numbers/> for the services on ports 80 and 443 that use UDP or TCP to:
+
+1. use this document as "Reference", and
+2. when currently unspecified, set "Assignee" to "IESG" and "Contact" to "IETF_Chair".
+
 ### 18.10. Upgrade Token Registration
+
+IANA has updated the "Hypertext Transfer Protocol (HTTP) Upgrade Token Registry" at <https://www.iana.org/assignments/http-upgrade-tokens> with the registration procedure described in Section 16.7 and the upgrade token names summarized in the following table.
+
+Name | Description | Expected Version Tokens | Section
+--|--|--|--
+HTTP | Hypertext Transfer Protocol | any DIGIT.DIGIT (e.g., "2.0") | 2.5
 
 ## 19. References
 
 ## Appendix A. Collected ABNF
+
+In the collected ABNF below, list rules are expanded per Section 5.6.1.
+
+```
+Accept = [ ( media-range [ weight ] ) *( OWS "," OWS ( media-range [
+ weight ] ) ) ]
+Accept-Charset = [ ( ( token / "*" ) [ weight ] ) *( OWS "," OWS ( (
+ token / "*" ) [ weight ] ) ) ]
+Accept-Encoding = [ ( codings [ weight ] ) *( OWS "," OWS ( codings [
+ weight ] ) ) ]
+Accept-Language = [ ( language-range [ weight ] ) *( OWS "," OWS (
+ language-range [ weight ] ) ) ]
+Accept-Ranges = acceptable-ranges
+Allow = [ method *( OWS "," OWS method ) ]
+Authentication-Info = [ auth-param *( OWS "," OWS auth-param ) ]
+Authorization = credentials
+
+BWS = OWS
+
+Connection = [ connection-option *( OWS "," OWS connection-option )
+ ]
+Content-Encoding = [ content-coding *( OWS "," OWS content-coding )
+ ]
+Content-Language = [ language-tag *( OWS "," OWS language-tag ) ]
+Content-Length = 1*DIGIT
+Content-Location = absolute-URI / partial-URI
+Content-Range = range-unit SP ( range-resp / unsatisfied-range )
+Content-Type = media-type
+
+Date = HTTP-date
+
+ETag = entity-tag
+Expect = [ expectation *( OWS "," OWS expectation ) ]
+
+From = mailbox
+
+GMT = %x47.4D.54 ; GMT
+
+HTTP-date = IMF-fixdate / obs-date
+Host = uri-host [ ":" port ]
+
+IMF-fixdate = day-name "," SP date1 SP time-of-day SP GMT
+If-Match = "*" / [ entity-tag *( OWS "," OWS entity-tag ) ]
+If-Modified-Since = HTTP-date
+If-None-Match = "*" / [ entity-tag *( OWS "," OWS entity-tag ) ]
+If-Range = entity-tag / HTTP-date
+If-Unmodified-Since = HTTP-date
+
+Last-Modified = HTTP-date
+Location = URI-reference
+
+Max-Forwards = 1*DIGIT
+
+OWS = *( SP / HTAB )
+
+Proxy-Authenticate = [ challenge *( OWS "," OWS challenge ) ]
+Proxy-Authentication-Info = [ auth-param *( OWS "," OWS auth-param )
+ ]
+Proxy-Authorization = credentials
+
+RWS = 1*( SP / HTAB )
+Range = ranges-specifier
+Referer = absolute-URI / partial-URI
+Retry-After = HTTP-date / delay-seconds
+
+Server = product *( RWS ( product / comment ) )
+
+TE = [ t-codings *( OWS "," OWS t-codings ) ]
+Trailer = [ field-name *( OWS "," OWS field-name ) ]
+
+URI-reference = <URI-reference, see [URI], Section 4.1>
+Upgrade = [ protocol *( OWS "," OWS protocol ) ]
+User-Agent = product *( RWS ( product / comment ) )
+
+Vary = [ ( "*" / field-name ) *( OWS "," OWS ( "*" / field-name ) )
+ ]
+Via = [ ( received-protocol RWS received-by [ RWS comment ] ) *( OWS
+ "," OWS ( received-protocol RWS received-by [ RWS comment ] ) ) ]
+
+WWW-Authenticate = [ challenge *( OWS "," OWS challenge ) ]
+
+absolute-URI = <absolute-URI, see [URI], Section 4.3>
+absolute-path = 1*( "/" segment )
+acceptable-ranges = range-unit *( OWS "," OWS range-unit )
+asctime-date = day-name SP date3 SP time-of-day SP year
+auth-param = token BWS "=" BWS ( token / quoted-string )
+auth-scheme = token
+authority = <authority, see [URI], Section 3.2>
+
+challenge = auth-scheme [ 1*SP ( token68 / [ auth-param *( OWS ","
+ OWS auth-param ) ] ) ]
+codings = content-coding / "identity" / "*"
+comment = "(" *( ctext / quoted-pair / comment ) ")"
+complete-length = 1*DIGIT
+connection-option = token
+content-coding = token
+credentials = auth-scheme [ 1*SP ( token68 / [ auth-param *( OWS ","
+ OWS auth-param ) ] ) ]
+ctext = HTAB / SP / %x21-27 ; '!'-'''
+ / %x2A-5B ; '*'-'['
+ / %x5D-7E ; ']'-'~'
+ / obs-text
+
+date1 = day SP month SP year
+date2 = day "-" month "-" 2DIGIT
+date3 = month SP ( 2DIGIT / ( SP DIGIT ) )
+day = 2DIGIT
+day-name = %x4D.6F.6E ; Mon
+ / %x54.75.65 ; Tue
+ / %x57.65.64 ; Wed
+ / %x54.68.75 ; Thu
+ / %x46.72.69 ; Fri
+ / %x53.61.74 ; Sat
+ / %x53.75.6E ; Sun
+day-name-l = %x4D.6F.6E.64.61.79 ; Monday
+ / %x54.75.65.73.64.61.79 ; Tuesday
+ / %x57.65.64.6E.65.73.64.61.79 ; Wednesday
+ / %x54.68.75.72.73.64.61.79 ; Thursday
+ / %x46.72.69.64.61.79 ; Friday
+ / %x53.61.74.75.72.64.61.79 ; Saturday
+ / %x53.75.6E.64.61.79 ; Sunday
+delay-seconds = 1*DIGIT
+
+entity-tag = [ weak ] opaque-tag
+etagc = "!" / %x23-7E ; '#'-'~'
+ / obs-text
+expectation = token [ "=" ( token / quoted-string ) parameters ]
+
+field-content = field-vchar [ 1*( SP / HTAB / field-vchar )
+ field-vchar ]
+field-name = token
+field-value = *field-content
+field-vchar = VCHAR / obs-text
+first-pos = 1*DIGIT
+
+hour = 2DIGIT
+http-URI = "http://" authority path-abempty [ "?" query ]
+https-URI = "https://" authority path-abempty [ "?" query ]
+
+incl-range = first-pos "-" last-pos
+int-range = first-pos "-" [ last-pos ]
+
+language-range = <language-range, see [RFC4647], Section 2.1>
+language-tag = <Language-Tag, see [RFC5646], Section 2.1>
+last-pos = 1*DIGIT
+
+mailbox = <mailbox, see [RFC5322], Section 3.4>
+media-range = ( "*/*" / ( type "/*" ) / ( type "/" subtype ) )
+ parameters
+media-type = type "/" subtype parameters
+method = token
+minute = 2DIGIT
+month = %x4A.61.6E ; Jan
+ / %x46.65.62 ; Feb
+ / %x4D.61.72 ; Mar
+ / %x41.70.72 ; Apr
+ / %x4D.61.79 ; May
+ / %x4A.75.6E ; Jun
+ / %x4A.75.6C ; Jul
+ / %x41.75.67 ; Aug
+ / %x53.65.70 ; Sep
+ / %x4F.63.74 ; Oct
+ / %x4E.6F.76 ; Nov
+ / %x44.65.63 ; Dec
+
+obs-date = rfc850-date / asctime-date
+obs-text = %x80-FF
+opaque-tag = DQUOTE *etagc DQUOTE
+other-range = 1*( %x21-2B ; '!'-'+'
+ / %x2D-7E ; '-'-'~'
+ )
+
+parameter = parameter-name "=" parameter-value
+parameter-name = token
+parameter-value = ( token / quoted-string )
+parameters = *( OWS ";" OWS [ parameter ] )
+partial-URI = relative-part [ "?" query ]
+path-abempty = <path-abempty, see [URI], Section 3.3>
+port = <port, see [URI], Section 3.2.3>
+product = token [ "/" product-version ]
+product-version = token
+protocol = protocol-name [ "/" protocol-version ]
+protocol-name = token
+protocol-version = token
+pseudonym = token
+
+qdtext = HTAB / SP / "!" / %x23-5B ; '#'-'['
+ / %x5D-7E ; ']'-'~'
+ / obs-text
+query = <query, see [URI], Section 3.4>
+quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
+quoted-string = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+qvalue = ( "0" [ "." *3DIGIT ] ) / ( "1" [ "." *3"0" ] )
+
+range-resp = incl-range "/" ( complete-length / "*" )
+range-set = range-spec *( OWS "," OWS range-spec )
+range-spec = int-range / suffix-range / other-range
+range-unit = token
+ranges-specifier = range-unit "=" range-set
+received-by = pseudonym [ ":" port ]
+received-protocol = [ protocol-name "/" ] protocol-version
+relative-part = <relative-part, see [URI], Section 4.2>
+rfc850-date = day-name-l "," SP date2 SP time-of-day SP GMT
+
+second = 2DIGIT
+segment = <segment, see [URI], Section 3.3>
+subtype = token
+suffix-length = 1*DIGIT
+suffix-range = "-" suffix-length
+
+t-codings = "trailers" / ( transfer-coding [ weight ] )
+tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." /
+ "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
+time-of-day = hour ":" minute ":" second
+token = 1*tchar
+token68 = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" )
+ *"="
+transfer-coding = token *( OWS ";" OWS transfer-parameter )
+transfer-parameter = token BWS "=" BWS ( token / quoted-string )
+type = token
+
+unsatisfied-range = "*/" complete-length
+uri-host = <host, see [URI], Section 3.2.2>
+
+weak = %x57.2F ; W/
+weight = OWS ";" OWS "q=" qvalue
+
+year = 4DIGIT
+```
+
+## Appendix B. Changes from Previous RFCs
