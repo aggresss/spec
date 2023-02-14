@@ -537,36 +537,257 @@ A process for decoding the chunked transfer coding can be represented in pseudo-
 
 ### 7.2. Transfer Codings for Compression
 
+The following transfer coding names for compression are defined by the same algorithm as their corresponding content coding:
+
+- compress (and x-compress) See Section 8.4.1.1 of [HTTP].
+- deflate See Section 8.4.1.2 of [HTTP].
+- gzip (and x-gzip) See Section 8.4.1.3 of [HTTP].
+
+The compression codings do not define any parameters. The presence of parameters with any of these compression codings SHOULD be treated as an error.
+
 ### 7.3. Transfer Codings Registry
+
+“HTTP传输编码注册表”为传输编码名称定义了命名空间。它维护在<https://www.iana.org/assignments/http-parameters>。
+
+注册必须包括以下字段:
+
+- Name
+- Description
+- Pointer to specification text
+
+传输编码的名称不得与内容编码的名称重叠([HTTP]第8.4.1节)，除非编码转换相同，如第7.2节中定义的压缩编码。
+
+当可以接受多种传输编码时，TE头字段([HTTP]的章节10.1.4)使用一个名为 "q" 的伪参数作为 rank 值。将来的转换编码注册不应该定义称为 "q" (大小写不敏感)的参数，以避免歧义。
+
+添加到该命名空间的值需要IETF审查(参见[RFC8126]的第4.8节)，并且必须符合本规范中定义的传输编码的目的。
+
+不希望使用程序名称来标识编码格式，并且不建议在以后的编码中使用。
 
 ### 7.4. Negotiating Transfer Codings
 
+TE 字段([HTTP]的10.1.4节)在 HTTP/1.1 中用于表示除了分块之外，客户端还愿意在响应中接受什么传输编码，以及客户端是否愿意在分块传输编码中保留 trailer 字段。
+
+客户端不得以 TE 发送分块的传输编码名称;分块对于 HTTP/1.1 的接收方来说是可以接受的。
+
+下面是三个TE用法的例子。
+
+```
+TE: deflate
+TE:
+TE: trailers, deflate;q=0.5
+```
+
+当可以接受多个传输编码时，客户端可以使用不区分大小写的 "q" 参数(类似于在内容协商字段中使用的 qvalues; 参见 [HTTP] 的 12.4.2 节)。排名值是一个 0 到 1 之间的实数，0.001 是最不受欢迎的，1 是最受欢迎的;值为 0 意味着“不可接受”。
+
+如果 TE 字段值为空或没有 TE 字段，则唯一可接受的传输编码将分块。没有传输编码的消息总是可以接受的。
+
+关键字 "trailers" 表示发送者不会丢弃 trailer 字段，如 [HTTP] 的 6.5 节所述。
+
+由于 TE 首部字段只适用于立即连接，TE 的发送方必须在连接首部字段([HTTP]章节7.6.1)中发送一个 "TE" 连接选项，以防止 TE 首部字段被不支持其语义的中介转发。
+
 ## 8. Handling Incomplete Messages
+
+服务器接收到不完整的请求消息(通常是由于取消的请求或触发的超时异常)，可能会在关闭连接之前发送错误响应。
+
+接收到不完整响应消息的客户端必须将该消息记录为不完整，这种情况可能发生在连接过早关闭或对假定的分块传输编码进行解码失败时。不完整响应的缓存要求在 [CACHING] 的 3.3 节中定义。
+
+如果响应终止于首部部分的中间(在接收到空行之前)，并且状态码可能依赖首部字段来传达响应的完整含义，那么客户端不能假设已经传达了含义;客户端可能需要重复请求，以确定下一步执行什么操作。
+
+如果没有接收到终止编码的零大小块，则使用分块传输编码的消息体是不完整的。如果接收到的消息体大小(以八位为单位)小于 Content-Length 指定的值，则使用有效 Content-Length 的消息是不完整的。一个既没有分块传输编码也没有 Content-Length 的响应会被关闭连接终止，如果头部部分完好地接收到，则被认为是完整的，除非底层连接指示了错误(例如，TLS 中的 "incomplete close" 将使响应不完整，如 9.8 节所述)。
 
 ## 9. Connection Management
 
+HTTP 消息传递独立于底层的传输层或会话层连接协议。HTTP 只假设可靠的传输，即按顺序交付请求和相应的按顺序交付响应。将 HTTP 请求和响应结构映射到底层传输协议的数据单元超出了本规范的范围。
+
+如 [HTTP] 的 7.3 节所述，用于HTTP交互的特定连接协议由客户端配置和目标 URI 确定。例如，"http" URI scheme ( [http] 的 4.2.1 节)表示一个默认的 TCP 基于 IP 的连接，默认的 TCP 端口是 80，但客户端可能被配置为通过其他连接、端口或协议使用代理。
+
+HTTP 实现需要参与连接管理，包括维护当前连接的状态、建立新连接或重用现有连接、处理从连接上接收到的消息、检测连接失败，以及关闭每个连接。大多数客户端并行地维护多个连接，包括每个服务器端点的多个连接。大多数服务器的设计初衷是维护数千个并发连接，同时控制请求队列以实现合理使用并检测拒绝服务攻击。
+
 ### 9.1. Establishment
+
+描述如何通过各种传输层或会话层协议建立连接超出了本规范的范围。每个 HTTP 连接映射到一个底层传输连接。
 
 ### 9.2. Associating a Response to a Request
 
+HTTP/1.1 没有将给定的请求消息与其对应的一个或多个响应消息关联起来的请求标识符。因此，它依赖于响应到达的顺序与同一个连接上的请求的顺序完全对应。只有在一个或多个信息性响应 (1xx;参见 [HTTP] 第 15.2 节)，然后对同一个请求进行最终响应。
+
+在连接上有多个未完成请求的客户端必须按照发送的顺序维护一个未完成请求的列表，并且必须将该连接上收到的每个响应消息与尚未收到最终(非 1xx )响应的第一个未完成请求关联起来。
+
+如果客户端从一个没有未完成请求的连接上接收到数据，那么客户端不能将该数据视为有效的响应;客户端应该关闭连接，因为消息的定界现在是不明确的，除非数据只包含一个或多个 CRLF (可以根据2.2节丢弃)。
+
 ### 9.3. Persistence
+
+HTTP/1.1 默认使用 "持久连接"，允许多个请求和响应通过单个连接传递。HTTP 实现应该支持持久连接。
+
+接收方根据最近收到的消息中的协议版本和连接头字段([HTTP]的7.6.1节)来确定连接是否持久:
+
+- 如果 "close" 连接选项存在(章节9.6)，连接将不会在当前响应之后持续;
+- 如果接收到的协议是 HTTP/1.1(或更高版本)，连接将在当前响应之后持续;
+- 如果接收到的协议是 HTTP/1.0，则存在 "keep-alive" 连接选项，无论接收方不是代理，还是消息是响应，并且接收方希望遵守 HTTP/1.0 的 "keep-alive" 机制，连接将在当前响应之后持续;
+- 不满足前面两个条件，连接将在当前响应之后关闭;
+- 不支持持久连接的客户端必须在每个请求消息中发送 "close" 连接选项。
+
+不支持持久连接的服务器必须在每个没有 1xx(Informational) 状态码的响应消息中发送 "close" 连接选项。
+
+客户端可以在持久连接上发送额外的请求，直到它发送或接收到 "close" 连接选项，或接收到没有 "keep-alive" 选项的 HTTP/1.0 响应。
+
+为了保持持久化，连接上的所有消息都需要有一个自定义的消息长度(即连接关闭时没有定义的长度)，如第6节所述。服务器必须读取整个请求消息体，或者在发送响应后关闭连接;否则，持久连接上的剩余数据将被误解为下一个请求。同样，如果客户端打算在后续请求中重用同一个连接，则必须读取整个响应消息体。
+
+代理服务器不能与 HTTP/1.0 客户端保持持久连接(有关许多 HTTP/1.0 客户端实现的 Keep-Alive 首部字段问题的信息和讨论，请参见附录 C.2.2)。
+
+有关与 HTTP/1.0 客户端向后兼容的更多信息，请参阅附录 C.2.2 。
 
 #### 9.3.1. Retrying Requests
 
+连接可以在任何时候关闭，有意或无意。实现应该预见到需要从异步关闭事件中恢复。客户端可以自动重试未完成请求序列的条件在 [HTTP] 的 9.2.2 节中定义。
+
 #### 9.3.2. Pipelining
+
+支持持久连接的客户端可以将请求 "pipeline" (即发送多个请求而不等待每个响应)。如果一系列管道请求都有安全方法([HTTP]的9.2.1节)，服务器可以并行处理这些请求，但它必须以接收请求的相同顺序发送相应的响应。
+
+管道请求的客户端，如果在接收到所有相应响应之前连接关闭，则应该重试未应答的请求。当在一个失败的连接(服务器在最后一个完整的响应中没有显式关闭连接)之后重新尝试管道请求时，客户端不能在连接建立后立即管道，因为前一个管道中剩余的第一个请求可能会导致错误响应，如果在一个过早关闭的连接上发送多个请求，这个错误可能会再次丢失(参见 9.6 节描述的 TCP 复位问题)。
+
+幂等方法([HTTP] 9.2.2节)对管道很重要，因为它们可以在连接失败后自动重试。用户代理不应该在非幂等方法之后对请求进行管道处理，直到接收到该方法的最终响应状态码，除非用户代理有方法检测和从涉及管道序列的部分故障条件中恢复。
+
+接收管道请求的中介可能会在入站转发这些请求时对它们进行管道处理，因为它可以依赖出站用户代理来确定哪些请求可以安全地进行管道处理。如果入站连接在接收到响应之前失败，管道中的中介体可能会尝试重试尚未接收到响应的一系列请求(如果这些请求都具有幂等方法);否则，管道中介应该转发任何接收到的响应，然后关闭相应的出站连接，以便出站用户代理可以相应地恢复。
 
 ### 9.4. Concurrency
 
+客户端应该限制与给定服务器同时打开的连接数。
+
+之前的 HTTP 版本给出了一个特定的连接数上限，但这对于许多应用程序来说是不切实际的。因此，这个规范没有规定最大连接数，而是鼓励客户端在打开多个连接时保持保守。
+
+使用多个连接通常是为了避免“队首阻塞”问题。在这种情况下，如果一个请求需要服务器端进行大量处理或传输非常大的内容，则会阻塞同一连接上的后续请求。然而，每个连接都会消耗服务器资源。
+
+此外，在拥塞的网络中使用多个连接会导致不良的副作用。在没有拥塞的网络中，使用大量连接也会产生副作用，因为它们的聚合和初始同步发送行为会导致拥塞，如果使用较少的并行连接，就不会出现这种情况。
+
+请注意，服务器可能会拒绝它认为是滥用或具有拒绝服务攻击特征的流量，例如来自单个客户端的打开连接数量过多。
+
 ### 9.5. Failures and Timeouts
+
+服务器通常会有一些超时值，超过这个值，服务器将不再保持不活动连接。代理服务器可能会把这个值设得更高，因为客户端很可能会通过同一个代理服务器建立更多连接。持久连接的使用对客户端或服务器的超时长度(或是否存在)没有要求。
+
+希望超时的客户端或服务器应该对连接发出一个优雅的关闭。实现应该不断地监视打开的连接，以获取接收到的关闭信号，并在适当的时候对其作出响应，因为及时关闭连接的两端可以使已分配的系统资源被回收。
+
+客户端、服务器或代理可以在任何时候关闭传输连接。例如，一个客户端可能已经开始发送一个新的请求，同时服务器已经决定关闭 “空闲” 连接。从服务器的角度来看，连接在空闲时被关闭，但从客户端角度来看，请求正在进行中。
+
+服务器应该尽可能维持持久连接，并允许底层传输的流量控制机制解决临时过载问题，而不是期望客户端重试而终止连接。后一种技术会加剧网络拥塞或服务器负载。
+
+发送消息体的客户端应该在传输请求时监视网络连接，以确保有错误响应。如果客户端看到一个响应，表明服务器不希望接收消息体，并且正在关闭连接，客户端应该立即停止发送消息体，并关闭自己的连接。
 
 ### 9.6. Tear-down
 
+"close" 连接选项被定义为一个信号，表示发送者将在完成响应后关闭此连接。当发送方打算关闭连接时，应该发送一个包含 "close" 连接选项的连接头字段([HTTP]章节7.6.1)。例如,
+
+```
+Connection: close
+```
+
+请求头字段表示这是客户端在此连接上发送的最后一个请求，而在响应中，相同的字段表示服务器将在响应消息完成后关闭此连接。
+
+请注意，字段名称 "close" 是保留的，因为使用该名称作为头字段可能与 "close" 连接选项冲突。
+
+发送 "close" 连接选项的客户端必须在该连接上(在包含 "close" 的连接之后)不再发送进一步的请求，并且必须在读取与此请求对应的最终响应消息后关闭连接。
+
+接收到 "close" 连接选项的服务器在向包含 "close" 连接选项的请求发送最终响应后，必须发起关闭连接(见下文)。服务器应该在对该连接的最终响应中发送 "close" 连接选项。服务器不能处理从该连接接收到的任何其他请求。
+
+发送 "close" 连接选项的服务器必须在发送包含 "close" 连接选项的响应后启动关闭连接(见下文)。服务器不能处理从该连接接收到的任何其他请求。
+
+客户端接收到 "close" 连接选项后，必须停止在该连接上发送请求，并在读取包含 "close" 连接选项的响应消息后关闭连接;如果在连接上发送了额外的管道请求，客户端不应该假设它们会被服务器处理。
+
+如果服务器立即关闭 TCP 连接，客户端将无法读取最后的 HTTP 响应，这是一个重大的风险。如果服务器在完全关闭的连接上从客户端收到了额外的数据，比如客户端在收到服务器响应之前发送了另一个请求，服务器的TCP 栈将向客户端发送一个 reset 包;不幸的是，在客户端 HTTP 解析器读取和解释输入缓冲区之前，reset 包可能会擦除客户端的未确认输入缓冲区。
+
+为了避免 TCP 重置问题，服务器通常分阶段关闭连接。首先，服务器执行半关闭操作，只关闭 读/写 连接的写端。然后，服务器继续读取连接，直到收到客户端对应的关闭请求，或者直到服务器确信自己的 TCP 栈已经收到客户端对包含服务器最后一次响应的分组的确认。最后，服务器完全关闭连接。
+
+目前还不清楚重置问题是 TCP 独占的，还是在其他传输连接协议中也可能存在。
+
+请注意，客户端处于半封闭状态的 TCP 连接并不会限定请求消息，也并不意味着客户端不再对响应感兴趣。一般来说，由于 HTTP/1.1 是独立于传输层的，所以在边界情况下不能依赖传输层信号。
+
 ### 9.7. TLS Connection Initiation
 
+从概念上讲，HTTP/TLS 只是通过 TLS [TLS13] 保护的连接发送 HTTP 消息。
+
+HTTP 客户端也充当 TLS 客户端。它在适当的端口上发起到服务器的连接，并发送 TLS ClientHello 以开始 TLS 握手。当 TLS 握手完成后，客户端可以发起第一个 HTTP 请求。所有 HTTP 数据都必须作为TLS "application" 发送，否则将被视为 HTTP 的普通连接(包括作为持久连接重用的可能性)。
+
 ### 9.8. TLS Connection Closure
+
+TLS 使用在(无错误)连接关闭之前交换关闭警告来提供安全的连接关闭;参见[TLS13]章节6.1。当接收到有效的关闭警报时，实现可以确保该连接上不会接收到进一步的数据。
+
+当一个实现知道它已经发送或接收了它关心的所有消息数据时，通常通过检测 HTTP 消息边界，它可能会通过发送一个关闭警告来生成一个“不完全关闭”，然后关闭连接，而没有等待从另一端接收相应的关闭警告。
+
+不完整的关闭并不会对已经接收到的数据的安全性产生问题，但它可能表明后续的数据可能已经被截断。由于 TLS 不能直接感知 HTTP 消息分帧，因此有必要检查 HTTP 数据本身，以确定消息是否完整。对不完整消息的处理在第8节中定义。
+
+当遇到不完整的关闭请求时，客户端应该将收到的所有请求视为已完成
+
+1. as much data as specified in the Content-Length header field or
+2. the terminal zero-length chunk (when Transfer-Encoding of chunked is used).
+
+一个既没有分块传输编码也没有内容长度的响应只有在收到有效的关闭警告时才算完成。将不完整的消息视为完整的可能会使实现暴露给攻击。
+
+当客户端检测到关闭操作不完全时，应该能够正常地恢复。
+
+客户端在关闭连接之前必须发送关闭警告。不希望收到更多数据的客户端可以选择不等待服务器的关闭警报，直接关闭连接，从而在服务器端生成一个不完全关闭。
+
+服务器应该准备好接收来自客户端的不完全关闭，因为客户端通常可以定位到服务器数据的结束位置。
+
+服务器在关闭连接之前，必须尝试与客户端交换关闭警告。服务器可能会在发送关闭警告后关闭连接，从而在客户端生成一个不完全关闭。
 
 ## 10. Enclosing Messages as Data
 
 ### 10.1. Media Type message/http
 
+"message/http" 媒体类型可以用来封装单个 http 请求或响应消息，前提是它遵守 MIME 对所有 "message" 类型关于行长度和编码的限制。由于行长限制，"message/http" 中的字段值可以使用行折叠(obs-fold)，如5.2节所述，通过多行传递字段值。 "message/http" 数据的接收方必须在使用消息时用一个或多个 SP 字符替换任何过时的行折叠。
+
+```
+Type name: message
+Subtype name: http
+Required parameters: N/A
+Optional parameters: version, msgtype
+    version: The HTTP-version number of the enclosed message (e.g., "1.1"). If not present, the version can be determined from the first line of the body.
+    msgtype: The message type -- "request" or "response". If not present, the type can be determined from the first line of the body.
+Encoding considerations: only "7bit", "8bit", or "binary" are permitted
+Security considerations: see Section 11
+Interoperability considerations: N/A
+Published specification: RFC 9112 (see Section 10.1).
+Applications that use this media type: N/A
+Fragment identifier considerations: N/A
+Additional information:
+    Magic number(s): N/A
+    Deprecated alias names for this type: N/A
+    File extension(s): N/A
+    Macintosh file type code(s): N/A
+Person and email address to contact for further information: See Authors' Addresses section.
+Intended usage: COMMON
+Restrictions on usage: N/A
+Author: See Authors' Addresses section.
+Change controller: IESG
+```
+
 ### 10.2. Media Type application/http
+
+"application/http" 媒体类型可以用来封装一个或多个 http 请求或响应消息(不混合)的管道。
+
+```
+Type name: application
+Subtype name: http
+Required parameters: N/A
+Optional parameters: version, msgtype
+    version: The HTTP-version number of the enclosed messages (e.g., "1.1"). If not present, the version can be determined from the first line of the body.
+    msgtype: The message type -- "request" or "response". If not present, the type can be determined from the first line of the body.
+Encoding considerations: HTTP messages enclosed by this type are in "binary" format; use of an appropriate Content-Transfer-Encoding is required when transmitted via email.
+Security considerations: see Section 11
+Interoperability considerations: N/A
+Published specification: RFC 9112 (see Section 10.2).
+Applications that use this media type: N/A
+Fragment identifier considerations: N/A
+Additional information:
+    Deprecated alias names for this type: N/A
+    Magic number(s): N/A
+    File extension(s): N/A
+    Macintosh file type code(s): N/A
+Person and email address to contact for further information: See Authors' Addresses section.
+Intended usage: COMMON
+Restrictions on usage: N/A
+Author: See Authors' Addresses section.
+Change controller: IESG
+```
