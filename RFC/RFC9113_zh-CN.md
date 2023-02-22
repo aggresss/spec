@@ -1425,7 +1425,7 @@ TLS 实现必须支持服务器名称指示 (SNI) [ TLS-EXT ]对 TLS 的扩展�
 
 TLS 1.3 包含许多早期版本中不可用的功能。本节讨论这些功能的使用。
 
-HTTP/2 服务器不得发送握手后 TLS 1.3 CertificateRequest 消息。HTTP/2 客户端必须将 TLS 握手后 CertificateRequest 消息视为PROTOCOL_ERROR类型的连接错误（第 5.4.1 节）。
+HTTP/2 服务器不得发送握手后 TLS 1.3 CertificateRequest 消息。HTTP/2 客户端必须将 TLS 握手后 CertificateRequest 消息视为 PROTOCOL_ERROR 类型的连接错误（第 5.4.1 节）。
 
 即使客户端提供了 “post_handshake_auth” TLS 扩展，握手后身份验证的禁令也适用。握手后身份验证支持可能会独立于ALPN [ TLS-ALPN ]进行广告宣传。客户端可能会提供在其他协议中使用的能力，但包含扩展并不意味着支持 HTTP/2。
 
