@@ -95,3 +95,7 @@ RFC | 名称
 [RFC4346](https://datatracker.ietf.org/doc/html/rfc4346) | The Transport Layer Security (TLS) Protocol Version 1.1
 [RFC5246](https://datatracker.ietf.org/doc/html/rfc5246) | The Transport Layer Security (TLS) Protocol Version 1.2
 [RFC8446](https://datatracker.ietf.org/doc/html/rfc8446) | The Transport Layer Security (TLS) Protocol Version 1.3
+
+### Web
+
+[RFC6455](https://datatracker.ietf.org/doc/html/rfc6455) | The WebSocket Protocol
