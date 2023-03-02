@@ -93,5 +93,5 @@ RFC | 名称
 ---|---
 [RFC2246](https://datatracker.ietf.org/doc/html/rfc2246) | The TLS Protocol Version 1.0
 [RFC4346](https://datatracker.ietf.org/doc/html/rfc4346) | The Transport Layer Security (TLS) Protocol Version 1.1
-[RFC2246](https://datatracker.ietf.org/doc/html/rfc2246) | The Transport Layer Security (TLS) Protocol Version 1.2
-[RFC2246](https://datatracker.ietf.org/doc/html/rfc2246) | The Transport Layer Security (TLS) Protocol Version 1.1
+[RFC5246](https://datatracker.ietf.org/doc/html/rfc5246) | The Transport Layer Security (TLS) Protocol Version 1.2
+[RFC8446](https://datatracker.ietf.org/doc/html/rfc8446) | The Transport Layer Security (TLS) Protocol Version 1.3
