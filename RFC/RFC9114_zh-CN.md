@@ -479,6 +479,19 @@ Push Stream Header {
 
 ## 7. HTTP Framing Layer
 
+HTTP 帧承载在 QUIC 流上，如第 6 节所述。HTTP/3 定义了三种流类型：控制流,请求流,推流. 本节描述 HTTP/3 帧格式及其允许的流类型；有关概述，请参见表1 。附录 A.2中提供了 HTTP/2 和 HTTP/3 帧之间的比较。
+
+Frame | Control Stream | Request Stream | Push Stream | Section
+--|--|--|--|--
+DATA | No | Yes | Yes | Section 7.2.1
+HEADERS | No | Yes | Yes | Section 7.2.2
+CANCEL_PUSH | Yes | No | No | Section 7.2.3
+SETTINGS | Yes (1) | No | No | Section 7.2.4
+PUSH_PROMISE | No | Yes | No | Section 7.2.5
+GOAWAY | Yes | No | No | Section 7.2.6
+MAX_PUSH_ID | Yes | No | No | Section 7.2.7
+Reserved | Yes | Yes | Yes | Section 7.2.8
+
 ### 7.1. Frame Layout
 
 ### 7.2. Frame Definitions
