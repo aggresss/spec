@@ -259,7 +259,6 @@ SIP 网元也就是用户代理客户端，服务器，无状态代理，有状�
 SIP 是基于文本的协议，使用的是 UTF-8 charset (RFC 2279 [7])。一个 SIP 消息可以是从客户端到服务器端的请求消息，也可以是服务器端到客户端的响应消息。虽然它们的语法规范和字符设置不同，请求 (第 7.1 章节)和响应 (第 7.2 章节) 消息都使用 RFC2822[3]的基本格式来处理。(例如，SIP 允许支持头字段，这些字段对 RFC2822 来说是无效的头字段)。两种类型的消息由一个起始行，一个或者多个头，一个表示头结束的空行和一个可选的消息体表示。
 
 ```
-
          generic-message  =  start-line
                              *message-header
                              CRLF
@@ -272,6 +271,8 @@ SIP 是基于文本的协议，使用的是 UTF-8 charset (RFC 2279 [7])。一�
 但是，SIP 不是 HTTP 的拓展。
 
 ### 7.1 Requests
+
+
 ### 7.2 Responses
 
 ### 7.3 Header Fields
@@ -281,6 +282,7 @@ SIP 是基于文本的协议，使用的是 UTF-8 charset (RFC 2279 [7])。一�
 #### 7.3.2 Header Field Classification
 
 #### 7.3.3 Compact Form
+
 ### 7.4 Bodies
 
 #### 7.4.1 Message Body Type
@@ -364,9 +366,9 @@ SIP 是基于文本的协议，使用的是 UTF-8 charset (RFC 2279 [7])。一�
 
 ## 10 Registrations
 
-### 10.1       Overview
+### 10.1 Overview
 
-### 10.2       Constructing the REGISTER Request
+### 10.2 Constructing the REGISTER Request
 
 #### 10.2.1 Adding Bindings
 
