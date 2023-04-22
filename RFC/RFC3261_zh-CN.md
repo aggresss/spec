@@ -7,13 +7,13 @@
 本文档描述了会话发起协议（SIP），这是一种应用层控制（信令）协议，用于创建、修改和终止与一个或多个参与者的会话。这些会话包括互联网电话呼叫、多媒体分发和多媒体会议。
 用于创建会话的 SIP 邀请包含会话描述，允许参与者就一组兼容的媒体类型达成一致。SIP 使用称为代理服务器的元素来帮助将请求路由到用户的当前位置，对用户的服务进行身份验证和授权，实现提供商呼叫路由策略，并向用户提供功能。SIP 还提供了注册功能，允许用户上传其当前位置供代理服务器使用。SIP 运行在几种不同的传输协议之上。
 
-## 1. Introduction
+## 1 Introduction
 
 很多基于网络的应用软件都要求可以实现会话创建和管理，这里的会话可以视为是关联多个参与方交换数据的方式。实际部署这些应用软件是非常复杂的过程：用户可能在几个终端之间移动切换，用户也可能使用多个名字，用户也可能使用不同的媒体，有时还同时使用不同的媒体介质。目前，有很多不同的协议被准许在网络上运行，这些协议来传输各种形式的实时媒体会话数据，例如语音视频，文本信息。 Session Initiation Protocol (SIP) 支持以上所说的这些功能描述和相关的协议，它可以支持开启网络的用户代理来发现其他的终端，准许其他终端的某些会话属性，终端之间可以共享这些会话属性。
 
 为了查询到期望的会话参与对象，和其他的功能，SIP 支持了网络主机设施创建（称为代理服务器），用户代理可以对会话发送注册，邀请和其他的请求。SIP 是一个敏捷，通用的工具，它用来创建，修改和结束会话，它可以不依赖于正在工作的传输协议，并且无需依赖于各种已建立的会话类型。
 
-## 2. Overview of SIP Functionality
+## 2 Overview of SIP Functionality
 
 SIP 是一种应用层的控制协议，它可以创建，修改和结束多媒体会话（会议），例如网络电话呼叫。SIP 也可以邀请参与对象加入到已存在的会话，例如多方广播会议。它可以从当前存在的会话中再加入媒体也可以移除媒体。SIP 可以透明支持名称映射，转发服务，这些服务功能支持个人移动能力[参考链接 27]- 无论网络位置如何，用户可以在网络中保持一个对外单点可视的身份。
 
@@ -25,7 +25,7 @@ SIP 支持创建和结束媒体通信的五个方面的功能：
 - 会话创建: "ringing"，在呼叫方和被呼叫方之间创建会话参数；
 - 会话管理: 包括转发，结束会话，修改会话参数和调用服务。
 
-SIP 不是一个单一，垂直集成度通信系统。SIP 是一个模块，它可以用来和其他的 IETF 协议集成来构建一个完整的媒体架构。 典型的架构如 ， 和实时传输协议（RTP(RFC1889[28])）配合使用实现实时数据传输，提供 QoS 反馈，使用实时媒体协议（RTSP(RFC2326[29])）来控制媒体流和媒体的发送控制，媒体网关控制协议(MEGACO）(RFC3015[30]) 来控制网关对 PSTN 网络的支持，和会话描述协议(SDP) (RFC2327 [1])来描述媒体会话。因此，SIP 应该结合其他的协议一起使用对用户提供完整的服务。但是，基本的 SIP 功能和操作不会依赖于其他任何协议。
+SIP 不是一个单一，垂直集成度通信系统。SIP 是一个模块，它可以用来和其他的 IETF 协议集成来构建一个完整的媒体架构。 典型的架构如 ， 和实时传输协议（RTP(RFC1889[28])）配合使用实现实时数据传输，提供 QoS 反馈，使用实时媒体协议（RTSP(RFC2326[29])）来控制媒体流和媒体的发送控制，媒体网关控制协议(MEGACO)(RFC3015[30]) 来控制网关对 PSTN 网络的支持，和会话描述协议(SDP) (RFC2327 [1])来描述媒体会话。因此，SIP 应该结合其他的协议一起使用对用户提供完整的服务。但是，基本的 SIP 功能和操作不会依赖于其他任何协议。
 
 SIP 本身不提供服务。但是，SIP 提供基本的操作，这些操作可以支持部署不同的服务。例如，SIP 可以定位一个用户，并且对当前定位发送一个不透明的对象。如果此基本操作用来支持发送一个写入 SDP 的会话描述，终端可以同意会话中的参数。如果同样的操作用来传递一张呼叫方的图片和此会话描述，那么就可以在早期部署一个 "caller ID" 服务。就像这个例子所展示的，一个单个基本操作往往被用来提供不同的服务。
 
@@ -33,11 +33,11 @@ SIP 不提供会议控制服务，例如发言权控制和发言，它不能对�
 
 SIP 所提供的服务的本质使得安全性特别重要。对于对端来说，SIP 提供了一个安全服务单元，这些服务单元包括拒绝攻击防止服务，认证（包括用户对用户，代理对用户），集成保护，加密和私有服务。SIP 可以支持 IPv4 和 IPv6 两种网络环境。
 
-## 3. Terminology
+## 3 Terminology
 
 本文档中的关键词“必须”、“不得”、“必需”、“应”、“不应”、“建议”、“不建议”、“可”和“可选”在所有大写字母出现时（如图所示）应按照 BCP 14[RFC2119] [RFC8174] 所述进行解释，并且说明了遵从 SIP 部署要求级别和严格程度。读者需要根据关键词的字面意思来区分这些规则的基本和宽泛程度，尽可能最大程度对应 SIP 协议的要求。很多时候，由于开发人员，特别是对英文协议了解不够，或者对协议的理解不同，所以导致一些兼容性问题或者功能不一致等问题。
 
-## 4. Overview of Operation
+## 4 Overview of Operation
 
 此部分使用一个简单示例介绍了 SIP 的基本操作。它实际上是一个学习指导，没有包含任何正式的说明。
 
@@ -172,7 +172,7 @@ Bob 不仅仅局限于从一台设备注册。例如，Bob 的两个终端设备
 
 其他的 SIP 操作 ， 例如查询 SIP 服务器的能力或终端使用 OPTIONS ， 或使用 CANCEL 取消正在进行的请求等流程将会在后续章节进行讨论。
 
-## 5. Structure of the Protocol
+## 5 Structure of the Protocol
 
 SIP 是按照一定的层级结构创建的协议，这表示它的行为是根据一系列各自相对独立的处理流程来实现，每个处理阶段之间是松耦合关系。协议行为描述为多个层级，这样是为了支持呈现的目的，支持标准的函数描述，这些描述涉及了单一环境的多个网元。 它不能通过任何方式来决定部署。当我们说一个网元要 “包含” 一个层级时，我们的意思是它符合一系列在这个层级所定义的规范规则。
 
@@ -196,7 +196,7 @@ SIP 网元也就是用户代理客户端，服务器，无状态代理，有状�
 
 章节 8，10，11，12，13，14, 和 15 完整讨论了 UA core(第 9 章描述了取消流程，这个取消流程支持都支持 UA core 和 proxy core)。 第 16 章讨论代理的网元，这些网元支持了介于两个用户代理之间的信息路由。
 
-## 6. Definitions
+## 6 Definitions
 
 以下定义对 SIP 协议非常重要。
 
@@ -254,7 +254,7 @@ SIP 网元也就是用户代理客户端，服务器，无状态代理，有状�
 - **UAS Core**: 一系列 UAS 的请求处理功能，它在事务层和传输层以上。
 - **User Agent (UA)**: UA 是一个逻辑实体，它能以用户代理客户端或者用户代理服务器端的方式工作。UAC 和 UAS 的角色，代理和转发服务器都是基于事务对事务的基础上定义的。例如，用户代理以 UAC 的方式发起一个呼叫时，发送请求时，它的工作方式是 UAC；当从被呼叫方收到一个 BYE 请求时，它的工作方式是 UAS。同样的道理，同样的软件，它可以以代理服务器的方式工作来处理请求，也可以以转发服务器的方式工作来处理下一个请求。代理、定位服务器和注册服务器都是逻辑实体。在部署时，它们可以集成为一个单一的应用服务器。
 
-## 7. SIP Messages
+## 7 SIP Messages
 
 SIP 是基于文本的协议，使用的是 UTF-8 charset (RFC 2279 [7])。一个 SIP 消息可以是从客户端到服务器端的请求消息，也可以是服务器端到客户端的响应消息。虽然它们的语法规范和字符设置不同，请求 (第 7.1 章节)和响应 (第 7.2 章节) 消息都使用 RFC2822[3]的基本格式来处理。(例如，SIP 允许支持头字段，这些字段对 RFC2822 来说是无效的头字段)。两种类型的消息由一个起始行，一个或者多个头，一个表示头结束的空行和一个可选的消息体表示。
 
@@ -267,52 +267,621 @@ SIP 是基于文本的协议，使用的是 UTF-8 charset (RFC 2279 [7])。一�
          start-line       =  Request-Line / Status-Line
 ```
 
-###
-## 8. General User Agent Behavior
+起始行，每个消息头和空行都必须以换行符结尾。注意，即使没有消息体，空行也要显示。除了上面字符的不同以外，很多 SIP 消息和 SIP 头语法都是遵守 HTTP/1.1 的语法。于其在这里重复语法和语义的定义，这里，我们建议使用 HTTP/1.1 规范的 [HX.Y] 的部分作为参考 (RFC 2616 [8])。
 
-## 9. Canceling a Request
+但是，SIP 不是 HTTP 的拓展。
 
-## 10. Registrations
+### 7.1 Requests
+### 7.2 Responses
 
-## 11. Querying for Capabilities
+### 7.3 Header Fields
 
-## 12. Dialogs
+#### 7.3.1 Header Field Format
 
-## 13. Initiating a Session
+#### 7.3.2 Header Field Classification
 
-## 14. Modifying an Existing Session
+#### 7.3.3 Compact Form
+### 7.4 Bodies
 
-## 15. Terminating a Session
+#### 7.4.1 Message Body Type
 
-## 16. Proxy Behavior
+#### 7.4.2 Message Body Length
 
-## 17. Transactions
+### 7.5 Framing SIP Messages
+## 8 General User Agent Behavior
 
-## 18. Transport
+### 8.1 UAC Behavior
 
-## 19. Common Message Components
+#### 8.1.1 Generating the Request
 
-## 20. Header Fields
+##### 8.1.1.1 Request-URI
 
-## 21. Response Codes
+##### 8.1.1.2 To
 
-## 22. Usage of HTTP Authentication
+##### 8.1.1.3 From
 
-## 23. S/MIME
+##### 8.1.1.4 Call-ID
 
-## 24. Examples
+##### 8.1.1.5 CSeq
 
-## 25. Augmented BNF for the SIP Protocol
+##### 8.1.1.6 Max-Forwards
 
-## 26. Security Considerations: Threat Model and Security Usage Recommendations
+##### 8.1.1.7 Via
 
-## 27. IANA Considerations
+##### 8.1.1.8 Contact
 
-## 28. Changes From RFC 2543
+##### 8.1.1.9 Supported and Require
 
-## 29. Normative References
+##### 8.1.1.10 Additional Message Components
 
-## 30. Informative References
+#### 8.1.2 Sending the Request
 
-## A. Table of Timer Values
+#### 8.1.3 Processing Responses
+
+#### 8.1.3.1 Transaction Layer Errors
+
+#### 8.1.3.2 Unrecognized Responses
+
+#### 8.1.3.3 Vias
+
+#### 8.1.3.4 Processing 3xx Responses
+
+#### 8.1.3.5 Processing 4xx Responses
+
+#### ### 8.2 UAS Behavior
+
+#### 8.2.1 Method Inspection
+
+#### 8.2.2 Header Inspection
+
+#### 8.2.2.1 To and Request-URI
+
+#### 8.2.2.2 Merged Requests
+
+#### 8.2.2.3 Require
+
+#### 8.2.3 Content Processing
+
+#### 8.2.4 Applying Extensions
+
+#### 8.2.5 Processing the Request
+
+#### 8.2.6 Generating the Response
+
+#### 8.2.6.1 Sending a Provisional Response
+
+#### 8.2.6.2 Headers and Tags
+
+#### 8.2.7 Stateless UAS Behavior
+
+### 8.3 Redirect Servers
+
+## 9 Canceling a Request
+
+### 9.1 Client Behavior
+
+### 9.2 Server Behavior
+
+## 10 Registrations
+
+### 10.1       Overview
+
+### 10.2       Constructing the REGISTER Request
+
+#### 10.2.1 Adding Bindings
+
+##### 10.2.1.1 Setting the Expiration Interval of Contact
+
+##### 10.2.1.2 Preferences among Contact Addresses
+
+#### 10.2.2 Removing Bindings
+
+#### 10.2.3 Fetching Bindings
+
+#### 10.2.4 Refreshing Bindings
+
+#### 10.2.5 Setting the Internal Clock
+
+#### 10.2.6 Discovering a Registrar
+
+#### 10.2.7 Transmitting a Request
+
+#### 10.2.8 Error Responses
+
+### 10.3 Processing REGISTER Requests
+
+## 11 Querying for Capabilities
+
+### 11.1 Construction of OPTIONS Request
+
+### 11.2 Processing of OPTIONS Request
+
+## 12 Dialogs
+
+### 12.1 Creation of a Dialog
+
+#### 12.1.1 UAS behavior
+
+#### 12.1.2 UAC Behavior
+
+### 12.2       Requests within a Dialog
+
+#### 12.2.1 UAC Behavior
+
+##### 12.2.1.1 Generating the Request
+
+##### 12.2.1.2 Processing the Responses
+
+#### 12.2.2 UAS Behavior
+
+### 12.3 Termination of a Dialog
+
+## 13 Initiating a Session
+
+### 13.1 Overview
+
+### 13.2 UAC Processing
+
+#### 13.2.1 Creating the Initial INVITE
+
+#### 13.2.2 Processing INVITE Responses
+
+##### 13.2.2.1 1xx Responses
+
+##### 13.2.2.2 3xx Responses
+
+##### 13.2.2.3 4xx, 5xx and 6xx Responses
+
+##### 13.2.2.4 2xx Responses
+
+###  13.3 UAS Processing
+
+#### 13.3.1 Processing of the INVITE
+
+##### 13.3.1.1 Progress
+
+##### 13.3.1.2 The INVITE is Redirected
+
+##### 13.3.1.3 The INVITE is Rejected
+
+##### 13.3.1.4 The INVITE is Accepted
+
+## 14 Modifying an Existing Session
+
+### 14.1 UAC Behavior
+
+### 14.2 UAS Behavior
+
+## 15 Terminating a Session
+
+### 15.1 Terminating a Session with a BYE Request
+
+#### 15.1.1 UAC Behavior
+
+#### 15.1.2 UAS Behavior
+
+## 16 Proxy Behavior
+
+### 16.1 Overview
+
+### 16.2 Stateful Proxy
+
+### 16.3 Request Validation
+
+### 16.4 Route Information Preprocessing
+
+### 16.5 Determining Request Targets
+
+### 16.6 Request Forwarding
+
+### 16.7 Response Processing
+
+### 16.8 Processing Timer C
+
+### 16.9 Handling Transport Errors
+
+### 16.10 CANCEL Processing
+
+### 16.11 Stateless Proxy
+
+### 16.12 Summary of Proxy Route Processing
+
+#### 16.12.1 Examples
+
+##### 16.12.1.1 Basic SIP Trapezoid
+
+##### 16.12.1.2 Traversing a Strict-Routing Proxy
+
+##### 16.12.1.3 Rewriting Record-Route Header Field Values
+
+## 17 Transactions
+
+### 17.1 Client Transaction
+
+#### 17.1.1 INVITE Client Transaction
+
+##### 17.1.1.1 Overview of INVITE Transaction
+
+##### 17.1.1.2 Formal Description
+
+##### 17.1.1.3 Construction of the ACK Request
+
+#### 17.1.2 Non-INVITE Client Transaction
+
+##### 17.1.2.1 Overview of the non-INVITE Transaction
+
+##### 17.1.2.2 Formal Description
+
+#### 17.1.3 Matching Responses to Client Transactions
+
+#### 17.1.4 Handling Transport Errors
+
+### 17.2 Server Transaction
+
+#### 17.2.1 INVITE Server Transaction
+
+#### 17.2.2 Non-INVITE Server Transaction
+
+#### 17.2.3 Matching Requests to Server Transactions
+
+#### 17.2.4 Handling Transport Errors
+
+## 18 Transport
+
+### 18.1 Clients
+
+#### 18.1.1 Sending Requests
+
+#### 18.1.2 Receiving Responses
+
+### 18.2 Servers
+
+#### 18.2.1 Receiving Requests
+
+#### 18.2.2 Sending Responses
+
+### 18.3 Framing
+
+### 18.4 Error Handling
+
+## 19 Common Message Components
+
+### 19.1 SIP and SIPS Uniform Resource Indicators
+
+#### 19.1.1 SIP and SIPS URI Components
+
+#### 19.1.2 Character Escaping Requirements
+
+#### 19.1.3 Example SIP and SIPS URIs
+
+#### 19.1.4 URI Comparison
+
+#### 19.1.5 Forming Requests from a URI
+
+#### 19.1.6 Relating SIP URIs and tel URLs
+
+### 19.2 Option Tags
+
+### 19.3 Tags
+
+## 20 Header Fields
+
+### 20.1 Accept
+
+### 20.2 Accept-Encoding
+
+### 20.3 Accept-Language
+
+### 20.4 Alert-Info
+
+### 20.5 Allow
+
+### 20.6 Authentication-Info
+
+### 20.7 Authorization
+
+### 20.8 Call-ID
+
+### 20.9 Call-Info
+
+### 20.10 Contact
+
+### 20.11 Content-Disposition
+
+### 20.12 Content-Encoding
+
+### 20.13 Content-Language
+
+### 20.14 Content-Length
+
+### 20.15 Content-Type
+
+### 20.16 CSeq
+
+### 20.17 Date
+
+### 20.18 Error-Info
+
+### 20.19 Expires
+
+### 20.20 From
+
+### 20.21 In-Reply-To
+
+### 20.22 Max-Forwards
+
+### 20.23 Min-Expires
+
+### 20.24 MIME-Version
+
+### 20.25 Organization
+
+### 20.26 Priority
+
+### 20.27 Proxy-Authenticate
+
+### 20.28 Proxy-Authorization
+
+### 20.29 Proxy-Require
+
+### 20.30 Record-Route
+
+### 20.31 Reply-To
+
+### 20.32 Require
+
+### 20.33 Retry-After
+
+### 20.34 Route
+
+### 20.35 Server
+
+### 20.36 Subject
+
+### 20.37 Supported
+
+### 20.38 Timestamp
+
+### 20.39 To
+
+### 20.40 Unsupported
+
+### 20.41 User-Agent
+
+### 20.42 Via
+
+### 20.43 Warning
+
+### 20.44 WWW-Authenticate
+
+## 21 Response Codes
+
+### 21.1 Provisional 1xx
+
+#### 21.1.1 100 Trying
+
+#### 21.1.2 180 Ringing
+
+#### 21.1.3 181 Call Is Being Forwarded
+
+#### 21.1.4 182 Queued
+
+#### 21.1.5 183 Session Progress
+
+### 21.2 Successful 2xx
+
+#### 21.2.1 200 OK
+
+### 21.3 Redirection 3xx
+
+#### 21.3.1 300 Multiple Choices
+
+#### 21.3.2 301 Moved Permanently
+
+#### 21.3.3 302 Moved Temporarily
+
+#### 21.3.4 305 Use Proxy
+
+#### 21.3.5 380 Alternative Service
+
+### 21.4 Request Failure 4xx
+
+#### 21.4.1 400 Bad Request
+
+#### 21.4.2 401 Unauthorized
+
+#### 21.4.3 402 Payment Required
+
+#### 21.4.4 403 Forbidden
+
+#### 21.4.5 404 Not Found
+
+#### 21.4.6 405 Method Not Allowed
+
+#### 21.4.7 406 Not Acceptable
+
+#### 21.4.8 407 Proxy Authentication Required
+
+#### 21.4.9 408 Request Timeout
+
+#### 21.4.10 410 Gone
+
+#### 21.4.11 413 Request Entity Too Large
+
+#### 21.4.12 414 Request-URI Too Long
+
+#### 21.4.13 415 Unsupported Media Type
+
+#### 21.4.14 416 Unsupported URI Scheme
+
+#### 21.4.15 420 Bad Extension
+
+#### 21.4.16 421 Extension Required
+
+#### 21.4.17 423 Interval Too Brief
+
+#### 21.4.18 480 Temporarily Unavailable
+
+#### 21.4.19 481 Call/Transaction Does Not Exist
+
+#### 21.4.20 482 Loop Detected
+
+#### 21.4.21 483 Too Many Hops
+
+#### 21.4.22 484 Address Incomplete
+
+#### 21.4.23 485 Ambiguous
+
+#### 21.4.24 486 Busy Here
+
+#### 21.4.25 487 Request Terminated
+
+#### 21.4.26 488 Not Acceptable Here
+
+#### 21.4.27 491 Request Pending
+
+#### 21.4.28 493 Undecipherable
+
+### 21.5 Server Failure 5xx
+
+#### 21.5.1 500 Server Internal Error
+
+#### 21.5.2 501 Not Implemented
+
+#### 21.5.3 502 Bad Gateway
+
+#### 21.5.4 503 Service Unavailable
+
+#### 21.5.5 504 Server Time-out
+
+#### 21.5.6 505 Version Not Supported
+
+#### 21.5.7 513 Message Too Large
+
+### 21.6 Global Failures 6xx
+
+#### 21.6.1 600 Busy Everywhere
+
+#### 21.6.2 603 Decline
+
+#### 21.6.3 604 Does Not Exist Anywhere
+
+#### 21.6.4 606 Not Acceptable
+
+## 22 Usage of HTTP Authentication
+
+### 22.1 Framework
+
+### 22.2 User-to-User Authentication
+
+### 22.3 Proxy-to-User Authentication
+
+### 22.4 The Digest Authentication Scheme
+
+## 23 S/MIME
+
+### 23.1 S/MIME Certificates
+
+### 23.2 S/MIME Key Exchange
+
+### 23.3 Securing MIME bodies
+
+### 23.4 SIP Header Privacy and Integrity using S/MIME: Tunneling SIP
+
+#### 23.4.1 Integrity and Confidentiality Properties of SIP Headers
+
+##### 23.4.1.1 Integrity
+
+##### 23.4.1.2 Confidentiality
+
+#### 23.4.2 Tunneling Integrity and Authentication
+
+#### 23.4.3 Tunneling Encryption
+
+## 24 Examples
+
+### 24.1 Registration
+
+### 24.2 Session Setup
+
+## 25 Augmented BNF for the SIP Protocol
+
+### 25.1 Basic Rules
+
+## 26 Security Considerations: Threat Model and Security Usage Recommendations
+
+### 26.1 Attacks and Threat Models
+
+#### 26.1.1 Registration Hijacking
+
+#### 26.1.2 Impersonating a Server
+
+#### 26.1.3 Tampering with Message Bodies
+
+#### 26.1.4 Tearing Down Sessions
+
+#### 26.1.5 Denial of Service and Amplification
+
+#### 26.2 Security Mechanisms
+
+#### 26.2.1 Transport and Network Layer Security
+
+#### 26.2.2 SIPS URI Scheme
+
+#### 26.2.3 HTTP Authentication
+
+#### 26.2.4 S/MIME
+
+### 26.3 Implementing Security Mechanisms
+
+#### 26.3.1 Requirements for Implementers of SIP
+
+#### 26.3.2 Security Solutions
+
+##### 26.3.2.1 Registration
+
+##### 26.3.2.2 Interdomain Requests
+
+##### 26.3.2.3 Peer-to-Peer Requests
+
+##### 26.3.2.4 DoS Protection
+
+### 26.4 Limitations
+
+#### 26.4.1 HTTP Digest
+
+#### 26.4.2 S/MIME
+
+#### 26.4.3 TLS
+
+#### 26.4.4 SIPS URIs
+
+### 26.5 Privacy
+
+## 27 IANA Considerations
+
+### 27.1 Option Tags
+
+### 27.2 Warn-Codes
+
+### 27.3 Header Field Names
+
+### 27.4 Method and Response Codes
+
+### 27.5 The "message/sip" MIME type.
+
+### 27.6 New Content-Disposition Parameter Registrations
+
+## 28 Changes From RFC 2543
+
+### 28.1 Major Functional Changes
+
+### 28.2 Minor Functional Changes
+
+## 29 Normative References
+
+## 30 Informative References
+
+## A Table of Timer Values
+
 
