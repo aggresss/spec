@@ -1107,27 +1107,168 @@ Content-Length: 274
 
 ## 12 Dialogs
 
+对用户代理来说，一个重要的概念是 dialog。一个 dialog 表示两个用户代理之间在特定时间内保持的一个点对点关系。Dialog 用来支持用户代理之间一系列的消息，并且在它们之间提供正确的请求路由。此 dialog 通过 SIP 消息解析，表示为文本内容。第 8 章节讨论过针对外部 dialog 的请求和响应环境中对于 method 独立的 UA 场景的处理流程。此章节讨论如何使用请求和响应来构建一个 dialog，以及如何在 dialog 中发送后续的请求和响应。
+
+在每个 UA 中，dialog 是通过 dialog ID 来确认的, 它由一个 Call-ID 值，一个本地标签和远端标签构成。在此 dialog 中，每个 UA 涉及的 dialog ID 是不同的。具体来说，在一端 UA 的本地标签等同于在对端点 UA 的远端标签。此标签是一个不透明度标识符号，此标识符号支持唯一的 dialog IDs 生成。
+
+dialog ID 也不但关联所有的响应消息，并且关联任何请求，此请求在 To 头中含有一个标签。 一个消息的 dialog ID 计算规则取决于 SIP 网元是一个 UAC 还是 UAS。对于 UAC 来说，dialog ID 的 Call-ID 设置为此消息的 Call-ID，远端标签设置为消息中 To 头中的这个标签，本地标签设置为消息中 From 头中的标签（此规则适用于请求和响应中）。
+
+对于 UAS 来说，dialog ID 中的 Call-ID 值设置为消息的 Call-ID，远端标签设置为消息中 From 头中的标签，本地标签设置为消息中 To 头中的标签。
+
+一个 dialog 包含某些特别状态消息，这些消息用来支持在此 dialog 中的后续的消息传输。这个状态消息由这个 dialog ID，一个本地序列号（用来支持从 UA 发送到对端的请求的顺序），一个远端序列号（用来支持从远端到 UA 请求的顺序），一个本地 URL，一个远端 URL，远端目的地，一个命名为 “secure” 的布尔值，和一个路由组，此路由组是一个按续排列的 URL 列表。路由组是一个服务器列表，请求需要通过此列表服务器路径发送到对端。
+
+Dialog 可以是一种“早期”状态，这种早期状态发生在当它创建时，它携带了一个临时响应，当收到一个 2xx 最终响应消息后，此状态会转化为一个“确认”状态。在上面的 dialog 中，对于其他响应或者完全没有收到任何响应，这个早期 dialog 就会结束。
+
 ### 12.1 Creation of a Dialog
+
+Dialogs 是通过具体的 methods 来创建的，由一系列对请求的非失败响应生成。在此规范中，仅 2xx 和 101-199 响应携带 To 标签的，请求是 INVITE 请求的响应将会创建 dialog。 对于由非最终响应创建的 dialog 来说，这种 dialog 是处于 “早期” 状态，称之为一个早期 dialog。拓展可定义其他含义支持创建 dialogs。第 13 章节列出了更多细节，这些细节提供了针对 INVITE method 的说明。这里，我们讨论 dialog 状态创建的流程，不依赖于这个 method。
+
+UAs 必须对 dialog ID 组件赋值。这些组件将会在下面章节进行讨论。
 
 #### 12.1.1 UAS behavior
 
+当 UAS 对请求返回响应时，响应消息中携带了创建 dialog 消息（例如，INVITE 响应的 2xx），UAS 必须从请求中拷贝所有 Record-Route 头值到响应消息中（包括URIs，URI 参数和任何 Record-Route 头参数，无论这些参数对 UAS 是已知还是未知参数），而且必须保持这些参数的顺序。此 UAS 必须对响应添加一个 Contact 头，这个 Contact 头包含一个地址，UAS 将会在 dialog（包括 INVITE 中 ACK 的2xx 响应）中的后续请求联系此地址。 一般来说，此 URL 的主机内容是此 IP 地址，或者主机的 FQDN。在 Contact 头中提供的 URI 必须是一个 SIP 或者 SIPS URL。
+
+如果在初始化了 dialog 的请求中的 Request-URI 或者 top Record-Route 头中的值域中包含 SIPS URI，如果没有 Record-Route 头字段，如果有任何值或者 Contact头的话，响应中的 Contact 头必须是一个 SIP URL。此 URL 应该支持一个全局范围（也就是说，在消息中，同样的 URL 可以使用在此 dialog 外部）。同样的方式，在INVITE 中的 Contact 头字段中的 URL 使用范围也不能被局限于此 dialog 中。因此，它可以针对 UAC 的消息中，甚至于也可以使用在此 dialog 外部。
+
+UAS 然后构建 dialog 状态。在 dialog 生命周期内，此状态必须被持续维护。
+
+如果请求是通过 TLS 发送过来的，并且 Request-URI 包含一个 SIPS URI，“secure”设置为 TRUE。
+
+路由组必须设置到请求的 Record-Route 头的 URL 列表中，按照顺序处理，并且保留所有的 URL 参数值。如果在请求中没有出现 Record-Route 头，路由组必须设置为空。这个路由组甚至是空的路由组将会在 dialog 的后续请求中覆盖任何已存在的路由组设置。远端目的地地址必须设置为从此请求的 Contact 头获得的 URL 地址。
+
+远端序列号必须设置为请求中 CSeq 的序列号。本地序列号必须为空。Dialog ID 中的呼叫身份组件必须设置为请求中的 Call-ID 值。Dialog ID 中的本地标签组件必须设置为此请求的相应响应中的 TO 域中的标签值（总是要包含一个 tag 标签），dialog ID 中的远端标签组件必须设置为从请求中 From 域获得的标签值。UAS 必须准备接收一个在 From 域中无 tag 标签的请求，这样的环境中，此标签 tag 被认为是一个空值的标签。
+
+> 这样的处理方式为了支持向后兼容，兼容 RFC 2543 规范，在 RFC 2543 中，tags 不是强制使用的。
+
+远端的 URL 必须设置为从 From 获得的 URI，本地 URL 必须设置为从 To 中获得的URL。
+
 #### 12.1.2 UAC Behavior
 
+当 UAC 发送了一个请求，此请求能够创建 dialog（例如发送的 INVITE），UAC 必须在请求的 Contact 头中提供一个支持全局范围的 SIP 或 SIPS URL（同样的 SIPURL 可以使用在 dialog 的外部环境中）。如果请求中含有 Request-URI 值或路由中的最顶部的 Route 头中带一个 SIPS URI，那么 Contact 头必须包含一个 SIPS URI。
+
+当 UAC 收到了一个响应，此响应创建一个 dialog，它构建了这个 dialog 的状态。dialog 状态必须被维持在 dialog 生命周期内。
+
+如果此请求是通过 TLS 发送，并且 Request-URI 包含一个 SIPS URI，“secure” Flag 设置为 TRUE。
+
+路由组必须设置到响应的 Record-Route 头的 URL 列表中，按照顺序处理，并且保留所有的 URL 参数值。如果在响应中没有出现 Record-Route 头，路由组必须设置为空。这个路由组甚至是空的路由组将会在 dialog 的后续请求中覆盖任何已存在的路由组设置。远端目的地地址必须设置为从此请求的 Contact 头获得的 URL 地址。
+
+本地序列号必须设置为请求中 CSeq 的序列号。远端序列号必须为空（当远端 UA 在dialog 中发送一个请求时，远端序列号才能被创建）。Dialog ID 中的呼叫身份组件必须设置为请求中的 Call-ID 值。Dialog ID 中的本地标签组件必须设置为此请求的相应响应中的 From 域中的标签值（总是要包含一个 tag 标签），dialog ID 中的远端标签组件必须设置为从响应中 To 域获得的标签值。UAC 必须准备接收一个在 To域中无 tag 标签的响应，这样的环境中，此标签 tag 被认为是一个空值的标签。
+
+> 这样的处理方式为了支持向后兼容，兼容 RFC2543 规范，在 RFC2543 中，tags 不是强制使用的。
+
+远端的 URL 必须设置为从 To 获得的 URI，本地 URL 必须设置为从 From 中获得的URL。
+
 ### 12.2 Requests within a Dialog
+
+一旦介于两个 UA 之间的 dialog 创建以后，如有必要，其中之一 UA 可以在 dialog 中发起新的事务。发送请求的 UA 将会在事务中充当 UAC 的角色。接收请求的 UA 将会在事务中充当 UAS 的角色。注意，在 UA 执行事务期间，这些事务创建了不同的 dialog，它们的角色可能是不同的。
+
+在 dialog 中，请求可以包含 Record-Route 和 Contact 头值。尽管这些请求可能修改远端目的地 URL，但是这些请求不能导致 dialog 中路由组修改。
+
+具体来说，一些请求中，不刷新目的地请求的这些请求不修改 dialog 的远端目的地 URL，刷新目的地请求的可以修改。在使用一个 INVITE 创建的 dialog 中，只有 re-INVITE 是一个被定义的目的地刷新请求。
+
+参考（第 14 章节）获得更多讨论。其他拓展可以通过不同的方式在 dialog 中定义其他的目的地刷新请求。
+
+> 注意，一个 ACK 不是一个目的地刷新请求。
+
+目的地刷新请求仅更新 dialog 的远端目的地 URL，不更新从 Record-Route 构建的路由组。更新后者将会引起与 RFC2543 向后兼容的问题。
 
 #### 12.2.1 UAC Behavior
 
 ##### 12.2.1.1 Generating the Request
 
+Dialog 中的请求是通过此状态多种组件构成，此状态被存为 dialog 的一个部分。请求中 To 头字段中的 URL 必须设置为远端 URL（从 dialog 状态中获得）。在请求中 To 头字段中的标签 tag 必须设置为 dialog ID 的远端标签 tag。请求的 FromURL 必须设置为本地 URL 地址（dialog 状态中获得的）。请求中 From 头中的 tag标签必须设置为 dialog ID 的本地 tag 标签。如果远端或者本地标签 tags 值为空，标签参数必须从各自的 To 或者 From 头中忽略。
+
+> 初始请求中的 TO 头和 From 头使用 URL 方式以及在此后续请求中的 URL 使用方式是通过 RFC2543 的向后兼容性来完成的，RFC2543 中使用 URL 来支持dialog 的身份确认。在本规范中，仅使用 tags 标签来确认 dialog 的身份。预计，在 mid-dialog 中的初始 To 和 From 头 URL 强制映射处理方式将会在此规范的后续重审中被被废弃。
+
+此请求的 Call-ID 必须设置为 dialog 的 Call-ID。在每个方向上（当然，除了 ACK和 CANCEL 以外，这些请求中的号码等于此请求被确认或者取消的号码），一个dialog 请求必须包含严格单调增加和持续的 CSeq 序列号（每次递增一个数值）。因此，如果本地序列号不是空值，本地序列号必须递增一，并且此值必须存储在CSeq 头中。如果本地序列号为空，必须选择一个初始的值，根据第 8.1.1.5 章节中的指导来选择。CSeq 头中的 method 必须匹配请求中 method。
+
+> CSeq 使用 32 bits 长度的数字串，在一个单呼叫中，一个客户端能够生成一个请求，一秒内可能大概需要 136 年才需包含这样的数字。选择了序列号的初始值以便在同样呼叫中的后续请求将不会在包含此序列号数字。非零的值允许客户使用一个基于时间的初始序列号。例如，客户端可以选择最有效率的 31 bits 长度作为初始序列号（32bits 秒级为标准）。
+
+UAC 使用此远端目的地和路由组来创建请求中的 Request-URI 和 Route 头字段。
+
+如果路由组设置为空，UAC 必须把远端目的地 URL 置于 Request-URI 中。UAC 一定不能给请求添加 Route 头值。
+
+如果路由组不为空，在路由组的第一个 URL 中包含了 lr 参数（参考第 19.1.1 章节）的话，UAC 必须把远端目的地 URL 置入到 Request-URI，并且必须包含一个 Route头，此 Route 按续包含路由组值和所有参数。
+
+如果路由组不为空，并且它的第一个不包含 lr 参数，此 UAC 必须把从路由组中的第一个 URL 置入到 Request-URI，去除任何 Request-URI 不支持的参数。此 UAC 必须添加一个 Route 头，此头值按续包含剩余的路由组值。然后，作为最后的值，此UAC 必须把远端目的地 URL 置入到 Route 头值中。
+
+例如，如果远端目的地是 sip:user@remoteua 的话，并且路由组 route set 包含：
+
+```
+<sip:proxy1>,<sip:proxy2>,<sip:proxy3;lr>,<sip:proxy4>
+```
+
+此请求的构成需要以下 Request-URI 和 Route 头字段值：
+
+```
+METHOD sip:proxy1
+Route: <sip:proxy2>,<sip:proxy3;lr>,<sip:proxy4>,<sip:user@remoteua>
+```
+
+> 如果路由组中的第一个 URL 不包含 lr 参数值，此 proxy 表示不理解此规范中的路由机制，使用 RFC 2543 的规范来执行，使用第一个 Route 头替换这个Request-URI，第一个 Route 头是当进行消息转发时收到的路由头。处理消息过程中，通过（严格路由）strict router 时，把路由头中结尾的 Request-URI 保存到那个 Request-URI 中。（当此请求抵达一个松散-路由时 loose-router，它将被返回到此 Request-URI 中）。
+
+在一个 dialog 中，UAC 应该在任何目的地刷新请求中包含一个 Contact 头，而且，除非处理过程中有一个需求需要修改它，URL 应该和此 dialog 中前面请求所使用的URL 相同。如果"secure" flag 为 true 的话，那个 URL 必须是一个 SIPS URI 格式。就像在第 12.2.2 章节讨论的一样，在目的地刷新请求中的 Contact 头将会更新远端目的地 URL。这样就会支持 UA 提供一个新的 contact 地址，在此 dialog 生命周期内，它的地址也会发生改变。
+
+但是，请求不是目的地刷新请求的话，此请求不会影响此 dialog 中的远端目的地 URL 地址。
+
+其他请求构成方式在第 8.1.1 章节中有更多介绍。
+
+一旦请求构建完成后，服务器的地址会被处理，使用同样的外部 dialog 请求处理方式发生此请求（第 8.1.2 章）。
+
+在第 8.1.2 章中规定的处理流程中，如果没有 Route 头的话，此流程将会导致请求被发送到一个地址，这个地址标识在 topmost Route 头中或者 Request-URI 中。受限于某些限制，它们允许此请求被发送到其他可选目的地地址 （ 例如，默认的 outbound proxy 没有出现在路由组中）。
+
 ##### 12.2.1.2 Processing the Responses
+
+UAC 将会从事务层收到一个请求的响应消息。如果客户端事务返回一个超时的话，此错误看作是一个 408（请求超时）响应。
+
+UAC 处理方式需要注意。如果此 UAC 收到了一个针对一个请求返回的 3xx 响应，此请求是在一个 dialog 中发送到请求，那么，此 UAC 处理方式和 dialog 外部发送到请求处理方式相同。具体的讨论参考第 8.1.3.4 章节。
+
+> 注意，但是，当 UAC 尝试可选地址时，它仍然使用路由组支持此 dialog 创建请求的 Route 头。
+
+当 UAC 收到一个针对目的地刷新请求的 2xx 响应时，如果出现了远端目的地 URL 的话 ， UAC 必 须 用 此 响 应 中 的 Contact 头 的 URL 替 换 dialog 中 的 远 端 目 的 地（ remote target URI）。
+
+如果在 dialog 中的请求响应是一个 481 错误（Call/Transaction Does Not Exist）或者一个 408 （Request Timeout）的话，UAC 应该结束此 dialog。UAC 也应该结束完全无请求响应回复的 dialog（此客户端事务层将会通知 TU 超时的结果）。
+
+> 对于以 INVITE 发起的 dialogs，通过发送一个 BYE 消息来结束 dialog。
 
 #### 12.2.2 UAS Behavior
 
+在 dialog 中发送的请求就像其他请求一样，它是一个原子的核心请求。如果 UAS 接受了一个特别的请求，所有和它关联的状态修改都要被执行。如果此请求被拒绝的话，不执行任何状态修改的流程。
+
+> 注意，一些请求，例如，INVITE 请求，它们会影响一些状态改变。
+
+UAS 将会从事务层收到此请求。如果此请求在 To 头中包含一个 tag 标签，UAScore 会处理 dialog 身份确认，和此请求保持一致，然后通过现有的 dialogs 和此 dialog 进行对比。如果对比匹配的话，那将确认这是一个 mid-dialog 请求。在此情况下，UAS 首先使用同样的针对外部 dialog 请求的处理规则来执行处理流程，具体的讨论在第 8.2 章节中。
+
+如果此请求的 To 头中包含了一个并且 tag，但是，dialog 身份确认不能匹配当前存在的任何 dialog 时，UAS 可能已经出现系统崩溃然后重新启动，或者维持现有状态，这里，此 UAS 可能已经收到一个请求，这个请求可能是支持了不同的（失败的）UAS（这些 UAS 有能力构建 To 标签，因此那个 UAS 可以通过此 tag 标签来确认请求，这些标签是用来支持 UAS 提供失败恢复状态的标签）。另外一种可能是，收到的请求可能已经执行了错误路由。基于 To tag 标签，UAS 可能接受或者拒绝此请求。接受此请求可以为 To tag 标签提供健壮性，因此 dialog 可以维持持续性，甚至 UAS 崩溃。希望支持这种能力的 UA 必须考虑前面的这一点。在处理过程中可能出现一些问题，例如 UA 重启时选择了严格递增 CSeq 序列号，重构路由组和接受超出范围的 RTP 时间戳和序列号码。
+
+如果 UAS 想解决此请求的，因为 UAS 不想重新创建此 dialog，UAS 必须针对其请求回复一个 481 响应（Call/Transaction Does Not Exist）状态响应码，并且发送此响应到服务器事务层。
+
+如果此请求没有通过任何方式修改 dialog 状态的话，此请求可能就会在 dialog 中收到（例如，OPTIONS 请求）。对它们的处理方式就像外部 dialog 中收到的请求一样。
+
+如果远端序列号为空，此序列号必须设置为在请求中 CSeq 头的序列号值。如果远端序列号不为空，但是请求中的序列号值低于远端序列号的话，此请求已经排序异常，必须返回一个 500（Server Internal Error）错误响应码。如果远端序列号不为空，并且请求的序列号大于远端的序列号值，此请求是按续处理的。本地 CSeq 序列号大于远端 CSeq 序列号一位数是可能存在的。这本身不是一个错误状态，UAS 应该准备好接收处理类似的请求，这样的请求中携带的 CSeq 值会高于前一个接收的请求的 CSeq 值。
+
+> 如果代理对一个由 UAC 生成的请求进行验证的话，此 UAC 需要重新提交携带安全消息的请求。重新提交的请求将会生成一个新的 CSeq 序列号。因为 UAS 从来没有看到过第一个请求，因此，UA 会在 CSeq 序列号位置提示间断，这样的间断不代表任何错误状态消息。
+
+当 UAS 收到一个目的地刷新请求时，它必须使用此请求中 Contact 头中的 URL 替换 dialog 中的远端目的地 URL 地址（如果存在的话）。
+
 ### 12.3 Termination of a Dialog
+
+Dialog 的结束和此 method 的使用环境是独立的，如果一个外部 dialog 请求生成了一个非 2xx 最终响应，任何通过以前请求响应创建的历史 dialogs 将会结束。结束确认 dialogs 的机制是依赖于具体的 method。在此规范中，BYE method 将会结束和它关联的会话和此 dialog。具体细节参考第 15 章节的内容。
 
 ## 13 Initiating a Session
 
 ### 13.1 Overview
+
+当一个用户代理客户端期望发起一个会话（例如，语音，视频或者游戏）时，它会发送一个 INVITE 请求。这个 INVITE 请求将会询问服务器端来创建一个会话。这个请求可能会通过代理进行转发，最后抵达一个或者多个 UAS 端，此 UAS 端是最终接受此请求的服务器端。这些 UAS 端将需要定期查询此用户端，确认是否接受此邀请请求。
+
+一定时间后，那些 UAS 端返回一个 2xx 响应表示能够接受此邀请（表示此会话已被创建）。如果此邀请没有被接受的话，UAS 将会对用户代理发送一个 3xx，4xx，5xx 或者 6xx 响应，状态错误码发送取决于被拒绝的理由。在 UAS 发送最终响应之前，UAS 也能发送一个临时响应（1xx），通知对方正在联系被呼叫方来处理 UAC流程。
+
+在收到一个或多个临时响应后，UAC 将会获得一个或者多个 2xx 响应，或者一个非-2xx 最终响应。因为需要耗费一定的时间等待接收邀请的最终响应消息，邀请（Invite ）事务的可靠性机制处理方式和其他的请求（OPTIONS）有所不同。一旦UAC 收到一个最终响应，此 UAC 需要对每个它收到的最终响应发送一个 ACK 确认消息。发送 ACK 的流程处理取决于响应的类型。对于介于 300 和 699 之间的最终响应，ACK 的处理是在事务层来完成对，并且需要遵从一系列规则（具体规则参考第17 章节内容）。对于 2xx 响应，ACK 是由 UAC core 来生成。
+
+由 INVITE 收到的 2xx 响应创建一个会话，同时它也在 UA 之间创建了一个 dialog。一个 UA 是发起此 INVITE 请求的，一个 UA 是生成 2xx 响应的。因此，当从不同远端 UA 收到多个 2xx 响应（因为 INVITE 分叉），每个 2xx 创建一个不同的 dialog。所有这些 dialog 都属于同一呼叫。
+
+此章节提供了一个使用 INVITE 创建会话的细节。支持 INVITE 的 UA 也必须支持ACK，CANCEL 和 BYE。
 
 ### 13.2 UAC Processing
 
