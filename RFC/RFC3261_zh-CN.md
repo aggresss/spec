@@ -1031,11 +1031,79 @@ UA 能够使用三种方式来决定注册的地址：通过配置的方式，�
 
 ## 11 Querying for Capabilities
 
+SIP method OPTIONS 支持一个 UA 查询其他 UA 或者代理服务器相关的支持能力 。 这种方式允许客户端发现 supported methods、content types、extensions、codecs 等相关能力支持。无需对第三方“振铃”。例如，客户端在 INVITE 中插入一个 Require 头选项，客户端不能确定这个选项是否被目的地 UAS 所支持的话，客户端可以通过 OPTION 选项查询目的地 UAS 来是否支持此选项，UAS 将会返回 option 结果，通过一个 Supported 头来表示查询结果。所有的 UA 必须支持 OPTIONS method。
 
+OPTIONS 请求目的地通过 Request-URI 来确认，此目的地确认消息可定位另外 UA或一个 SIP 服务器端。如果此 OPTIONS 标识地址到一个代理服务器，此 Request-URI 设置为不带用户部分信息，这种处理方式和注册请求中的 Request-URI 相似。
+
+或者，服务器收到一个 OPTIONS 请求，携带的 Max-Forwards 头字段值为零的选项，不管 Request-URI，服务器端可以响应这个请求。
+
+> 这种处理方式在 HTTP/1.1 中非常普遍 。这种处理方式可以作为一种 “traceroute” 功能来检查个体跳点服务器支持能力，跳点服务器会发送一系列的 OPTIONS 请求，并且携带递增的 Max-Forwards 头字段值。
+
+就像一般的 UA 处理场景例子，如果 OPTIONS 没有产生响应消息，事务层会返回一个超时错误。这也表示目的地是不可达的地址，因此是一个无效的地址。
+
+OPTIONS 请求可以作为一个已创建的 dialog 的部分消息来发送，它可以查询对端的支持能力，这个支持能力可以使用在后续的 dialog 中。
 
 ### 11.1 Construction of OPTIONS Request
 
+OPTIONS 请求使用标准的 SIP 请求规则来构建的，具体规则参考第 8.1.1 章节。
+
+Contact 头字段可能出现在 OPTIONS 请求中。
+
+Accept 头应该包括在 OPTIONS 请求中，此头用来表示此消息体类型，UAC 希望在回复的响应中收到此消息体类型。通常情况下，这是一种消息格式，这种格式用来描述一个 UA 的媒体能力，例如 SDP（application/sdp）。
+
+针对 OPTIONS 请求的响应假设限定在原始请求的 Request-URI 中。可是，仅当OPTIONS 被作为已创建的 dialog 部分消息发送时，保证生成 OPTIONS 响应的服务器能够收到后续的 OPTIONS 请求。
+
+OPTIONS 请求示例：
+
+```
+OPTIONS sip:carol@chicago.com SIP/2.0
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKhjhs8ass877
+Max-Forwards: 70
+To: <sip:carol@chicago.com>
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 63104 OPTIONS
+Contact: <sip:alice@pc33.atlanta.com>
+Accept: application/sdp
+Content-Length: 0
+```
+
 ### 11.2 Processing of OPTIONS Request
+
+对 OPTIONS 的 SIP 响应的构建是通过标准规则来实现的，具体的讨论在第 8.2.6 章节。响应码的选择必须和 INVITE 请求中的请求统一。如果 UAS 准备接受呼叫，那么将会返回 200（OK），如果 UAS 处于示忙状态，那么 486(Busy Here) 将会被返回，等等。这样就会支持 OPTIONS 请求来决定 UAS 的基本状态，可以用来表示UAS 是否会接受一个 INVITE 请求。
+
+在 dialog 中收到 OPTIONS 请求，此 OPTIONS 请求生成一个 200（OK）响应，这个响应等同于一个已创建的，dialog 之外的请求，这个请求不会对此 dialog 有任何影响。
+
+因为代理对 OPTIONS 的处理方式和 INVITE 请求处理方式的不同，OPTIONS 有其局限性。 分叉的 INVITE 会导致返回多个 200（OK）响应，一个分叉的 OPTIONS将仅导致一个单个的 200（OK）响应，因为它被视为代理使用了 non-INVITE 处理方式。具体详细介绍参考第 16.7 章节。
+
+如果 OPTIONS 的响应是由代理服务器生成的话，代理返回一个 200（OK），列出服务器的支持能力。响应消息中不包含消息体内容。
+
+Allow、Accept、Accept-Encoding、Accept-Language、Supported 头应该出现在 OPTIONS 请求的 200（OK）的响应中。如果响应消息是由代理生成的话，Allow 头应该被省略，它是不规范的，代理对 method 具有不可知性。Contact 头可能出现在 200（OK）的响应中，和 3xx 响应的语义相同。在这种语义环境中，响应消息中可能列出可达用户的一系列可选名称和 methods。告警头也可能出现在响应消息中。
+
+消息体也可能被发送，发送何种类型的消息取决于 OPTIONS 请求中的 Accept 头字段（如果没有出现此 Accept 头的话，默认发送 application/sdp）。如果类型中包含了一种消息类型的话，这个类型描述了媒体能力的话，UAS 应该在响应中包含一个消息体来说明媒体支持能力。关于这样的 application/sdp 构建方式，参见[参考链接 13]。
+
+根据在第 11.1 章节中的一个 UAS 请求生成的 OPTIONS 响应示例：
+
+```
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKhjhs8ass877
+ ;received=192.0.2.4
+To: <sip:carol@chicago.com>;tag=93810874
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 63104 OPTIONS
+Contact: <sip:carol@chicago.com>
+Contact: <mailto:carol@chicago.com>
+Allow: INVITE, ACK, CANCEL, OPTIONS, BYE
+Accept: application/sdp
+Accept-Encoding: gzip
+Accept-Language: en
+Supported: foo
+Content-Type: application/sdp
+Content-Length: 274
+
+(SDP not shown)
+```
 
 ## 12 Dialogs
 
