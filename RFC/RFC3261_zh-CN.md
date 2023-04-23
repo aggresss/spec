@@ -456,29 +456,129 @@ HTTP/1.1 中的分块传输编码不能在 SIP 中使用。（注意:为了以�
 
 不像 HTTP，SIP 部署使用了 UDP 或其他的不可信赖的数据包协议。每个数据包传输一个请求或者响应。参考第 18 章介绍了使用非可靠性传输的限定。
 
-通过以数据流方式传输方式来处理 SIP 消息的机制必须在 start-line 之前忽略掉任何回车换行字符[H4.1]。
+通过以数据流方式传输方式来处理 SIP 消息的机制必须在 start-line 之前忽略掉任何回车换行字符 [H4.1]。
 
 Content-Length header 头的值用来定位数据流中的每个 SIP 消息结束位置。当 SIP 消息是通过数据方式传输时，它总是出现在这里。
 
 ## 8 General User Agent Behavior
 
+一个用户代理表示一个最终的系统架构。它包含一个用户代理客户端（UAC）用来产生请求，和一个用户代理服务器端用来对请求产生响应反馈。UAC 用户代理客户端具备产生请求的能力，UAC 产生请求是由外部刺激和驱动的流程而产生（例如，用户点击了一个按钮和 PSTN 线路上的一个信号），并且对响应进行处理。一个 UAS 代理客户端可以接收一个请求，并且基于用户输入，外部驱动刺激，程序执行结果或者其他机制所产生一个响应。
+
+当一个 UAC 发送一个请求时，这个请求会经过几个代理服务器，这些代理服务器将前转这个请求到 UAS。当 UAS 生成响应时，这个响应会返回到 UAC。
+
+UAC 和 UAS 的处理流程完全依赖于两个因素。首先，这个流程取决于这个请求或响应是否在 dialog 里面还是外面，其次，流程还取决于请求的 method。Dialogs 的讨论将会在第 12 章进行；它们表示一种介于用户代理之间的点对点的关系，这个关系是通过具体的 SIP methods 创建的，例如 INVITE。
+
+在本部分内容中，我们讨论 UAC 和 UAS 的执行处理规则，这个规则是完全独立于 method 的，当处理请求时，这些请求是在 dialog 的外面。这里当然也包括请求自己创建的 dialog。
+
+关于 dialog 外部的对请求和响应的安全处理流程的描述在第 26 章进行。 具体来说，介于 UAS 和 UAC 存在的机制是互相验证的过程。通过消息体使用 S/MIME 加密的方式实现一系列私有功能支持。
+
 ### 8.1 UAC Behavior
+
+这部分讨论 UAC 的外面 dialog 的运行状态。
 
 #### 8.1.1 Generating the Request
 
+一个有效的被 UAC 规范化的 SIP 请求必须最低包括以下几个头字段：To、From、CSeq、Call-ID、Max-Forwards、Via；对所有 SIP 请求来说，这些头字段是强制支持的。
+
+这六个头字段是构建一个 SIP 消息的基础结构，因为它们联合起来为 SIP 通过了最基本的和最重要的路由服务，消息地址，响应路由，限定消息扩展，消息顺序和事务的唯一身份。
+
+这些头字段另外包含了 method，Request-URI，和 SIP version。运行在 dialog 外面的请求发送示例包括了一个 INVITE，它用来创建一个会话 (第 13章) 和一个 OPTIONS，它用来查询能力支持(第 11 章)。
+
 ##### 8.1.1.1 Request-URI
+
+消息的初始 Request-URI 应该在 To 头中设置为 URL 的值。一个需要注意的例外就是 REGISTER method；REGISTER 的 Request-URI 设置方式在第 10 章中讨论。对于安全原因或便利性来说，它可能也不是太方便来设置这些值域为同样的值（特别是，如果在转换期间，初始的 UA 希望 Request-URI 可以被修改的环境中）。
+
+在某些特定的环境中，一个已存在的 route 状态可以影响 Request-URI 的消息。 一个已存在的路由系列是一系列有序 URIs，这些 URLs 确认服务器链，UAC 将会发送出去的请求，这些请求是 dialog 外部的请求。 通常情况下，这些 URL 在 UA 端通过一个用户或服务商手动配置，或者通过其他的非 SIP 机制来配置。当服务商希望配置 UA 支持一个 outbound proxy 时，规范还是推荐需要提供一个已存在的路由系列，设置为一个单 URI 作为一个 outbound proxy。
+
+当出现了一个预先存在的路由表时，如在 12.2.1.1 所描述的中，映射 Request-URL 和 Router 头值的处理流程必须被遵守（即使没有 dialog），使用所期望的 Request-URI 作为远端的目标 URL。
 
 ##### 8.1.1.2 To
 
+首先 To 头也是最重要设定了期望的请求逻辑，或者用户的 address-of-record，或者是一个请求目标资源。 这可能是或者不是最终请求接收方。To 头可能包含一个SIP 或者 SIPS URL，但是，如果在其他所要求的场景中，它也可以使用其他的 URL schemes (例如，tel URL (RFC 2806 [9]))。所有的 SIP 部署必须支持此 SIP URI scheme。任何支持 TLS 部署的，必须也支持 SIPS URI scheme。To 头支持一个显示名称。
+
+UAC 可以通过多种方式学习如何对一个特别的请求映射 To 头。通常情况下，用户建议通过人机界面输入 To 头，也许通过人工输入 URL 或从地址薄中选择其地址。 很多情况下，用户没有输入完整的 URL 地址，而是输入一个数字字符串或者字母（例如，“Bob”）。这是 UA 的自定义的输入方式，用户自己解析这个输入结果。 使用字符构建 SIP URL 的用户部分应用在 UA 期望名字可以被解析为一种域名格式，植入到 SIP URL 中的 @ 符号前（例如，sip:bob@example.com）。使用字符构建 SIPS 的用户部分应用在用户希望通信在安全状态，名称可以被域名解析。右侧域名经常是请求者的主机名称，支持主机域处理出局的请求。对于某些功能来说非常有用，例如，“快速拨号功能”。快速拨号功能要求解析主机域名的用户部分内容。tel URL 可以使用在某些环境中，UA 不需要设定域名，只是解析用户已输入的电话号码。更准确地说，每个请求通过的 domain 都会有这样的机会。举例，一个在机场的用户可能登录系统，通过一个 outbound proxy 发送请求。如果他输入号码是 “411” 的话（这个号码是美国当地号码查询系统），这个号码需要解析，然后通过在机场的 outbound proxy 做进一步处理，而不是用户的主机 domain 处理。这种情况下，tel:411 就是一个正确的选择路由。
+
+一个在 dialog 外面的 请求不能包含一个 To tag; 请求中的 To 来确认 dialog 的 peer。因为没有创建 dialog，因此也没有 tag 出现。关于 To 头字段的进一步介绍，请参阅第 20.39 章节。以下是一个有效的 To 头字段的示例：
+
+```
+    To: Carol <sip:carol@chicago.com>
+```
+
 ##### 8.1.1.3 From
+
+From 指示初始请求的逻辑实体，可能是用户 address-of-record 地址。就像 To 头值一样，它包含一个 URL 地址和可选显示名称。 它被 SIP 网元用来决定一个请求所需要的处理规则（例如，自动拒绝呼叫）。这是非常重要的规则处理，在一个正在运行的 UA 中，From 头不能包含 IP 地址和这个主机的 FQDN，因为它们都不是逻辑名称。
+
+From 头支持一个显示名称。除了正确的语法以外，一个 UAC 应该使用这个显示名称 "Anonymous"，如果客户实体是隐藏状态，则是一个无实际意义的 URL（例如，sip:thisis@anonymous.invalid）。
+
+通常情况下，在一个指定 UA 生成的请求中，其 From 头的值是由用户或者用户本地域名管理员预设临时值。如果一个指定的 UA 用来支持多个用户的话，它可能带有一个可切换到属性设置，这个属性设置文件包括一个 URL，这个 URL 和其用户属性实体文件相对应。请求接收方能验证请求的发起方身份，以便确认它们在 From 报头的身份声明（第 22 章规范了更多关于验证的机制设定）。
+
+From 报头必须包含一个由 UAC 选择的新的 “tag” 参数。具体选择细节查看第 19.3 章。
+
+更多关于 From 头字段细节，参考第 20.20 章。
+
+例如：
+
+```
+    From: "Bob" <sips:bob@biloxi.com> ;tag=a48s
+    From: sip:+12125551212@phone2net.com;tag=887s
+    From: Anonymous <sip:c8oqz84zk7z@privacy.org>;tag=hyh8
+```
 
 ##### 8.1.1.4 Call-ID
 
+Call-ID 头字段的工作方式类似于一个唯一的标识符，它用来成组一系列的消息。在一个 dialog 处理过程中，任何一方 UA 发送的所有请求和响应都必须包含相同的Call-ID。每个 UA 注册中的 Call-ID 应该是相同的。
+
+在一个外部 dialog 由 UAC 创建的请求中，Call-ID 头必须由 UAC 选择，在整个处理和时间段上，它可以作为一个全局的唯一标识，除非其他设定的 methods 处理流程修改它。所有 SIP UA 必须有其含义来确保这个它们生成的 Call-ID 头不会被其他 UA 不经意生成一个新的 Call-ID。 注意，当获取到请求时，对于某些失败响应处理时，这些失败响应针对此请求要求一个重新修正（例如，认证流程），这些获取到的请求不会认为是一个新的请求，因此，它们不需要一个新的 Call-ID。
+
+具体细节规范请参考第 8.1.3.5 章。
+
+规范推荐使用 cryptographically random identifiers (RFC1750 [12]) 来生成 Call-ID。部署格式可以使用此格式 "localid@host"。Call-ID 是大小写敏感的，可以进行一比特一比特的简单对比。
+
+使用 cryptographically random identifiers 提供了对会话的保护，防止被黑客篡改，同时也降低了唯一 Call-ID 的相似度冲突。
+
+对于请求来说，不能通过配置或者界面来提供 Call-ID 头选项选择。
+
+关于更多 Call-ID 头的说明，参考第 20.8 章。
+
+示例：
+
+```
+    Call-ID: f81d4fae-7dec-11d0-a765-00a0c91e6bf6@foo.bar.com
+```
+
 ##### 8.1.1.5 CSeq
+
+CSeq 头的目的是对事务确认和排序。它由一个序列号和一个 method 构成。这个 method 必须匹配请求的 method。对于 dialog 之外的非注册请求，此序列号码是一个任意值。这个序列号码必须是一个可表达的值，此值是一个 32-bit unsigned 整数，并且它必须少于 2^31。只要它遵守以上指南，客户端可以使用任意机制选择 CSeq 头。
+
+第 12.2.1.1 章节讨论了在 dialog 中 CSeq 的构成方式。
+
+例如：
+
+```
+    CSeq: 4711 INVITE
+```
 
 ##### 8.1.1.6 Max-Forwards
 
+Max-Forwards 头支持一个有限的跃点数，此跃点数是一个请求从此路径开始的初始点到传输到最终目的地经过的跃点。它有一个整数构成，每经过一个跃点，跃点数会自动减少一个数字。如果这个 Max-Forwards 值在抵达请求的最终目的地前降低到 0，它将会被拒绝，同时返回一个 483(Too Many Hops) 错误响应。
+
+UAC 必须在每个请求中插入一个 Max-Forwards 头，发起的请求中初始的这个值应该是 70。 这个数值已经足够大，可以保证在一个 SIP 网络环境中没有环路时请求不会被丢弃，但是有时环路发生的时候可能也没有消耗很多的代理资源。用户可以选择比较低的值设置，但是一定要注意，UA 需要了解此网络拓扑环境。
+
 ##### 8.1.1.7 Via
+
+Via 头值表示一个传输方式，这个传输方式实际上是响应消息发送到地址，这个地址是针对事务和确认来说的。只有下一跳的传输选择以后，Via 头才能被添加（参考使用流程[参考链接 4]）。
+
+当 UAC 创建一个请求后，它必须在请求中插入一个 Via。协议名称和协议版本必须是 SIP 和 2.0。Via 头必须包含一个 branch 参数。这个参数用来确认被这个请求创建的事务。这个参数支持客户端和服务器端。
+
+无论是从空间和时间角度来看，branch 参数在这个 UA 发送的所有请求中具有唯一性。这个规则对 CANCEL 和 non-2xx 响应的 ACK 是例外。就像我们在下面讨论的一样，CANCEL 请求的 branch 参数和这个请求被取消的参数是一样的。同样，在 17.1.1.3 章节的讨论中，一个对 non-2xx 响应的 ACK 响应也有同样的 branch ID，这个 ID 和 INVITE 响应它的一样。
+
+branch ID 参数的唯一属性帮助它作为事务 ID 来使用，它不是 RFC2543 的一个部分。
+
+branch ID 必须按照规范的格式来处理，它必须以字符 "z9hG4bK" 开头。这七个字符是比较神奇的处理方式（ 7 被认为可以支持足够的资源，以便保证和旧规范 RFC2543 兼容，旧规范没有选择这个数值，所以不会导致冲突），因此，收到这个请求的服务器端可以决定通过这种方式来构建 branch ID。
+
+Via 头的 maddr，ttl，和其他请求将在传输层处理（参考第 18 章）。
+
+对于代理来说，Via 处理方式在 6.6 章节的 Item 8 和 6.7 章节 Item 3 说明。
 
 ##### 8.1.1.8 Contact
 
@@ -490,27 +590,27 @@ Content-Length header 头的值用来定位数据流中的每个 SIP 消息结�
 
 #### 8.1.3 Processing Responses
 
-#### 8.1.3.1 Transaction Layer Errors
+##### 8.1.3.1 Transaction Layer Errors
 
-#### 8.1.3.2 Unrecognized Responses
+##### 8.1.3.2 Unrecognized Responses
 
-#### 8.1.3.3 Vias
+##### 8.1.3.3 Vias
 
-#### 8.1.3.4 Processing 3xx Responses
+##### 8.1.3.4 Processing 3xx Responses
 
-#### 8.1.3.5 Processing 4xx Responses
+##### 8.1.3.5 Processing 4xx Responses
 
-#### ### 8.2 UAS Behavior
+### 8.2 UAS Behavior
 
 #### 8.2.1 Method Inspection
 
 #### 8.2.2 Header Inspection
 
-#### 8.2.2.1 To and Request-URI
+##### 8.2.2.1 To and Request-URI
 
-#### 8.2.2.2 Merged Requests
+##### 8.2.2.2 Merged Requests
 
-#### 8.2.2.3 Require
+##### 8.2.2.3 Require
 
 #### 8.2.3 Content Processing
 
@@ -520,13 +620,18 @@ Content-Length header 头的值用来定位数据流中的每个 SIP 消息结�
 
 #### 8.2.6 Generating the Response
 
-#### 8.2.6.1 Sending a Provisional Response
+##### 8.2.6.1 Sending a Provisional Response
 
-#### 8.2.6.2 Headers and Tags
+##### 8.2.6.2 Headers and Tags
 
 #### 8.2.7 Stateless UAS Behavior
 
 ### 8.3 Redirect Servers
+
+
+
+
+
 
 ## 9 Canceling a Request
 
