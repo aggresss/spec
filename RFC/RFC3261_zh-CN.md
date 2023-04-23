@@ -1264,37 +1264,143 @@ Dialog 的结束和此 method 的使用环境是独立的，如果一个外部 d
 
 一定时间后，那些 UAS 端返回一个 2xx 响应表示能够接受此邀请（表示此会话已被创建）。如果此邀请没有被接受的话，UAS 将会对用户代理发送一个 3xx，4xx，5xx 或者 6xx 响应，状态错误码发送取决于被拒绝的理由。在 UAS 发送最终响应之前，UAS 也能发送一个临时响应（1xx），通知对方正在联系被呼叫方来处理 UAC流程。
 
-在收到一个或多个临时响应后，UAC 将会获得一个或者多个 2xx 响应，或者一个非-2xx 最终响应。因为需要耗费一定的时间等待接收邀请的最终响应消息，邀请（Invite ）事务的可靠性机制处理方式和其他的请求（OPTIONS）有所不同。一旦UAC 收到一个最终响应，此 UAC 需要对每个它收到的最终响应发送一个 ACK 确认消息。发送 ACK 的流程处理取决于响应的类型。对于介于 300 和 699 之间的最终响应，ACK 的处理是在事务层来完成对，并且需要遵从一系列规则（具体规则参考第17 章节内容）。对于 2xx 响应，ACK 是由 UAC core 来生成。
+在收到一个或多个临时响应后，UAC 将会获得一个或者多个 2xx 响应，或者一个 非-2xx 最终响应。因为需要耗费一定的时间等待接收邀请的最终响应消息，邀请（Invite）事务的可靠性机制处理方式和其他的请求（OPTIONS）有所不同。一旦 UAC 收到一个最终响应，此 UAC 需要对每个它收到的最终响应发送一个 ACK 确认消息。发送 ACK 的流程处理取决于响应的类型。对于介于 300 和 699 之间的最终响应，ACK 的处理是在事务层来完成对，并且需要遵从一系列规则（具体规则参考第17 章节内容）。对于 2xx 响应，ACK 是由 UAC core 来生成。
 
 由 INVITE 收到的 2xx 响应创建一个会话，同时它也在 UA 之间创建了一个 dialog。一个 UA 是发起此 INVITE 请求的，一个 UA 是生成 2xx 响应的。因此，当从不同远端 UA 收到多个 2xx 响应（因为 INVITE 分叉），每个 2xx 创建一个不同的 dialog。所有这些 dialog 都属于同一呼叫。
 
-此章节提供了一个使用 INVITE 创建会话的细节。支持 INVITE 的 UA 也必须支持ACK，CANCEL 和 BYE。
+此章节提供了一个使用 INVITE 创建会话的细节。支持 INVITE 的 UA 也必须支持 ACK，CANCEL 和 BYE。
 
 ### 13.2 UAC Processing
 
 #### 13.2.1 Creating the Initial INVITE
 
+因为初始请求表示一个 dialog 外部请求，它的构建过程遵从第 8.1.1 章节的处理流程。对于此 INVITE 具体情况来说，需要增加额外的步骤。
+
+任何 Allow 头字段（第 20.5 章节）应该出现在此 INVITE 中。它表示在一个 dialog 生命周期内，UA 发送此 INVITE 时援引了何种 methods。例如，在 dialog 中，UA 接收 INFO 请求的能力应该[34]包含一个 Allow 头 ，此 Allow 头列出 INFO method。
+
+任何 Supported 头字段（第 20.37 章节）应该出现在此 INVITE 中。它枚举了 UAC 可以理解的所有拓展。
+
+任何 Accept 头字段（第 20.1 章节）也可能出现在 INVITE 中。它表示 UA 可以接受何种 Content-Types，接受 Content-Types 的方向不仅是 UA 接收响应侧，而且还在由此 INVITE 创建的 dialog 中的后续请求侧。Accept 头字段非常有用，它原来表示各种会话描述格式的支持能力。
+
+UAC 可以增加一个 Expires 头字段（第 20.19 章节）来限制请求的有效性。如果在 Expires 头中的时间设置超时，没有收到此 INVITE 的最后应答响应，UAC core 应该对此 INVITE 生成一个 CANCEL 请求，参考第 9 章节。
+
+UAC 也可以发现其他有用的头字段添加到头字段中，其中包括 Subject（第 20.36章节），Organization（第 20.25 章节）和 User-Agent（第 20.41 章节）头字段。所有这些头字段包含和 INVITE 相关的信息。
+
+UAC 可以对此 INVITE 添加一个消息体。第 8.1.1.10 章节具体描述了如何构建头字段 -- Content-Type，和需要说明消息体内容。
+
+针对包含会话描述的消息体，规范有一些特别的规则，消息体相应的 Content-Disposition 是一个 “会话”。SIP 使用 offer/answer 模式支持 UA 发送一个会话描述，称之为 offer 端，offer 端包含了此会话的推荐的描述。此 offer 端指示它所期望的通信方式（语音，视频或者游戏）, 通信方式所支持的参数（例如编码类型）和从应答方接收媒体的地址。对端 UA 则携带另外一个会话描述做出响应，称之为answer，它指示何种媒体方式可以被接受，所支持媒体方式的参数和从提供方接收媒体的地址。offer/answer 交互是在 dialog 的 context 中进行，因此，如果 SIP INVITE 导致了多个 dialog 的话，每个 dialog 就是一个独立的 offer/answer 交互。当发生 offer 和 answer 时，此 offer/answer 描述规定了限制条件（例如，当一个offer 正在处理时，用户不能创建一个新的 offer）。通过这样的处理方式，在 SIP 消息中的 offer 和 answer 双方能够体现这样的限制措施。在此规范中，offers 和 answers 仅能够出现在 INVITE 请求，响应和 ACK 中 。这里，关 于 offers 和 answers 模式有进一步的限定。对于初始 INVITE 事务，规则包括：
+
+- 初始 offer 必须是在一个 INVITE 中，或没有在 INVITE 中，如果没有的话，初始 offer 是在从 UAS 返回 UAC 的第一个可靠的非失败消息中。在此规范中是 2xx 最终响应。
+- 如果初始响应在 INVITE 中，应答必须是在从 UAS 返回到 UAC 的一个可靠非失败消息中，UAC 和那个 INVITE 有关联关系。对于此规范来说，仅表示为此INVITE 的 2xx 最终响应。同样相似的应答也可以被置于任何临时响应中，这些临时响应是发送到前面应答方的响应。UAC 必须把它收到的第一个会话描述视为此应答方，并且必须忽略任何在针对此初始 INVITE 的后续响应中的会话描述。
+- 如果此初始 offer 是在从 UAS 返回到 UAC 的第一个可靠非失败消息中，从answer 必须是在此消息的确认消息中（在此规范中，ACK 支持的 2xx 响应中）。
+- 对第一个 offer 来说，如果 UAC 已发送或已收到一个应答后，此 UAC 可能在请求中生成后续的 offer，这些请求的处理是基于那个 method 指定的规则来进行的，但是，此处理方式仅支持两种状态，第一种是如果 UAC 已经收到了前面offer 的应答后的状态，和如果 UAC 没有获得应答，它不发送任何 offer 的状态。
+- 对初始 offer 来说，一旦 UAS 发出或收到了应答，此 UAS 一定不能在对初始请求的响应中生成后续的 offer。这表示，直到此初始事务完成前，基于此规范的 UAS 永远不能单独生成后续的 offer。
+
+具体地说，上述规则为单独符合本规范的 UA 指定了两个交换方式:
+
+- offer 是在 INVITE 中， answer 是在 2xx 响应中（也可能在 1xx 响应中）;
+- 或者 offer 是在 2xx 响应中，answer 是在 ACK 中。所有支持 INVITE 的代理必须支持它们的这两个交互。
+
+所有用户代理必须支持 Session Description Protocol (SDP) (RFC 2327 [参考链接1])作为一种手段来描述会话，它们构建 offer 和 answer 的方式必须遵从此流程，这个流程在定义在[13]章节。
+
+此 offer-answer 模式的限制所描述的仅应用在消息体中，此消息体的 Content-Disposition 头值是一个 "session"。因此，INVITE 和 ACK 中包含一个消息体是可能的，例如，一个 INVITE 中包含一张图片（Content-Disposition: render），并且从 ACK 是一个会话描述（Content-Disposition: session）。
+
+如果此 Content-Disposition 头字段值丢失的话，Content-Type application/sdp的消息体会说明这个 disposition "session"，其他的内容类型会说明 "render" 值。
+
+一旦 INVITE 创建后，UAC 遵从一个处理机制，这个机制在第八章的 dialog 外部发送请求的章节中定义。这样会导致一个客户端的事务构建，此事务构建最终发送此请求并且对 UAC 返回响应。
+
 #### 13.2.2 Processing INVITE Responses
 
+一旦 INVITE 传递到 INVITE 的客户端事务，UAC 将会等待此 INVITE 的响应。如果此 INVITE 的客户端事务返回一个超时而不是一个响应，此响应是 TU 如果已收到了一个 408（Request Timeout）响应的话，它充当一个响应，此响应就像在第 8.1.3 章节讨论的一样。
 ##### 13.2.2.1 1xx Responses
+
+在收到一个或者多个最终响应之前，可能抵达零个、一个或者多个临时响应。对一个 INVITE 请求来说，临时响应能够创建 “early dialogs”。如果在临时响应的 TO 中有一个 tag 标签的话，并且如果此响应的 dialog ID 不能匹配已存在的 dialog，将创建一个新的 dialog，创建流程在第 12.1.2 章节中定义。
+
+> 仅需要 early dialog 的状态是，初始 INVITE 事务完成之前，如果 UAC 需要在其 dialog 中对其 peer 发送一个请求 ， UAC 才需 要 early dialog。只要此 dialog 在早期状态的话，临时响应中出现 header 头字段是可以接受的，例如，在临时响应中的 Allow 头包含 methods，当处理状态在早期状态时，这些 methods 可以用在此 dialog 中。
 
 ##### 13.2.2.2 3xx Responses
 
+一个 3xx 响应可以包含一个或者多个 Contact 头，这些 contact 头提供新的地址，这些地址是被呼叫方可达地址。根据 3xx 状态码的不同（第 21.3 章节），UAC 可能选择去尝试这些不同的新地址。
+
 ##### 13.2.2.3 4xx, 5xx and 6xx Responses
 
+针对 INVITE 消息，可能收到一个 单个非-2xx 最终响应。4xx，5xx 和 6xx 响应中可能包含一个 Contact 头字段值，此值表示一个位置，此处发现关于错误的其他信息。后续最终响应（在错误条件下仅抵达的）必须被忽略。
+
+在收到 非-2xx 最终响应的回复以后，所有早期 dialogs 将会结束。
+
+已经收到 非-2xx 最终响应后，UAC core 认为 INVITE 事务已完成。此 INVITE 客户端事务处理会针对此响应来处理 ACKs 生成（第 17 章节）。
+
 ##### 13.2.2.4 2xx Responses
+
+因为分叉代理的原因，一个单 INVITE 请求的多个 2xx 响应会抵达 UAC 端。每个响应通过 To 头中的标签参数加以区别，每个响应代表一个不同的 dialog，这些 dialog 具有不同的 dialog identifier 身份确认消息。
+
+如果在 2xx 响应中断 dialog identifier 匹配了当前存在的 dialog 的 dialog identifier，此 dialog 必须被迁移到 "confirmed" 确认状态，并且，在此 dialog 的路由组必须被重新计算，其算法基于 2xx 响应，按照的第 12.2.1.2 章节流程来处理。否则，在 "confirmed" 状态中的一个新 dialog 必须重构，构建流程按照第 12.1.2 章节处理。
+
+> 注意，只有一小部分的状态需要重新计算，这部分状态是 route set。在此 dialog 中其他状态部分例如最高序列号的部分（远端或者本地的）无需重新计算。route set 部分的计算仅为了支持向后兼容。RFC 2543 没有在 1xx 响应中强制执行 Record-Route 头的检查，只有在 2xx 支持，因为可能在早期的 dialog 中，mid-dialog 请求已经被发送出去，并且可能执行了其他的修改，例如修改了序列号，因此，我们不能更新整个 dialog 的状态。
+
+UAC core 必须对每个从事务层收到的 2xx 生成一个 ACK 请求。除了认证需要的 CSeq 和头字段，Ack 请求的头字段构建方式和任何在 dialog 中的一样（第 12章）。 CSeq 头的序列号必须和 INVITE 确认的一样，但是 CSeq method 必须是 ACK。 就像 INVITE 一样，ACK 必须包含同样的安全信息。如果 2xx 包含一个 offer 消息（基于上面的规则），此 ACK 必须在其消息体中传递一个 answer 消息。如果在 2xx 响应中 的 offer 没有被接受，UAC core 必须在 ACK 中生成一个有效的 answer 消息，并且马上发送一个 BYE。
+
+一旦 ACK 构建好以后，使用[参考链接 4]中的处理流程来决定目的地地址，端口和传输方式。但是，为了传输流程，请求将会直接传递到传输层，而不是传输到客户事务层。这是因为 UAC core 处理 ACK 的重传，不是事务层处理。每次 ACK 抵达触发 2xx 最终响应的重新传输 ACK 必须被传递到客户传输层。
+
+第一个 2xx 响应收到以后，UAC core 认为 INVITE 事务完成了 64*T1 秒的定时。在这一时间点，所有没有切换到已创建状态的早期 dialog 都将结束。 一旦认为 INVITE 事务被 UAC core 完成， 则无更多新的 2xx 响应会到达。
+
+如果对 INVITE 确认了任何 2xx 响应，UAC core 不想继续那个 dialog，然后 UAC 必须发送一个 BYE 请求结束此 dialog，处理方式在第 15 章讨论。
 
 ### 13.3 UAS Processing
 
 #### 13.3.1 Processing of the INVITE
 
+UAS core 将会从事务层收到 INVITE 请求。它首先执行的是请求处理流程，参考第 8.2 章，这个流程适用于内部请求和 dialog 的外部请求。
+
+假设那些流程完成执行步骤没有生成响应，此 UAS core 还会执行其他的步骤：
+
+- 如果此请求是一个 INVITE 请求，这个 INVITE 请求包含一个 Expires header 的话，UAS core 设置一个定时器，并且定时器时长表示了 header 的值。当触发定时器以后，这个请求会被认为超时。如果这个请求超时是在 UAS 已生成最终响应之前，487 (Request Terminated)响应应该被生成。
+- 如果此请求是一个 mid-dialog 请求的话，需要根据各自 method 独立处理流程描述的来处理，具体的处理流程首先采用 第 12.2.2 章节它也可能修改会话，第14 章节提供了更多细节。
+- 如果请求在 To header 中有一个 tag 标签，但是 dialog identifier 不能匹配任何已存 dialogs，UAS 可能已经崩溃，已重启，或者不同的 UAS 可能收到了请求（可能是失败的 UAS）。在这种情况下，第 12.2.2 章节提供了一个指南确保获得一个稳定的处理流程。
+
+从这里开始的流程和后续的流程假设此 INVITE 是一个 dialog 外部的请求，并且其目的是为了创建一个新会话。
+
+此 INVITE 可能包含一个会话描述，这种情况是 UAS 出现在一个这个会话的 offer 消息中。这是非常可能的，用户已经是那个会话中的一个参与方，甚至于此 INVITE 是一个 dialog 外部的 INVITE。这种情况可以发生在多播会议，用户被其他参与方邀请加入会议中。 如果需要的话，此 UAS 可以在会话描述中使用 identifiers 来检测重复身份。
+
+例如，SDP 包含一个会话 ID 和在 origin (o)行的版本号。如果此用户已经是会话中的一员，并且包含了在会话描述的会话参数没有任何改变，UAS 可以接受这个INVITE 请求（发送一个 2xx 响应，无需提示此用户）。
+
+如果此 INVITE 没有包含任何的会话描述，UAS 最终被邀请加入一个会话中，并且UAC 已经被要求由 UAS 提供会话 offer 消息。此 INVITE 必须在它的第一个非失败可靠性消息中提供此 offer 返回到此 UAC 端。在此规范中，就是一个对此 INVITE 的2xx 响应消息。
+
+UAS 能够指示处理状态，接受，转发和拒绝此邀请的能力。在这些所有场景中，UAS 通过流程来构建一个响应消息，流程的处理方式参考第 8.2.6 章节。
+
 ##### 13.3.1.1 Progress
+
+如果 UAS 不能马上应答请求的话，它可以选择对 UAC 指示一些呼叫状态（例如，指示电话正在振铃）。这个指示状态通过发送一些临时响应来实现，临时响应取值介于 101 和 199 之间。这些临时响应创建早期的 dialogs，因此需要遵从第 12.1.1 章节的内容，和第 8.2.6 章节的内容。一个 UAS 只要它愿意，它可以发送多个临时响应。多个临时响应中的每个临时响应必须表示同一 dialog ID。 不过，这些响应不是通过可靠传输实现的。
+
+如果 UAS 期望一个延迟时间来应答这个 INVITE，它将需要请求一个拓展时间防止代理取消这个事务。 当在一个事务中，响应之间的时间间隔超过三分钟，代理有取消事务的选择权。为了防止代理权限事务，UAS 必须每分钟发送一个非 100 的临时响应来应对丢失临时响应的可能性。
+
+> 当用户被执行了呼叫停靠或者配合 PSTN 网络工作时（例如没有应答呼叫，进入了 IVR 流程），INVITE 事务可以在这个拓展的时间段继续执行下去。
 
 ##### 13.3.1.2 The INVITE is Redirected
 
+如果 UAS 决定转发此呼叫时 ， 需要发送一个 3xx 响应 。 一个 300 (MultipleChoices)，301 (Moved Permanently) 或 302 (Moved Temporarily) 应该包含一个 Contact 头，这个 contact 头包含一个或者多个新地址的 URLs，这些新地址将会在转发呼叫中使用。这个响应被传输到 INVITE 服务器事务层，事务层处理它的重传。
+
 ##### 13.3.1.3 The INVITE is Rejected
 
+经常看到的场景是系统呼叫方不能启动或不能再进行额外的呼叫。在这种状态下，应该符合一个 486 (Busy Here)。如果 UAS 知道，无任何系统端资源来接受呼叫时，一个 600 (Busy Everywhere)响应应该被返回。但是，好像 UAS 知道这种情况，因此通常不会使用响应。响应被传递到 INVITE 服务器端事务层，事务层将处理重传流程。
+
+UAS 应该返回一个 488 (Not Acceptable Here)响应，实际上，UAS 通过一个拒绝的 offer 来实现，这个 offer 包含在 INVITE 中。这样的响应应该包括一个告警头字段值，这个值解释 offer 被拒绝的原因。
+
 ##### 13.3.1.4 The INVITE is Accepted
+
+UAS core 产生一个 2xx 响应消息。这个响应创建了一个 dialog，因此按照第 12.1.1章的处理流程来执行，另外还有第 8.2.6 章流程。
+
+对 INVITE 的一个 2xx 响应 应该包含 Allow 头和 Supported 头， 并且可能包含Accept 头。包括这些头的话，无需侦测 UAS 功能，在呼叫期间允许 UAC 决定 UAS所提供的功能和其拓展。如果 INVITE 请求包含一个 offer 消息，并且 UAS 还没有发送 answer 消息的话，2xx 响应必须包含一个 answer 消息。
+
+如果此 INVITE 没有包含 offer 消息的话，如果 UAS 还没有发送 offer 的话，2xx 必须包含一个 offer 消息。
+
+一旦响应构建后，响应会被传递到 INVITE 服务器事务层。注意，INVITE 服务器事务收到最终响应，传递到传输层后，INVITE 服务器事务将被销毁。因此，直到 ACK抵达之前，事务层定期直接发送响应消息到传输层是非常必要的。2xx 响应被传递到传输层，同时携带一个定时器，定时器从 T1 秒开始计算，然后针对每个重传定时器时间翻倍计算，直到 T1 定时器时间设置到了 T2 秒。（T1 和 T2 定义在第 17 章）。
+
+当收到针对此响应的 ACK 请求后，响应重传退出。这里，如何退出不取决于发送响应所使用的传输协议。
+
+> 因为 2xx 通过端对端被重传，因此，在 UAS 和 UAC 之间可能有多个 hops，这些 hops 支持的 UDP。为了保证经过这些 hops 的可靠传输，尽管在 UAS 的传输是可靠性，响应消息也需要定期重传。
+
+如果在 64*T1 秒内，服务器端没有收到 ACK，服务器重发这个 2xx 响应，此 dialog是被确认的，但是，此会话应该结束。结束会话使用 BYE 请求消息，具体描述在第15 章节。
 
 ## 14 Modifying an Existing Session
 
