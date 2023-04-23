@@ -1404,9 +1404,65 @@ UAS core 产生一个 2xx 响应消息。这个响应创建了一个 dialog，�
 
 ## 14 Modifying an Existing Session
 
+一个成功的请求(参考第 13 章)不仅创建了两用户之间的 dialog，并且创建还创建了一个基于 offer-answer 模式的会话。第 12 章解释了如何使用目标刷新请求修改现存 dialog（例如，修改 dialog 的远端目标 URL）。这个部分介绍如何修改实际会话。这样的会话修改会涉及到地址修改和端口修改，增加媒体，删除媒体等细节。会话修改的方式是在同一 dialog（已创建了会话）中发送一个新的 INVITE 请求来实现。在现存 dialog 中发送一个 INVITE 请求，称之为 re-INVITE。
+
+注意，一个单个的 re-INVITE 能够同时修改此 dialog 本身和它的会话参数。
+
+呼叫方和被呼叫方都可以修改现存会话。
+
+媒体失败检测处理中，UA 的表现是本地策略负责的事情。但是，自动生成 re-INVITE 或 BYE 是不推荐的。不推荐的原因是为了避免洪水攻击。因为，当有网络流量时，这样处理方式可能导致洪水攻击从而造成网络拥塞。在如何场景中，如果消息被自动发送的话，这些消息应该在一个设定超时后发送。
+
+注意，关于以上段落中是针对自动生成 BYEs 和 re-INVITEs 的。像正常处理流程一样，如果因为媒体失败用户挂机，UA 将会发送一个 BYE 请求消息。
+
 ### 14.1 UAC Behavior
 
+同样的在 INVITE 中的 offer-answer 交互模式（第 13.2.1 章节）也应用在了 re-INVITEs 的处理流程中。这样处理的结果是，对于想增加媒体流的 UAC 来说，此UAC 将要创建一个新的 offer，这个 offer 包含这个新的媒体流，通过一个 INVITE请求发送此媒体流到对端。需要注意的是，会话全描述不仅仅被修改，它也被发送。在各种不同的场景中，这样的处理方式支持了无状态会话的处理流程，并且也支持了逃生和重新恢复功能。当然，一个 UAC 可以在不携带会话描述时发送 re-INVITE 请求，这种情况下，对 re-INVITE 的第一个可靠非失败响应来说，这个响应将会包含此offer 信息（在此规范中，这个响应消息就是 2xx 响应）。
+
+如果会话模式格式有版本号的话，发起方 offerer 应该指示此会话描述版本已经被修改。
+
+在现存的 dialog 中，To、From、Call-ID、CSeq、re-INVITE 的 Request-URI 的设置规则和正常请求的所使用的规则一样，具体规则设置参考第 12 章。
+
+UAC 可以选择不添加 Alert-Info 头或消息体，此消息体通过 Content-Disposition 来提示 re-INVITE，因为 UASs 不特意在接收 re-INVITE 时提醒用户。
+
+不像 INVITE 请求，它可以进行分叉处理，一个 re-INVITE 从来不能进行分叉处理，因此，永远只能生成一个单个最终响应。re-INVITE 永远不会进行分叉处理的原因是使用 Request-URI 确定了目标，这个目标就是一个 UA 实例，它已经和 dialog 工作，而不是使用 address-of-record 来确定用户。
+
+注意，当其他 INVITE 事务在同一方向正在处理时，UAC 一定不能在同一个 dialog 中发起一个新的 INVITE 事务。具体来说：
+
+1. 如果已经存在一个出局的 INVITE 客户端事务，发起一个新的 INVITE 之前，TU 必须等待直到这个事务完成或结束状态。
+2. 如果已经存在一个出局 INVITE 服务器端事务，发起一个新的 INVITE 之前，TU 必须等待直到事务完成或结束状态。
+
+但是，一个事务正在处理时，一个 UA 可以发起一个正常的事务。当正常事务正在处理时，UA 也可以发起一个 INVITE。
+
+如果一个 UA 收到了一个针对 re-INVITE 的 非-2xx 的最终响应，这个会话参数必须保持原生状态，这些参数不能被修改，就像没有发送 re-INVITE 一样。注意，在章节 12.2.1.2 中说明的一样，针对 re-INVITE，如果收到的这个 非-2xx 最终响应是一个 481 (Call/Transaction Does Not Exist) 或一个 408 (Request Timeout) 或者完全无响应（INVITE 客户端事务返回超时），UAC 将会结束这个 dialog。
+
+针对一个 re-INVITE,如果一个 UAC 收到一个 491 响应的话，它应该启动一个定时器，按照以下规则启用定时器 T：
+
+1. 如果这个 UAC 是 Call-ID 的 dialog ID 的所有者（表示它生成的值），T 可以在 10 毫秒单元内任意选择一个值，这个时间值介于 2.1 和 4 秒之间。
+2. 如果这个 UAC 不是 Call-ID 的 dialog ID 的所有者（表示不是它生成的），T 值可以在 10 毫秒单元任意取值，取值范围介于 0 到 2 秒钟内。
+
+当触发了这个定时器以后，如果 UAC 仍然期望再进行会话修改的话，此 UAC 应该尝试再发起这个 re-INVITE。例如，如果呼叫已经通过 BYE 消息被挂机，re-INVITE 就不会发生。
+
+重传 re-INVITE 的规则和针对 re-INVITE 的 2xx 响应的 ACK 生成的规则和初始 INVITE 的相同(第 13.2.1 章)。
+
 ### 14.2 UAS Behavior
+
+第 13.3.1 描述了处理流程，包括针对进入初始的 INVITES 区分和针对一个现存 dialog 中 re-INVITE 处理。
+
+如果一个 UAS 收到了第二个 INVITE 请求，它发送针对第一个 INVITE 请求的最终响应之前，并且第一个 INVITE 在同一 dialog 中携带一个比较低的 CSeq 序列号的话，此 UAS 必须对第二个 INVITE 返回一个 500（Server Internal Error）响应，必须在此响应中包含一个 Retry-After 头，这个头携带的值是一个任意选择的值，取值范围在 0 和 10 秒之间。
+
+如果一个 UAS 在一个 dialog 中收到了一个 INVITE 请求，同时此 UAS 在此 dialog中发送了一个 INVITE 请求，这个 INVITE 是在处理状态的话，此 UAS 必须对收到的INVITE 请求返回一个 491（Request Pending）响应。
+
+如果 UA 针对现存的 dialog 收到一个 re-INVITE，它必须在会话描述中检查是否有任何版本确认，或者如果没有版本确认的话，检查会话描述的内容是否被修改。如果会话描述被修改，可能经过询问用户确认以后，UAS 必须相应调整会话参数。
+
+> 会话描述版本可以在会议中用来调解新入会成员的能力，增加或移除媒体，或者从单播修改为多播会议状态。
+
+如果新的会话描述没有被接受，UAS 能够拒绝此会话描述，对这个 re-INVITE 返回一个 488 (Not Acceptable Here) 响应。这个响应中应该包含一个告警头字段。
+
+如果 UAS 生成了一个 2xx 响应，并且从来没有收到一个 ACK，此 UAS 应该生成一个 BYE 消息来结束这个 dialog。
+
+针对一个 re-INVITE, UAS 可以选择不生成 180 (Ringing)响应，因为 UAS 通常不会对此用户返回此消息。因为一些其他原因，针对此 re-invite,UASs 可以选择不使用Alert-Info header field 或者消息体，在响应中断消息体携带 Content-Disposition "alert"。
+
+如果 UAS 正在执行一个新的呼叫，受到发送的 offer 的限定，这个 offer 更新现存会话,这种场景参考 SDP 示例[13], 因此，这种 UAS，具体来说，在 2xx 响应中提供 offer 的 UAS（因为此 INVITE 不确认此 offer）应该构建此 offer 消息，构建规则应该遵从发送 offer 的限定规则。具体来说，其含义是 offer 中应该尽可能多包括多个媒体格式和媒体类型，这些媒体格式和媒体类型是 UA 将要支持的格式和类型。此 UAS 必须确保在会话描述中重叠覆盖全面会话描述中，对端 peer 所支持的媒体格式，传输或者支持的参数。这样可以避免对端 peer 拒绝会话描述。但是，如果这些新会话或者参数对 UAC 是不能接受的话，UAC 应该生成一个 answer 消息，携带一个有效的会话描述，然后发送一个 BYE 消息结束此会话。
 
 ## 15 Terminating a Session
 
