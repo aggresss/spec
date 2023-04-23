@@ -272,24 +272,194 @@ SIP 是基于文本的协议，使用的是 UTF-8 charset (RFC 2279 [7])。一�
 
 ### 7.1 Requests
 
+SIP 请求通过在起始行带一个 Request 行和其他的 method 加以区别。一个请求行包含 method 名称，一个 Request-URI，和由单空格字符分开的协议版本。请求行以换行符 CRLF 结束。可以允许无回车或换行，除了在以换行符结束的序列中。不允许在任何网元中有任意数量的空白格（LWS）存在。
+
+```
+    Request-Line  =  Method SP Request-URI SP SIP-Version CRLF
+```
+
+- Method: 此规范定义了六个方法: REGISTER 支持注册联系消息，INVITE、ACK、CANCEL 支持会话创建，BYE 支持结束会话，OPTIONS 支持对服务器的能力查询。SIP 拓展中定义了其他的方法。
+- Request-URI: Request-URI 是一个 SIP 或 SIP URL 在第 19.1 章节介绍，它或者是一个标准的 URL(RFC2396[5])。它表示这个用户或这个服务被记录。Request-URI 不能包含非转义符空格或控制字符，不能以"<>"方式出现。SIP 网元中可能支持 Request-URIs，不一定是 sip 或者 sips，也可能是其他的 URL schemes 形式，例如 "tel"，这是 RFC2806 [9]的 URL schemes。SIP 网元可以在它们的处理过程中使用任何机制转译非 SIP，最终生成 SIP URI，或者其他的 scheme。
+- SIP-Version: 请求和响应都包括在使用的 SIP 版本，并且遵守 [H3.1]（HTTP 替代了 SIP，HTTP/1.1 替代了 SIP/2.0），这里涉及了版本顺序，遵从要求和版本更新数量。 为了遵从此规范，应用程序发送到 SIP 消息必须包括 SIP 版本"SIP/2.0"。 此 SIP 版本字符串是大小写敏感，但是使用时必须发送大写字母。不像 HTTP/1.1，SIP 把此版本号看作为一个一般字面字符串。在实际使用时，这应该没有什么不同。
 
 ### 7.2 Responses
 
+SIP 响应消息和请求消息不同，响应消息包含一个 Status-Line 作为一个起始 start-line。在每个网元中，一个 Status-Line 由响应版本，然后跟随一个数字类型的状态码以及其关联的文本短语，通过一个单空格字符分开。除了在最后的 CRLF 顺序中，可以允许无 CR（回车）或者 LF（换行）转义字符。
+
+```
+    Status-Line  =  SIP-Version SP Status-Code SP Reason-Phrase CRLF
+```
+
+状态码是一个三位整数的结果代码，它表示一个测试输出的响应理解，满足请求的要求。原因短语的目的是对状态码给予一个短语解释。使用状态码的目的是为了系统的自动处理，而原因短语的目的是方便用户阅读理解状态原因，具有可阅读性。用户不要求检查或显示原因短语。
+
+这里，此规范建议使用明确的用词来表示原因短语，部署使用时可使用其他的文本。例如，在请求中的 Accept-Language 头中的语言。
+
+状态码的第一个数字定义了响应的级别。状态码后两位没有层级的设置。因为这个原因，任何状态码介于 100 和 199 之间的响应被看作是 "1xx response"，任何状态码介于 200 和 299 的响应看作是一个 "2xx response" 响应，以此类推。以第一个数字为划分类别，SIP/2.0 支持了六个级别的状态响应码：
+
+- 1xx: Provisional –- 请求收到的响应码，表示是临时响应，会继续处理此请求；
+- 2xx: Success –- 成功收到处理流程，理解，接受了处理流程；
+- 3xx: Redirection –- 需要进一步的流程处理来完成此请求；
+- 4xx: Client Error –- 此请求中包含错误语法或不能满足服务器的要求；
+- 5xx: Server Error –- 服务器端不能满足一个明确有效请求；
+- 6xx: Global Failure -– 任何服务器都不能满足此请求流程。
+
+第 21 章定义了这些级别和描述了其无效码。
+
 ### 7.3 Header Fields
+
+在语法和语义方面，SIP 头和 HTTP 头非常相似。在实际应用环境中，SIP header 遵从 [H4.2] 对消息头的语法和对拓展头的规则。但是，后者通过 HTTP 定义，使用了隐藏的空格。此规范和 RFC 2234[10]是一致的，仅使用了明确的空格，并且看作为语法的一个部分。
+
+[H4.2] 也定义了同一域名称的多个头的语法，这些值都以逗号隔离的列表，这些列表可以合并成一个头值。这个应用方式也可以支持 SIP，但是因为具体的规范有所不同。具体来说，任何 SIP 头都以下语法的形式表现
+
+```
+    header  =  "header-name" HCOLON header-value *(COMMA header-value)
+```
+
+可以支持合并同一名称的头成为一个逗号隔离的列表。此 Contact header 支持逗号隔离的列表，除非这个头的值是 "*"。
 
 #### 7.3.1 Header Field Format
 
+头字段域遵从标准的头格式标准，在 RFC2822 第 2.2 章节 [3] 定义。每个头由域名，然后冒号(":") 和域值构成。
+
+```
+    field-name: field-value
+```
+
+消息头顶标准语法在第 25 章定义，然后紧跟一个任意数量的空格。但是，在部署使用时应该避免基于头字段和冒号之间的空格，在值域和冒号之间使用一个单空格。
+
+```
+    Subject:            lunch
+    Subject      :      lunch
+    Subject            :lunch
+    Subject: lunch
+```
+
+因此，以上格式都是有效的，建议使用最后的格式。
+
+Header 头字段可以扩展为多行，实现方式是通过在每一行前添加至少一个 SP 或 HTtab 键来实现。在下一行开始前的换行符和空格被看作是一个单 SP 字符。因此，以下几种格式表达的意思是相同的：
+
+```
+    Subject: I know you're there, pick up the phone and talk to me!
+    Subject: I know you're there,
+            pick up the phone
+            and talk to me!
+```
+
+带不同域值的头的相对顺序不是非常重要。但是规范推荐，为了支持代理处理，这些头(例如 Via、Route、Record-Route、Proxy-Require、Max-Forwards、Proxy-Authorization) 应该出现在消息体的顶部来支持代理的快速解析。头的相对顺序和其对应的名称是非常重要的。如果或只有如果那个头的域值定义为以逗号分割的列表时（第 7.3 章），具有同样名称的多个头值可以出现在消息中。它必须可以支持多行头值可能合并为一对 "field-name: field-value" 的形式，而没有改变消息的语义，首先预设每一个接下来的头值，然后以逗号分开。这个规则对 WWW-Authenticate、Authorization、Proxy-Authenticate、Proxy-Authorization 头是一个例外。
+
+带它们名字的多头值域可能出现在消息中，但是，因为它们的语法没有遵从第 7.3 章节的标准格式，它们不允许合并为单头行域值。
+
+使用时必须可以处理同样名称的多头值，无论是每行单值合并的头或是逗号分隔的方式。
+
+以下各组头值是有效，相等的：
+
+```
+    Route: <sip:alice@atlanta.com>
+    Subject: Lunch
+    Route: <sip:bob@biloxi.com>
+    Route: <sip:carol@chicago.com>
+
+    Route: <sip:alice@atlanta.com>, <sip:bob@biloxi.com>
+    Route: <sip:carol@chicago.com>
+    Subject: Lunch
+
+    Subject: Lunch
+    Route: <sip:alice@atlanta.com>, <sip:bob@biloxi.com>,
+           <sip:carol@chicago.com>
+```
+
+每个组的值是有效的，但是又表达各自不同含义：
+
+```
+    Route: <sip:alice@atlanta.com>
+    Route: <sip:bob@biloxi.com>
+    Route: <sip:carol@chicago.com>
+
+    Route: <sip:bob@biloxi.com>
+    Route: <sip:alice@atlanta.com>
+    Route: <sip:carol@chicago.com>
+
+    Route: <sip:alice@atlanta.com>,<sip:carol@chicago.com>,
+           <sip:bob@biloxi.com>
+```
+
+头的名称格式是通过每个头名称来定义的。它总是是 UTF8 文本八位字节不确定度顺序出现或空格，标志符，分隔符和带引号的字符出现。许多存在的头会附加到通过标准规范值，通过分号的方式，分隔参数名称，参数值，具体格式为：
+
+```
+    field-name: field-value *(;parameter-name=parameter-value)
+```
+
+虽然任意数目的参数可以附加到头上，但是，任何已给定的参数名称不能出现第二次。
+
+当对比头值时，头名称总是大小写不敏感的。要不然，这个头是一个指定的头，它已经声明了值域名称，参数名称和参数值是大小写不敏感的头。标记符总是大小写不敏感的字符。除非，这个标记符已经声明其属性，否则，被引号标注的字符值是大小写敏感的值。例如，
+
+```
+    Contact: <sip:alice@atlanta.com>;expires=3600
+```
+
+等同于
+
+```
+    CONTACT: <sip:alice@atlanta.com>;ExPiReS=3600
+```
+
+和
+
+```
+    Content-Disposition: session;handling=optional
+```
+
+等同于
+
+```
+    content-disposition: Session;HANDLING=OPTIONAL
+```
+
+以下这两组是不相同的：
+
+```
+    Warning: 370 devnull "Choose a bigger pipe"
+    Warning: 370 devnull "CHOOSE A BIGGER PIPE"
+```
+
 #### 7.3.2 Header Field Classification
+
+一些头字段仅在请求或者在响应中有一定的合理性。它们被称之为 request header fields 和 response header fields。如果一个头字段出现在消息体中，没有匹配任何头的层级（例如，请求的头出现在响应的消息体中），它则必须被忽略掉。 第 20 章定义了头字段的各种层级类别。
 
 #### 7.3.3 Compact Form
 
+SIP 提供了一种机制以压缩的形式来表达普通的头。当传输很大的消息体的消息内容时，这种方式也比较有用，例如当使用 UDP 传输时，如果内容数据超过 MTU 极限后，使用压缩的格式就可以满足最大 MTU 支持。压缩格式在第 20 章定义。压缩格式可以在任何时候在没有改变消息语义时替换为比较长的格式。
+
+头字段值可以以比较长的格式或者压缩格式出现在同样的消息体中。在使用时每个头都必须支持比较长的格式和压缩格式。
+
 ### 7.4 Bodies
+
+除非另外提示，Requests(请求)可能包括消息体，这种请求包括一个新请求，新请求在本规范的新拓展中定义。消息体解析依赖于请求方式 method。
+
+对响应消息来说，请求方式和响应状态码决定消息体类型和消息解析。所有的响应可能包括在一个消息体。
 
 #### 7.4.1 Message Body Type
 
+消息体的网络媒体类型必须通过 Content-Type 头给定。如果消息体已经处理过编码流程，例如压缩，那么必须通过 Content-Encoding 头声明；否则，必须忽略Content-Encoding。如果可行的话，声明消息体字符串为 Content-Type 头的一个部分。
+
+在 RFC 2046 [11] 定义的 "multipart" MIME 类型可以在消息体中使用。在使用中，如果远端部署方请求通过了一个 Accept 头，这个头没有包含 multipart，那么，发送的请求中包含多方消息体必须发送一个会话描述作为一个非 multipart 消息体 。
+
+SIP 消息可以包含二进制消息体或消息体的部分。当发送方没有提供明确的字符参数设置时，被定义的 text 的媒体子类型有一个默认字符设置值 "UTF-8"。
+
 #### 7.4.2 Message Body Length
 
+以 bytes 为单位的消息体长度是由 Content-Length 头提供。第 20.14 章描述了头内容的具体细节。
+
+HTTP/1.1 中的分块传输编码不能在 SIP 中使用。（注意:为了以一系列的传输来分块数据，分块传输编码修改了消息体，每一个块都有各自的大小指示）
+
 ### 7.5 Framing SIP Messages
+
+不像 HTTP，SIP 部署使用了 UDP 或其他的不可信赖的数据包协议。每个数据包传输一个请求或者响应。参考第 18 章介绍了使用非可靠性传输的限定。
+
+通过以数据流方式传输方式来处理 SIP 消息的机制必须在 start-line 之前忽略掉任何回车换行字符[H4.1]。
+
+Content-Length header 头的值用来定位数据流中的每个 SIP 消息结束位置。当 SIP 消息是通过数据方式传输时，它总是出现在这里。
+
 ## 8 General User Agent Behavior
 
 ### 8.1 UAC Behavior
