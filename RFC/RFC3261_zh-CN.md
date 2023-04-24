@@ -3301,6 +3301,14 @@ Content-Language: fr
 
 ### 20.14 Content-Length
 
+Content-Length 头字段表示了消息体的大小，对消息的接受者指示消息体大小，以 10进制单位数字表示。应用程序应该使用这个字段标识传输的消息体的大小，无需关心消息体的媒体类型。如果是基于流的通讯协议（比如 TCP）作为传输协议，必须使用本头字段。
+
+消息的大小并不包含 CRLF 分开的头字段和包体。任何消息体，其大于或者等于 0 的Content-Length 都是有效的值。如果消息中不包含包体，那么 Content-Length 必须设置为 0。
+
+> 忽略 Content-Length 的能力可以简化类似 cgi 脚本创建的流程，这些 cgi 脚本一样的程序可以动态生成响应消息。
+
+这个头字段的简写是 l。
+
 ```
 Content-Length: 349
 l: 173
@@ -3308,14 +3316,22 @@ l: 173
 
 ### 20.15 Content-Type
 
+Content-Type 头字段标识了发给对方的消息体媒体类型。”media-type”是在[H3.7]中定义。如果消息体不为空，那么 Content-Type 头字段就必须存在。如果消息体是空的，而且本头字段是存在的，就表示了特定类型的媒体的包体长度是(比如空的音频文件)。
+
+本头字段的简写是 c。
+
+例如：
 
 ```
 Content-Type: application/sdp
 c: text/html; charset=ISO-8859-4
 ```
 
-
 ### 20.16 CSeq
+
+请求中的 Cseq 头字段包含了一个单个的数字序列号和请求的方法。此序列号必须是以32 位为单位的无符号整数。在 Cseq 的请求中，方法部分是大小写敏感的。Cseq 头字段的目的是为了在对话中对相关事务进行排序的，提供事务的唯一标志，并且用来区分新的请求和请求的重发流程。如果序列号相等，并且请求的方法相同，那么两个 Cseq 头字段就是相等的。
+
+例如：
 
 ```
 CSeq: 4711 INVITE
@@ -3323,11 +3339,25 @@ CSeq: 4711 INVITE
 
 ### 20.17 Date
 
+Date 头字段包含了日期和时间。和 HTTP/1.1 不同的是，SIP 只支持最近的 RFC1123[20] 格式的日期。就像在 [H3.3] 中，SIP 限制了在 SIP-date 中的时区是 ”GMT”,但是在 RFC1123 中支持任意的时区。RFC1123 的日期是大小写敏感的。Date 头字段反应的时间是请求或者应答被发送的首次发生的时间。
+
+> Date 头字段可以用来简化没有后备电池提供时钟的终端系统，让他们能够获得当前的时间。但是因为是 GMT 格式的，所以，它要求客户端获悉，终端和 GMT 的偏移差。
+
+例如：
+
 ```
 Date: Sat, 13 Nov 2010 23:29:00 GMT
 ```
 
 ### 20.18 Error-Info
+
+Error-Info 头字段提供了错误状态响应应答的其他附加信息。
+
+> SIP UAC 具备多接口的能力，从 Windows 弹窗工具和 PC 端语音支持到通过网关接入的传统电话机或者其他终端。环境的具有从弹出的窗口 PC 界面，到仅支持语音的传统电话机或者网关连接支持的终端。强制服务器产生一个错误消息，与其选择发送一个带错误码和应答原因详情状态，并且对对端播放一段已录制语音， 不如使用 Error-Info 头字段支持把以上两个关联信息都发送到对端。这样，UAC 就具备了一定的选择能力，然后 UAC 自己决定采用何种形式对呼叫方进行渲染处理。
+
+UAC 可以把在 Error-Info 头中的一个 SIP 或者 SIPS URI 视为是在转发的一个 Contact地址，并且据此生成一个新的 INVITE，这样可以创建了一个预录的声明会话。如果是非 SIP URI 地址，那么也可以渲染给用户。
+
+例如：
 
 ```
 SIP/2.0 404 The number you have dialed is not in service
@@ -3336,11 +3366,27 @@ Error-Info: <sip:not-in-service-recording@atlanta.com>
 
 ### 20.19 Expires
 
+Expires 头字段设置了消息（或者内容）超时后的相对时间。这个字段的准确定义是和 method 有关联关系。在 INVITE 中超时不会影响由此 INVITE 引起的实际会话时长。不过，会话描述协议可以提供一个能力支持，在一个会话期间对时长进行限定。
+
+这个头字段的值是一个以秒计数整数，从 0 到 (2**32)-1，从收到请求开始计数。
+
+例如：
+
 ```
 Expires: 5
 ```
 
 ### 20.20 From
+
+From 头字段指示请求初始方。这个地址可能和对话的初始方地址不同。被叫方对呼叫方发送的请求会使用被呼叫方在 From 头字段的地址。
+
+选项 ”display-name” 是对人机界面提供的渲染展示。如果客户标身份是隐藏状态，那么系统应当使用 ”An onymous” 作为显示名字。即使是 ”display-name” 是空的，如果 ”addr-spec” 包含一个逗号，问号或者分号，那么就必须使用 ”name-addr” 格式。相关的格式讨论在第 7.3.1 节有具体描述。
+
+如果 URI 相同，并且参数也相同，那么这两个 From 头字段就是相同的。如果扩展参数在一个头字段中存在，但是在另外一个头字段中不存在，当这两个头字段做比较时，这个参数将被忽略。这意味着显示名字，存在状态或者缺乏括弧都不会影响对比结果。
+
+参见第 20.10 章节解析显示名称，URI 和 URI 参数，以及头字段参数的规则。From 头字段的简写是 f。
+
+例子：
 
 ```
 From: "A. G. Bell" <sip:agb@bell-telephone.com> ;tag=a48s
@@ -3350,11 +3396,23 @@ f: Anonymous <sip:c8oqz84zk7z@privacy.org>;tag=hyh8
 
 ### 20.21 In-Reply-To
 
+In-Reply-To 头字段列举了和本次呼叫相关的或者返回的 Call-ID。这些 Call-ID 可以让客户端做缓存处理，然后包含在返回的呼叫头字段中。
+
+> 这样的操作允许自动呼叫分发系统来路由返回到第一个呼叫的原始请求地点。这样的操作也支持了被叫方过滤呼叫，只有是从呼叫发起方的呼叫所返回的呼叫才能被接受。这个字段不是替代对请求验证。
+
+例如：
+
 ```
 In-Reply-To: 70710@saturn.bell-tel.com, 17320@saturn.bell-tel.com
 ```
 
 ### 20.22 Max-Forwards
+
+Max-Forwards 头字段必须使用在任何一个 SIP 请求中使用，此头字段的目的是限制代理或者网关转发此请求到下游节点的代理或者或网管的数量。这个头字段非常有用，当客户端希望跟踪一个请求链路，这个请求链路出现的路由失败或者在中间链中出现循环的状态。
+
+Max-Forwards 是一个 0-255 之间的整数，表示了在这个请求消息中允许被转发的剩余次数。每当服务器转发这个请求一次，按照计数就减一。建议的初始值是 70。当不能确定是否有循环路由的时候，必须在网元的头字段中增加此头字段。比如，一个 B2BUA-背靠背代理环境时就应该增加这个头字段。
+
+例如：
 
 ```
 Max-Forwards: 6
@@ -3362,11 +3420,19 @@ Max-Forwards: 6
 
 ### 20.23 Min-Expires
 
+Min-Expires 头字段传递了一个最小的刷新时间，这个时间由那个服务器所控制的（soft-state）网元实现支持。这个包括被登记服务器所登记的 Contact 头字段。这个头字段包含了一个以秒计数的整数，从 0 到(2**32)-1。关于这个头使用在 423(IntervalToo Brief)应答中，本头字段的用法在第 10.28,10.3, 和 21.4.17 章节中有描述。
+
+例如：
+
 ```
 Min-Expires: 60
 ```
 
 ### 20.24 MIME-Version
+
+参见[H19.4.1]
+
+例如：
 
 ```
 MIME-Version: 1.0
@@ -3374,16 +3440,26 @@ MIME-Version: 1.0
 
 ### 20.25 Organization
 
+Organization 头字段传输 SIP 请求签发或者应答的网元网元所属的组织名字。这个字段可以用来支持客户端软件过滤此呼叫。
+
+例如：
+
 ```
 Organization: Boxes by Bob
 ```
 
 ### 20.26 Priority
 
+Priority 头字段标识了客户端收到请求的紧急程度或者优先级。Priority 头字段描述了 SIP 请求应当优先处理人工请求或者其代理发来的请求。举例来说，通过优先级处理，可能可以将一个决定分解为呼叫转发和呼叫接受。对于这些决定来说，如果消息没有指定包含 Priority 字段，那么处理此呼叫时应当将此呼叫视为 ”normal” 优先级来处理。Priority 头字段不影响通讯资源使用的优先顺序，比如路由器上的包转发的优先级或者访问 PSTN 网关电路的优先级。此头字段支持 ”non-urgent”,”normal”,”urgent” 和 ”emergency” 取值，另外的取值可以在其他处定义。规范建议”emergency”只用于影响到生命、身体、或者财产危急时候才使用。否则在其他情况下，本头字段没有定义额外的语义。在 RFC2076[38]中，定义了 ”emergency”。
+
+例如：
+
 ```
 Subject: A tornado is heading our way!
 Priority: emergency
 ```
+
+或者：
 
 ```
 Subject: Weekend plans
@@ -3391,6 +3467,10 @@ Priority: non-urgent
 ```
 
 ### 20.27 Proxy-Authenticate
+
+Proxy-Authenticate 头字段用来进行认证使用的。这个头字段的具体用法在[H14.33]中定义。参见第 22.3 章节关于本字段的细节讨论。
+
+例如：
 
 ```
 Proxy-Authenticate: Digest realm="atlanta.com",
@@ -3401,6 +3481,14 @@ Proxy-Authenticate: Digest realm="atlanta.com",
 
 ### 20.28 Proxy-Authorization
 
+Proxy-Authorization 头字段或者头字段允许客户端向一个要求认证的 proxy 代理确认自己（或者确认它的用户）的身份。一个 Proxy-Authorization 头字段消息由与 UA 安全消息构成，包含对代理认证的用户代理信息和/或本请求资源的 realm 域值。
+
+参见第 22.3 章节关于这个头字段/域的定义。
+
+此头字段，连同 Authorization 头字段并不遵循常用的多头字段名（多个相同头字段名的合并）的规则。虽然没有用以逗号分割的列表，这个头字段名仍然可以多次出现，并且一定不能用第 7.3.1 章节描述的通常规则将这些头字段合并成为一个头字段。
+
+例如：
+
 ```
 Proxy-Authorization: Digest username="Alice", realm="atlanta.com",
    nonce="c60f3082ee1212b402a21831ae",
@@ -3409,11 +3497,19 @@ Proxy-Authorization: Digest username="Alice", realm="atlanta.com",
 
 ### 20.29 Proxy-Require
 
+Proxy-Require 头字段/域用来表示 proxy 代理对某些敏感功能支持，要求一定支持的相关功能特性。参考 20.32 关于这个头字段的使用机制说明。
+
+例如：
+
 ```
 Proxy-Require: foo
 ```
 
 ### 20.30 Record-Route
+
+Record-Route 头字段/域是 proxy 在请求中插入的头，用来强制在 dialog 对话中的后续请求必须经过此代理呼叫路径。本头字段/域的用法示例在第 16.12.1 章节中有描述。
+
+例子：
 
 ```
 Record-Route: <sip:server10.biloxi.com;lr>,
@@ -3422,17 +3518,33 @@ Record-Route: <sip:server10.biloxi.com;lr>,
 
 ### 20.31 Reply-To
 
+Reply-To 头字段包含了逻辑上返回 URI，这个可以和 From 头字段不同。例如，URI 可以用来表示一个未接电话或者未建立的会话。如果用户希望保留匿名，那么这个头字段应当从请求中过滤或者使用其他方式来填充避免暴露任何隐私信息。
+
+即使 ”display-name” 为空，如果 ”addr-spec” 包含了逗号、问号、或者分号，就必须使用 ”name-addr” 的格式来填写。这个语法在第 7.3.1 章节中定义。
+
+例如：
+
 ```
 Reply-To: Bob <sip:bob@biloxi.com>
 ```
 
 ### 20.32 Require
 
+Require 头字段/域是 UAC 用于通知 UAS 相关支持选项，这些选项是 UAC 通知 UAS 需要支持的选项以进行后续的请求处理。虽然这是一个可选的头字段， 但是如果 Require 头字段存在，那就一定不能忽略此头字段。
+
+头字段包含一个 option tag 的列表，这个列表在第 19.2 章节中描述。每一个 optiontag 定义了一个 SIP 扩展，这些扩展必须理解和处理请求。通常情况下，此定义表示了一个需要支持的扩展头字段的集合。遵从本规范相应的 UAC 规范必须仅包含 option tag相应的 RFC 扩展。
+
+例如:
+
 ```
 Require: 100rel
 ```
 
 ### 20.33 Retry-After
+
+Retry-After 头字段/域可以和 500（Server Internal Error） 或者 503（ServiceUnavailable）响应表示对正在请求的客户端来说大概时长本服务仍会处于不可用状态，并且可以和 404(Not Found), 413(Request Entity Too Large), 480(TemporarilyUnavailable), 486(Busy Here), 600(Busy), 或者 603(Decline) 需要使用来表示何时被叫方会恢复可用状态。这个字段的值是以秒为单位的正整数（十进制），是从响应后开始计数的一个正整数值。
+
+可选说明可以用额外消息指示一个回呼时间。可选参数 ”duration” 参数表示了被叫方从开始初始可达状态恢复到可达状态的时间长度。如果没有定义可选时长，那么此服务被视为是永远有效。例如:
 
 ```
 Retry-After: 18000;duration=3600
@@ -3441,6 +3553,10 @@ Retry-After: 120 (I'm in a meeting)
 
 ### 20.34 Route
 
+Route 头字段/域用于强制请求经过一个 proxy 代理的路由列表路径。Route 头字段的使用示例在第 16.12.1 章节中定义。
+
+例如：
+
 ```
 Route: <sip:bigbox3.site3.atlanta.com;lr>,
        <sip:server10.biloxi.com;lr>
@@ -3448,11 +3564,21 @@ Route: <sip:bigbox3.site3.atlanta.com;lr>,
 
 ### 20.35 Server
 
+Server 头字段包含了关于 UAS 处理请求所使用的软件信息。暴露服务器的具体软件版本可能会导致服务器由于某个特定软件安全漏洞导致服务器受到安全攻击。用户部署时应该支持 Server 头字段是一个可配置的选项。
+
+例如：
+
 ```
 Server: HomeServer v2
 ```
 
 ### 20.36 Subject
+
+Subject 头字段对呼叫属性提供了一个汇总或指示说明，允许呼叫实现过滤而不用解析会话描述内容。作为一个邀请，会话描述并不需要使用同样的主题标识。
+
+Subject 的缩写是 s。
+
+例如：
 
 ```
 Subject: Need more boxes
@@ -3461,17 +3587,35 @@ s: Tech Support
 
 ### 20.37 Supported
 
+Supported 头字段枚举了 UAC 或者 UAS 所支持的扩展。Supported 头字段包含了一个 option tag 的列表，在第 19.2 章节描述了 option tag, UAS 或者 UAC 可以支持这些 tag。遵循本规范的 UA 必须仅包含标准 RFC 扩展的 option tag。如果本字段为空，这表示无任何扩展支持。
+
+Supported 头字段的缩写是 k。
+
+例如：
+
 ```
 Supported: 100rel
 ```
 
 ### 20.38 Timestamp
 
+Timestamp 头字段/域描述了当 UAC 对 UAC 发送请求时的时间戳。参见第 8.2.6 章节中关于如何为请求生成一个包含此头字段的应答。虽然没有定义本字段的标准流程，生成响应的流程允许对扩展应用或者 SIP 应用获得 RTT 预估时间。
+
+例如：
+
 ```
 Timestamp: 54
 ```
 
 ### 20.39 To
+
+To 头字段定义了请求的逻辑接收者。选项”display-name”用来表示渲染到客户端界面的信息。”tag” 参数提供了一个基本的对话确认身份机制。参见 19.3 节关于”tag”参数的描述。
+
+To 头字段的对比和和对 From 头字段的对比是完全相同的。关于对 display name, URI和 URI 参数，以及头字段的参数解析规则，参见第 20.10 章节说明。
+
+To 头字段的缩写是 t。
+
+以下是一个有效 To 头字段的举例：
 
 ```
 To: The Operator <sip:operator@cs.columbia.edu>;tag=287447
@@ -3480,11 +3624,21 @@ t: sip:+12125551212@server.phone2net.com
 
 ### 20.40 Unsupported
 
+Unsupported 头字段/域列出了 UAS 不支持的功能列表。参见第 20.32 章节。
+
+例如：
+
 ```
 Unsupported: foo
 ```
 
 ### 20.41 User-Agent
+
+User-Agent 头字段包含了发起请求的 UAC 信息。本头字段的语义在[H14.43]做了描述。
+
+暴露了 UA 所使用的版本号可能会导致由于这个版本的安全漏洞而受到攻击。所以在部署时应该让 User-Agent 头字段支持可配置选项。
+
+例如：
 
 ```
 User-Agent: Softphone Beta1.5
@@ -3492,7 +3646,61 @@ User-Agent: Softphone Beta1.5
 
 ### 20.42 Via
 
+Via 头字段是用来指示请求当前经过的处理路径，并且表示了响应所应该经过的路径。在Via 头字段的 branch ID 参数提供了事务标识符，并且 proxy 代理用 branch ID 来检查是否存在循环路由。Via 头字段包含了用于发送消息的传输协议，客户端主机名或者网络地址，可能包含了接收应答所使用的端口号。
+
+Via 头字段还可以包含其他参数，例如，参数 ”maddr”,”ttl”,”received” 和 ”branch”, 这些定义和使用方式在其他节中进行描述。对于遵循本规范的实现方式来说，这个 branch 参数的值必须以  magiccookie ”z9hG4bK” 开头（第 8.1.1.7 章节）。
+
+这里定义的传输协议是 ”UDP”,”TCP”,”TLS” 和 ”SCTP”，”TLS” 意思是基于 TCP 的 TLS。当请求发送到一个 SIPS URI 地址时，协议仍然标记为 ”SIP”,但是传输协议是 TLS。
+
+```
+Via: SIP/2.0/UDP erlang.bell-telephone.com:5060;branch=z9hG4bK87asdks7
+Via: SIP/2.0/UDP 192.0.2.1:5060 ;received=192.0.2.207
+     ;branch=z9hG4bK77asjd
+```
+
+Via 头字段的缩写格式是 v。
+
+在这个例子中，消息从多主机地址(multi-homed)发出，有两个地址 192.0.2.1 和 192.0.2.207。发送方使用了错误的网络接口。Erlang.belltelephone.com 发现了这个错误匹配，并且给上一个节点的 Via 增加了一个参数，包含了数据包实际来源地址。
+
+在 SIP URI 语法中，并不要求填写主机名或者网络地址和端口号。特别是，允许在 ”:” 或者 ”/” 两边的 LWS。
+
+例如：
+
+```
+Via: SIP / 2.0 / UDP first.example.com: 4000;ttl=16
+  ;maddr=224.2.0.1 ;branch=z9hG4bKa7c6a8dlze.1
+```
+
+即使本规范要求所有的请求中都包含 branch 参数，在本头字段的 BNF 描述中，branch参数是可选的。这样就确保了 RFC2543 网元可以互相兼容，因为 RFC2543 没有插入 branch 参数。
+
+如果发送所使用的协议和发送的域相同，并且都有相同的参数集合，并且参数都相同，那么所有参数值就是相同的。
+
 ### 20.43 Warning
+
+Warning 头字段/域用来传输响应状态的其他附加消息。Warning 头字段值是响应中携带此头字段值，并且包含了一个三位数的告警代码，主机名，和告警文本消息。
+
+“warn-text”应当是一种自然语言，为用户接收应答时候提供响应。此决定可以基于任何 可 用 消 息 来 决 定 ， 例 如 ， 用 户 定 位 信 息 ， Accept-Language 域 ， 或 响 应 中 的Content-Language 等。默认语言是 i default [21]。
+
+以下列出了当前定义的”warn-code”, 并且提供了以英文描述方式所推荐的 warn-text内容信息。这些告警信息描述了会话描述中的各种可能的失败状态。第一个 warn-code中的数字是”3”表示这是一个 SIP 规范的告警信息。告警信息 300 到 329 是预留的信息用于表示在会话描述中的错误关键词，330 到 339 是会话描述中和基本网络服务相关告警信息，370 到 379 是关于会话描述中关于 QoS 参数数值相关的告警，390 到 399 是以上未指示的杂项警告信息。
+
+- 300 Incompatible networkprotocol:（不兼容的网络协议），在会话描述中存在的一个或者多个不适用的网络协议。
+- 301 Incompatible networkaddress formats(不兼容的网络地址格式)：在会话描述中存在一个或者多个非法的网络地址。
+- 302 Incompatible transportportocol(不兼容的传输协议)：在会话描述中存在一个或者多个不兼容的传输协议。
+- 303：Incompatible bandwidth units（不兼容的计量单元）: 在会话描述中存在一个或者多个不支持的计量单元。
+- 304 Media type not available（媒体类型不可用）:在会话描述中存在一个或者多个不可用的媒体类型。
+- 305 Incompatible media format（媒体格式不兼容）: 在会话描述中存在一个或者多个不兼容的媒体格式。
+- 306 Attribute not understood（媒体属性不支持）: 在会话描述中存在一个或者多个不支持的媒体属性。
+- 307 Session description parameter not understood（会话描述参数不支持）: 不支持列表列出的会话描述参数。
+- 308 Multicast not available（组播不可用）: 目前用户所处节点不支持组播。
+- 309 Unicast not available（单播不可用）: 目前用户所处节点不支持单播通信(通常是因为防火墙的原因)。
+- 370 Insufficient bandwidth(带宽不足): 会话描述的带宽要求或者媒体所要求的带宽超过限制设置）。
+- 399 Miscellaneous warning（杂项告警）: 此告警信息可以包含任意信息，这些信息将展现给用户或作为日志记录。接收告警信息的系统一定不能执行任何自动操作。
+
+> 1xx 和 2xx 消息是 HTTP/1.1 的消息。
+
+其他的 ”warn-code” 通过 IANA 定义，在第 27.2 章节有额外说明。
+
+例如：
 
 ```
 Warning: 307 isi.edu "Session parameter 'foo' not understood"
@@ -3500,6 +3708,10 @@ Warning: 301 isi.edu "Incompatible network address type 'E.164'"
 ```
 
 ### 20.44 WWW-Authenticate
+
+WWW-Authenticate 头字段包含了认证验证信息，参见 第 22.2 章节相关详细说明。
+
+例如：
 
 ```
 WWW-Authenticate: Digest realm="atlanta.com",
