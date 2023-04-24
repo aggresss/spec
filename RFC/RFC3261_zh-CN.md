@@ -2649,25 +2649,387 @@ Via: SIP/2.0/UDP bobspc.biloxi.com:5060;received=192.0.2.4
 
 ## 19 Common Message Components
 
+SIP 消息中有各种模块构件，这些模块构件会出现在 SIP 消息的不同的地方（有时可能不在 SIP 消息中），这些消息值得分别讨论。
+
 ### 19.1 SIP and SIPS Uniform Resource Indicators
+
+一个 SIP 或 SIPS URI 定义了一个通信的资源。像其他所有的 URLs 一样，SIP 和 SIPSURLs 可以置入到网页中，邮件消息中或者打印出的资料中。它们包含了充足的信息配合资源来初始化和维护会话。
+
+通信资源示例包含以下内容：
+
+- 一个用户的最新服务
+- 多线路电话呈现
+- 消息系统中的邮箱
+- 网关服务的电话号码
+- 组织中的一个组（例如，“销售”，或者“客服”）
+
+一个 SIPS URI 设定安全通信的资源。其含义特别表示，TLS 用于 UAC 和它 URL 所属的域名之间。从这一点来看，在它们之间，根据域名设定的具体的安全机制策略，使用安全通信可以抵达用户。任何由 SIP URL 描述的资源可以通过修改结构升级为一个 SIPS URI。
 
 #### 19.1.1 SIP and SIPS URI Components
 
+“sip:” 和 "sips:" 架构按照 RFC2396 的[5]章节进行处理。它们使用的格式和 mail 对的URL 相似，遵从 SIP 请求头字段和 SIP 消息体细节进行处理。这样就可能设定主题，媒体类型或者, 或者设定页面中的 URL，邮件中的初始化的紧急会话。SIP 或者 SIPS URL的格式语法在第 25 章节中介绍。一般的 SIP URL 格式为：
+
+```
+sip:user:password@host:port;uri-parameters?headers
+```
+
+SIPS URL 的格式也是类似的，除了使用结构“sips”替代了 sip 以外。它的标识和部分标识符号的解释如下：
+
+- user
+
+    带主机地址的参与者资源身份。这里的 “host” 经常被看作为一个域名地址。URL中的由用户值域，密码域和跟随它们的符号@标识构成。 userinfo 是 URL 的可选选项，当目的地主机没有此用户标识或当主机自己被看作一个资源被确认时，这个 userinfo 部分可以缺省。如果@符号出现在 SIP 或者 SIPS URI 中时，user 域值部分一定不能为空。
+
+    如果被标识的主机地址能够处理电话号码，例如，一个网络电话网关地址，在 RFC 2806[9] 定义的电话定义值域用来填入此 user 值域。在 19.1.2 中描述了多个转译规则对 SIP 或者 SIPS URL 中的电话订阅值进行编码。
+
+- password
+
+    密码和用户关联。虽然 SIP 和 SIPS URL 语法允许此域值出现，但是这种使用方式是不推荐的，因为通过明文（URLS）传递认证信息在几乎所有的场景中已经被证明存在安全风险。例如，在此值域中传输 PIN 号码的话，将会暴露 PIN 号码。
+    注意，密码域仅是用户部分的扩展。对于密码部分如果不希望给予过多特别重要关注的话，密码部分可以把"user:password"作为一个单字符串来处理。
+
+- host
+
+    主机提供 SIP 资源。主机是全限定类型的域名或者 IPv4 或 IPv6 地址。在任何时候只要可能，使用全限定域名格式是推荐方式。
+
+- port
+
+    端口号码是请求被发送的端口号码。
+
+- URI parameters
+
+    来自于 URL 的参数，影响请求构建。
+
+    URL 参数添加到主机后，通过冒号分开。
+
+    URI 参数使用的格式如下：
+
+    ```
+    parameter-name "=" parameter-value
+    ```
+
+    尽管可以在 URL 参数中可以添加任意数量的参数，但是，已给定的参数名称只能在 URL中出现一次。
+
+    此扩展机制包括传输，maddr，ttl，user，method 和 lr 参数值。
+
+    传输传输决定何种传输机制发送 SIP 消息，在[4]中定义。SIP 可以使用任何传输协议。参数名称分别使用 UDP (RFC 768 [14])，TCP (RFC 761 [15]),和 SCTP(RFC 2960 [16])。对于 SIPS URL 参数来说，传输必须指示为可靠性传输。
+
+    maddr 参数指示此用户将要联系的服务器地址，它是从主机域获取的最重要地址。当出现了 maddr 参数时，在参数值中的 URL 的端口和传输模块会使用此地址。[4] 描述了传输，maddr 和主机端口正确兼容性处理以便获得目的地地址，端口和传输来发送请求。
+
+    Maddr 域值已经被用来作为一种简单的松散源路由形式。它允许 URL 指定一个代理，必须经过此代理路径才能到达目的地地址。继续使用 maddr 参数的这种方式是强烈不推荐的（启用这种机制的处理方式已经被废止）。在此官方中，部署使用 Route 机制是推荐的方式，如有必要，它创建了一个已存在路由表（参考第 8.1.1.1 章节）。这样的方式提供了一个完整的 URL 来描述穿越到节点。
+
+    ttl 参数值决定 UDP 多播数据包的存活时长，并且仅必须使用在如果 maddr 是一个多播地址和传输协议是 UDP 的情况下。例如，设定了一个呼叫为 alice@atlanta.com ，它使用的多播地址为 239.255.255.1，支持的 ttl 值为 15 的话，那么以下 URL 应该被使用：
+
+    ```
+    sip:alice@atlanta.com;maddr=239.255.255.1;ttl=15
+    ```
+
+    有效的电话订阅用户字符串集是有效用户字符串的子集。用户的 URI 参数存在的目的是从用户名称（经常发生的情况是用户名称类似于电话号码）中区别于电话号码用户。如果用户字符串包含了一个电话号码，此电话号码格式化为 telephone-subscriber，此用户参数值的“phone”应该出现。甚至没有此参数的话，如果对于用户名称的名称空间的本地限定允许那样的话，SIP 和 SIPS 的接收方可以解析此 pre-@ 部分作为一个电话号码。
+
+    从 URL 构建的 SIP 请求的 method 可以通过 method 参数来设定。
+
+    当 lr 参数出现时，它表示此网元对此资源负责执行本规范中设定的路由机制。此参数将被使用在 URLs 代理中，置于 Record-Route 头字段值中，并且可能出现在预设的路由表中的 URLs 中。
+
+    此参数 用来获得系统的 向后兼容性，兼容一些系统部署了 RFC2543 规范的 strict-routing（严格路由）机制，和 rfc2543bis 草案一直到 bis-05 的版本。一个准备发送请求，请求是基于 URL 并且 URL 不包含此参数的网元可以假设接收方网元部署了 strict-routing（严格路由），并且重新格式化信息继续维持在 Request-URL 中的信息。
+
+    因为 uri 参数机制是可拓展的，SIP 参数网元必须默默的忽略掉它们不理解的参数值。
+
+- Headers
+
+    头字段值需要包含在从 URL 构建的请求中。
+
+    在 SIP 请求中的头字段可以通过在 URL 中带 “？” 机制来定义。头的名称和其值被解码为一对用等于号隔开的名称=值的形式。这个特别的名称消息体指示关联的 hvalue 是 SIP 请求的信息体。
+
+Table1 汇总了基于 URL 呈现内容的 SIP 使用和 SIPS URI 的构件。External 行描述了URLS，这些 URL 出现在了 SIP 消息以外的任何地方，例如，页面中或者名片中的 URL地址。 入口标识"m"是一个强制要求，那些标识“o”是可选标识，那些标识“-”是不被允许的标识。如果出现了未允许的构件的话，正在处理 URLs 的网元应该忽略任何未允许的构件。如果可选网元没有出现的话，第二行指示可选网元的默认值。“—”指示此网元既不是可选的或这里无默认值。
+
+在 Contacts 中的 URIs 头字段中有不同的限制，这个限制取决于头字段中出现的内容值。 一组是应用在创建和维护 dialogs 的消息中 (INVITE 和它的 200 (OK)响应中)。其他的应用在注册和重转消息中（REGISTER 和其 200 (OK)响应，和对任何 method 的3xx 分类响应中）。
+
 #### 19.1.2 Character Escaping Requirements
+
+```
+                                                       dialog
+                                          reg./redir. Contact/
+              default  Req.-URI  To  From  Contact   R-R/Route  external
+user          --          o      o    o       o          o         o
+password      --          o      o    o       o          o         o
+host          --          m      m    m       m          m         m
+port          (1)         o      -    -       o          o         o
+user-param    ip          o      o    o       o          o         o
+method        INVITE      -      -    -       -          -         o
+maddr-param   --          o      -    -       o          o         o
+ttl-param     1           o      -    -       o          -         o
+transp.-param (2)         o      -    -       o          o         o
+lr-param      --          o      -    -       -          o         o
+other-param   --          o      o    o       o          o         o
+headers       --          -      -    -       o          -         o
+```
+
+- （1）: 默认端口是传输端口，并且是依赖于技术体系。对于 SIP 来说，默认端口是 5060，可支持的传输包括 UDP，TCP，或者 SCTP。端口 5061 是 SIP 传输使用 TCP 通过 TLS 加密传输和 sips 通过 TCP 传输的端口。
+- （2）: 默认的传输方式是取决于技术体系。对于 sip 来说，默认的是 UDP。对于 sips 来说，默认的是 TCP。
+
+Table 1: 对 SIP 头字段值，Request-URL 和参考的使用和 URL 构件的默认值
+
+当定义了一些在 SIP URL 中必须溢出（规避）的字符时，SIP 需要遵守 RFC2396[5] 的要求和指南，并且使用它的 ""%" HEX HEX" 机制来溢出（规避）这些字符。从 RFC2396[5] 的规定来看:
+
+> 构件定义了在构件中任意给定的 URL 构件，这些构件中实际上预留了字符串。通常来说， 对于一个预留字符来说，如果此字符通过溢出（规避）US-ASCII 编码 []的方式被替换尽管 URL 的语义发生了改变，这个字符仍然是一个预留的字符。这里不包括 US-ASCII 字符(RFC 2396[5])，例如空格和控制字符，以及使用在 URL 结束符中的字符，这些字符也必须要规避。URLs 一定不能包括任何未规避的空格和控制字符。
+
+对于每个构件来说，一系列有效的 BNF 扩展准确定义了字符可能出现的未规避，未被处理的可能性。所有其他字符必须被规避处理。
+
+例如，"@" 不是一个用户构件中集合的字符，所以，用户 "j@s0n" 必须至少有一个解码的 @ 标识，例如："j%40s0n"。
+
+在第 25 章的扩展 hname 和 hvalue 令牌中显示所有在头名称和值中的预留 URI 字符必须被规避处理。
+
+用户构件中的 telephone-subscriber 子类有特别规避的考虑因素。 在 RFC2806[9]中关于 telephone-subscriber 描述中一些字符未预留字符，未预留的字符中包含了部分字符，这些字符存在于各种语法要素中。当使用 SIP URLs 时，这些存在于各种语法中的字符需要被规避。任何出现在 telephone-subscriber 中的字符，这些字符没有出现在针对用户规则的 BNF 扩展中，那么这些字符必须被规避。
+
+注意，任何要规避的字符不允许存在于一个 SIP 或者 SIPs URL 中的主机构件的 host 中（ %字符在扩展中是一个无效字符）。作为一个对国际域名定案的要求，这个说明可能要被修改。在当前的部署方式中，如果尝试提高处理的健壮性的话，一定不要试图通过这样的方式处理，把在主机构件收到的已经规避的字符从字面意思看作是对应的未规避的字符来处理。这种处理方式它需要符合 IDN 要求，可能在处理方式方面非常不同。
 
 #### 19.1.3 Example SIP and SIPS URIs
 
+```
+sip:alice@atlanta.com
+sip:alice:secretword@atlanta.com;transport=tcp
+sips:alice@atlanta.com?subject=project%20x&priority=urgent
+sip:+1-212-555-1212:1234@gateway.com;user=phone
+sips:1212@gateway.com
+sip:alice@192.0.2.4
+sip:atlanta.com;method=REGISTER?to=alice%40atlanta.com
+sip:alice;day=tuesday@atlanta.com
+```
+
+在上面最后一个 URI 示例中，它含有一个用户域值 ”alice;day=Tuesday”。以上这个定义的规避规则允许一个分号出现在未规避的域中。为了协议的设计目的，这个域是不透明度。此值的结构仅对 SIP 网元响应所需要的资源有用。
+
 #### 19.1.4 URI Comparison
+
+在此官方中的某些操作要求决定两个 SIP 或者 SIPs URLs 是否相等。此规范中，注册需要对比在注册请求中的 contact 的绑定关系（参考第 10.3 章节），SIP 和 SIPS URLs 的对比是否相等需要按照以下规则来进行：
+
+- 一个 SIP 和 SIPS URI 从来不相等。
+- SIP 和 SIPs URL 的用户信息对比是大小写敏感的。这包括用户信息就像电话订阅所包含的密码和格式。除非公开说明，URL 的其他所有构件的对比不是大小写敏感的。
+- 在 SIP 和 SIPS URL 对比中，参数和头字段的顺序不重要。
+- 除了保留字符（参考 RFC2396 [5]）, 其他字符等同于它们的""%" HEX HEX" 编码。
+- 通过主机名 DNS 查询获得的结果 IP 地址不匹配那个主机名。
+- 对于两个相等的 URIs 来说，用户名称，密码和主机名称，端口构件必须是匹配的。
+
+    URI 遗漏了用户构件部分的话将不能匹配包含用户构件部分的 URL。URL 遗漏了密码构件部分的话，它也不能匹配包含密码构件的 URL。
+
+    URI 遗漏了任何带默认参数构件的话，它不能匹配已公开声明的带默认参数的 URL。例如，一个 URL 遗漏了可选端口构件的话，它不能匹配一个公开声明的带端口 5060 的 URL。这个规则也同样适用于传输参数，ttl 参数，用户参数和 method 构件。
+
+    定义 sip:user@host 格式不等同于 sip:user@host:5060，这是一个来自于 RFC2543 的改变。当从 URL 数据源中获取地址时，相同的地址期望从相同的 URLs 地址获得。此 URI sip:user@host:5060 将总是解析端口 5060 。此 URLsip:user@host 可能通过在[4]的 DNS SRV 机制来解析。
+
+- URI 中的 url 参数构件按照以下规则对比：
+
+    - 任何出现在对比双方的 URLs 中的 url 参数必须匹配。
+    - 虽然 url 中包含默认的参数，一个用户，ttl 或者 method 的 url 参数仅在 URL 中出现一 次，那么它们之间也从不匹配。
+    - 一个包含 maddr 地址参数的 URL 不能匹配未包含 maddr 参数的 URL。
+    - 当对比 URL 时，所有仅出现过一次的其他所有 uri 参数将被忽略。
+
+- URI 头构件从来不能被忽略。任何出现的头构件必须出现在双方 URLs 中来支持 URL 匹配。针对每个头的匹配规则参考 20 章节。
+
+以下每个组中的 URL 是相等的：
+
+```
+sip:%61lice@atlanta.com;transport=TCP
+sip:alice@AtLanTa.CoM;Transport=tcp
+
+sip:carol@chicago.com
+sip:carol@chicago.com;newparam=5
+sip:carol@chicago.com;security=on
+
+sip:biloxi.com;transport=tcp;method=REGISTER?to=sip:bob%40biloxi.com
+sip:biloxi.com;method=REGISTER;transport=tcp?to=sip:bob%40biloxi.com
+
+sip:alice@atlanta.com?subject=project%20x&priority=urgent
+sip:alice@atlanta.com?priority=urgent&subject=project%20x
+```
+
+以下每个组中的 URL 是不相等的：
+
+```
+SIP:ALICE@AtLanTa.CoM;Transport=udp             (different usernames)
+sip:alice@AtLanTa.CoM;Transport=UDP
+
+sip:bob@biloxi.com                   (can resolve to different ports)
+sip:bob@biloxi.com:5060
+
+sip:bob@biloxi.com              (can resolve to different transports)
+sip:bob@biloxi.com;transport=udp
+
+sip:bob@biloxi.com     (can resolve to different port and transports)
+sip:bob@biloxi.com:6000;transport=tcp
+
+sip:carol@chicago.com                    (different header component)
+sip:carol@chicago.com?Subject=next%20meeting
+
+sip:bob@phone21.boxesbybob.com   (even though that's what
+sip:bob@192.0.2.4                 phone21.boxesbybob.com resolves to)
+```
+
+注意，等同性是不可传递的：
+
+- sip:carol@chicago.com 和 sip:carol@chicago.com;security=on 是相同的
+- sip:carol@chicago.com 和 sip:carol@chicago.com;security=off 是相同的
+- sip:carol@chicago.com;security=on 和 sip:carol@chicago.com;security=off 是不同的
 
 #### 19.1.5 Forming Requests from a URI
 
+当直接从一个 URL 中构建请求时，部署方式需要注意。URLs 来自于名片信息，网页信息，并且甚至于来自协议本身的原来已注册的 contacts，此 URLs 可以包含非恰当的头字段或者信息体。
+
+部署方式必须在已构建的请求的 Request-URL 中包括任何已提供的传输，maddr，ttl或者用户参数。如果此 URL 包含了一个 method 参数，它的值必须作为请求 method 使用。这个 method 参数一定不能置于 Request-URI 中。未知的 URL 参数必须置于消息的 Request-URI。
+
+部署方式应该把在 URL 出现的任何头消息或者部分消息体作为一个预期，把这些消息包含在消息中，并且选择这些消息来服务基于每个组件的请求。
+
+部署方式不应该对非常危险的头字段提供服务支持，包括：From，Call-ID，CSeq，Via，和 Record-Route。
+
+一个部署方式不应该支持任何已请求的 Route 头字段值，这样做的目的是为了不被作为一个在恶意攻击中的未知情的代理使用。
+
+一个部署方式不应该支持这些请求，请求中包括可能引起错误地展现其位置和能力的头字段。这些头字段包括：Accept，Accept-Encoding，Accept-Language，Allow，Contact （在其 dialog 使用），Organization，Supported 和 User-Agent。
+
+一个部署方式应该验证任何已请求的可描述头字段的准确性，这些头字段包括：Content-Disposition，Content-Encoding，Content-Language，Content-Length，Content-Type，Date，Mime-Version 和 Timestamp。
+
+如果一个请求是无效的 SIP 请求，这个请求构建的信息是从一个给定的 URL 获得，那么这个 URL 也是无效的。实施方式一定不能处理此传输中请求。因为在 context 中含有无效的 URL，发生了这种情况，它应该跟踪此行为的原因。
+
+> 构建的请求可以是无效的，无效的请求通过不同的方式来表达。它们包括，但是不仅限于，头字段中的语法错误，URL 参数的无效组合，或者消息体的错误描述。
+
+发送一个从给定的 URL 构建的请求可以要求一个能力，对此部署方式来说，这个能力可以是一个无效的能力。此 URL 可能指示一个未部署的传输使用方式或者扩展方式，例如，一个部署方式应该拒绝发送这些请求，而不是修改请求来匹配支持能力。部署方式一定不能发送一个请求，这个请求要求一个扩展，这个扩展是它本身不能支持的扩展。
+
+> 例如，这样一个请求，它是以这样的方式构建的。它通过一个 Require 头参数或者一个 method URL 呈现的，呈现数据中带有一个未知的或者明确不支持的值。
+
 #### 19.1.6 Relating SIP URIs and tel URLs
+
+当一个 tel URL(RFC2806[9]) 被转换成一个 SIP 或者 SIPS URI 地址时，tel URL 的整个 telephone-subscriber 部分和其包括的任何参数将被置于 SIP 或者 SIPS URL 的 userinfo 部分中。
+
+因此，tel:+358-555-1234567;postd=pp22 转换成
+
+```
+sip:+358-555-1234567;postd=pp22@foo.com;user=phone
+```
+
+或者
+
+```
+sips:+358-555-1234567;postd=pp22@foo.com;user=phone
+```
+
+而不是
+
+```
+sip:+358-555-1234567@foo.com;postd=pp22;user=phone
+```
+
+或者
+
+```
+sips:+358-555-1234567@foo.com;postd=pp22;user=phone
+```
+
+一般来说，已转换成 SIP 或者 SIPS URLS 等同的"tel" URLs，以这种方式处理的话，可能不会生成等同的 SIP 或者 SIPS URIs。SIP 或者 SIPS URLS 的 userinfo 部分数值是以大小写敏感的方式进行对比的。Tel URLS 中大小写不敏感的变量和 tel URL 的参数重新排序不会影响 tel URL 的等同关系，但是，它确实影响 SIP URLS 等同关系，这里的这些SIP URLS 是通过 tel URLS 中构建的。
+
+例如：
+
+```
+tel:+358-555-1234567;postd=pp22
+tel:+358-555-1234567;POSTD=PP22
+```
+
+等同于
+
+```
+sip:+358-555-1234567;postd=pp22@foo.com;user=phone
+sip:+358-555-1234567;POSTD=PP22@foo.com;user=phone
+```
+
+同样的
+
+```
+tel:+358-555-1234567;postd=pp22;isub=1411
+tel:+358-555-1234567;isub=1411;postd=pp22
+```
+
+等同于
+
+```
+sip:+358-555-1234567;postd=pp22;isub=1411@foo.com;user=phone
+sip:+358-555-1234567;isub=1411;postd=pp22@foo.com;user=phone
+```
+
+为了改善或解决这个问题，针对构建 telephone-subscriber 的要素参数，这些参数被转换置于 SIP 或者 SIPS URL 的 userinfo 部分时，这些参数应该通过封装处理 telephone-subscriber 中任何对大小写不敏感的部分数据，将这些大小写不敏感的字符转换为小写字符，并且对 telephone-subscriber 参数名称在词法上按照参数名称进行顺序。注意，这里除了 isdn-subaddress 和 post-dial 以外，这些参数会首先按照顺序发生（所有 telURL 组件除了未来扩展到参数以外，它们都被定义，并且以大小写不敏感的方式进行对比）。
+
+按照以下建议，所有的
+
+```
+tel:+358-555-1234567;postd=pp22
+tel:+358-555-1234567;POSTD=PP22
+```
+
+转换为
+
+```
+sip:+358-555-1234567;postd=pp22@foo.com;user=phone
+```
+
+并且，所有的
+
+```
+tel:+358-555-1234567;tsp=a.b;phone-context=5
+tel:+358-555-1234567;phone-context=5;tsp=a.b
+```
+
+转换为
+
+```
+sip:+358-555-1234567;phone-context=5;tsp=a.b@foo.com;user=phone
+```
 
 ### 19.2 Option Tags
 
+Option tags 是一个唯一标志，用来指明 SIP 中的新 options（扩展）的。这些 tags 在 Require( 第 20.32 章 )，Proxy-Require(第 20.29 章)，Supported(第 20.37 章) 和 Unsupported(第 20.40 章)头字段中使用。注意这些 options 是以 option-tag= 的形式作为这些头字段的参数存在的（第 25 章有关定义符号）。
+
+Option tags 是根据标准的 RFC 扩展定义的。这和过去的部署方式有所不同，这是规范组织为了保证多个厂商之间能够持续互相协作兼容（第 20.32 章、第 20.37 章的讨论）。option tags 的 IANA 注册记录可以保证用户方便参照。
+
 ### 19.3 Tags
 
+“tag” 参数用于 SIP 消息中的 To 和 From 头字段。它作为一个通用的机制一部分来唯一标志一个对话，这个机制用 Call-ID 和两个从对话参与者的 tag 来标志一个对话。当UA 在对话外发出一个请求时，它只包含了 From tag,提供了对话 ID 的”一半”。对话根据应答创建完成，这个应答在 To 头字段中提供了对话 ID 的另一半。SIP 请求的分支意味着一个单个请求可以创建多个对话。这个也解释了为何需要对话两方的标志；如果没有被叫方的标志，呼叫方不能分辩和消除由单个请求创建的多个对话。
+
+当 UA 产生一个 tag 并且增加进一个请求或者应答的时候，它必须是一个全局唯一的，并且是密码随机数起码是 32 位的随机数。这个要求是为了让 UA 能够在同一个 INVITE 请求中，在给这个 INVITE 的应答中，在 To 头字段产生一个不同的 tag，和原始 INVITE 请求在 From 头字段中产生的 tag 不同。这是因为 UA 可以邀请自己到一个会话，常见的是在 PSTN 网关端实现的 ”hairpinning”（发夹）呼叫。类似的，对不同呼叫的两个 INVITE 也有不同的 From tag,并且给这两个呼叫的两个应答也有不同的 To tag。
+
+在全局唯一要求之外，产生 tag 的算法是实现相关的。Tag 对于容错系统比较有用，在容错系统中，当主服务器出现故障的时候，对话会在另外一个服务器上进行恢复。UAS 可以产生一个 tag，让备用服务器能够识别到这个请求是在故障服务器上的对话，并且能够决定是否恢复对话和对话相关的状态。
+
 ## 20 Header Fields
+
+头字段或者头字段的语法描述在 7.3 节。本节列出了头字段的全部列表，包括了语法注释，含义，和用法。通过本节，我们使用[HX.Y]指当前 HTTP/1.1 的 RFC2616[8]的规范的 X.Y 节。每个头字段或者头字段都给出了示例。
+
+关于与方法和 proxy 处理有关的头字段字段在表 2 和表 3 中有处理。“where”列描述了在头字段中能够使用的请求和应答的类型。这列的值是：
+
+- R: 头字段只能在请求中出现；
+- r: 头字段只能在应答中出现；
+
+    2xx，4xx，等等：一个数字的值区间表示头字段能够使用的应答代码；
+
+- c: 头字段是从请求拷贝到应答的。
+
+    如果 ”where” 栏目是空白，表示头字段可以在所有的请求和应答中出现。
+
+“proxy” 列描述了 proxy 在头字段上的操作:
+
+- a：如果头字段不存在，proxy 可以增加或者连接头字段。
+- m：proxy 可以修改现存的头字段值。
+- d：proxy 可以删除头字段值。
+- r：proxy 必须能读取这个头字段，因此这个头字段不能加密。
+
+接下来 6 个栏目与在某一个方法中出现的头字段有关：
+
+- c: 条件；对头字段的要求依赖于消息的内容。
+- m: 头字段是强制要有的。
+- m*: 头字段应当被发送，但是客户端/服务端都需要准备接收没有这个头字段的消息。
+- o: 头字段是可选的。
+- t: 头字段应当被发送，但是客户端/服务端都需要准备接收没有这个头字段的消息。客户 端/服务端都需要准备接收没有这个头字段的消息。如果通讯的协议是基于面向流的协议（比如 TCP），那么头字段值必须被发送。
+- *: 如果消息体不为空，那么头字段值就需要的。（细节请参见第 20.14,20.15 和第7.4 章节）。
+- -: 这个头字段是不适用的。
+
+“Optional”意味着这个网元可以在请求或者应答中包含这个头字段，并且 UA 可以忽略在请求或者应答中存在的这个头字段（这条规则有一个例外，就是 Require 头字段，在第 20.32 章节有描述）。” mandatory”（强制）头字段是必须在请求中存在的头字段，并且也必须是 UAS 接收到一个请求时能够理解的头字段。一个强制头字段必须也在应答中出现，并且 UAC 也能处理这个头字段。”Not applicable”（不适用）意味着头字段不能在请求中出现。如果一个 UAC 错误的把这个头字段放在请求中，在 UAS 收到的时候必须被忽略。同样的，如果应答中的”不适用”的头字段，也就是说 UAS 不能在应答中放置的头字段，如果出现了，那么 UAC 也必须在应答中忽略掉这个头字段。
+
+一个 UA 必须忽略他们所不能处理的扩展的头参数。
+
+当整个消息大小是一个争议时，本规范也定义了常用的头字段或者头字段名的缩写。
+
+在 Contact，From，To 头字段中都包含一个 URI。如果这个 URI 包含一个逗号，问号或者分号， 那么这个 URI 必须使用尖括号括起来（<和>）。所有的 URI 参数都必须在这些括号内。如果 URI 并非用尖括号括起来的，那么用分号分开的参数将被视同与header 参数而不是 URI 参数。
 
 ### 20.1 Accept
 
