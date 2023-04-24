@@ -3033,91 +3033,480 @@ Option tags 是根据标准的 RFC 扩展定义的。这和过去的部署方式
 
 ### 20.1 Accept
 
+Accept 头字段的语法定义遵从[H14.1]。除了如果没有 Accept 头字段，服务器应当认为Accept 缺省值是 application/sdp 以外，语义也是和 HTTP/1.1 类似的语义。空的 Accept 头字段意味着不接受任何格式。
+
+例如:
+
+```
+      Header field          where   proxy ACK BYE CAN INV OPT REG
+      ___________________________________________________________
+      Accept                  R            -   o   -   o   m*  o
+      Accept                 2xx           -   -   -   o   m*  o
+      Accept                 415           -   c   -   c   c   c
+      Accept-Encoding         R            -   o   -   o   o   o
+      Accept-Encoding        2xx           -   -   -   o   m*  o
+      Accept-Encoding        415           -   c   -   c   c   c
+      Accept-Language         R            -   o   -   o   o   o
+      Accept-Language        2xx           -   -   -   o   m*  o
+      Accept-Language        415           -   c   -   c   c   c
+      Alert-Info              R      ar    -   -   -   o   -   -
+      Alert-Info             180     ar    -   -   -   o   -   -
+      Allow                   R            -   o   -   o   o   o
+      Allow                  2xx           -   o   -   m*  m*  o
+      Allow                   r            -   o   -   o   o   o
+      Allow                  405           -   m   -   m   m   m
+      Authentication-Info    2xx           -   o   -   o   o   o
+      Authorization           R            o   o   o   o   o   o
+      Call-ID                 c       r    m   m   m   m   m   m
+      Call-Info                      ar    -   -   -   o   o   o
+      Contact                 R            o   -   -   m   o   o
+      Contact                1xx           -   -   -   o   -   -
+      Contact                2xx           -   -   -   m   o   o
+      Contact                3xx      d    -   o   -   o   o   o
+      Contact                485           -   o   -   o   o   o
+      Content-Disposition                  o   o   -   o   o   o
+      Content-Encoding                     o   o   -   o   o   o
+      Content-Language                     o   o   -   o   o   o
+      Content-Length                 ar    t   t   t   t   t   t
+      Content-Type                         *   *   -   *   *   *
+      CSeq                    c       r    m   m   m   m   m   m
+      Date                            a    o   o   o   o   o   o
+      Error-Info           300-699    a    -   o   o   o   o   o
+      Expires                              -   -   -   o   -   o
+      From                    c       r    m   m   m   m   m   m
+      In-Reply-To             R            -   -   -   o   -   -
+      Max-Forwards            R      amr   m   m   m   m   m   m
+      Min-Expires            423           -   -   -   -   -   m
+      MIME-Version                         o   o   -   o   o   o
+      Organization                   ar    -   -   -   o   o   o
+
+             Table 2: Summary of header fields, A--O
+```
+
+
+```
+   Header field              where       proxy ACK BYE CAN INV OPT REG
+   ___________________________________________________________________
+   Priority                    R          ar    -   -   -   o   -   -
+   Proxy-Authenticate         407         ar    -   m   -   m   m   m
+   Proxy-Authenticate         401         ar    -   o   o   o   o   o
+   Proxy-Authorization         R          dr    o   o   -   o   o   o
+   Proxy-Require               R          ar    -   o   -   o   o   o
+   Record-Route                R          ar    o   o   o   o   o   -
+   Record-Route             2xx,18x       mr    -   o   o   o   o   -
+   Reply-To                                     -   -   -   o   -   -
+   Require                                ar    -   c   -   c   c   c
+   Retry-After          404,413,480,486         -   o   o   o   o   o
+                            500,503             -   o   o   o   o   o
+                            600,603             -   o   o   o   o   o
+   Route                       R          adr   c   c   c   c   c   c
+   Server                      r                -   o   o   o   o   o
+   Subject                     R                -   -   -   o   -   -
+   Supported                   R                -   o   o   m*  o   o
+   Supported                  2xx               -   o   o   m*  m*  o
+   Timestamp                                    o   o   o   o   o   o
+   To                        c(1)          r    m   m   m   m   m   m
+   Unsupported                420               -   m   -   m   m   m
+   User-Agent                                   o   o   o   o   o   o
+   Via                         R          amr   m   m   m   m   m   m
+   Via                        rc          dr    m   m   m   m   m   m
+   Warning                     r                -   o   o   o   o   o
+   WWW-Authenticate           401         ar    -   m   -   m   m   m
+   WWW-Authenticate           407         ar    -   o   -   o   o   o
+
+   Table 3: Summary of header fields, P--Z; (1): copied with possible
+   addition of tag
+```
+
+例如：
+
+```
+Accept: application/sdp;level=1, application/x-private, text/html
+```
+
 ### 20.2 Accept-Encoding
+
+Accept-Encoding 头字段类似 Accept，但是限定了接收应答中的内容的编码[H3.5]。参见[H1 4.3]。在 SIP 中的语义和在[H14.3]中的定义是一致的。
+
+规范允许一个空的 Accept-Encoding 头字段。它等同于 Accept-Encoding:identity, 这就是说，仅只有 identity 解码，无实际解码，这种情况也是允许的。
+
+如果没有 Accept-Encoding 头字段出现，那么服务端应当假设使用缺省值：identity。
+
+这个和 HTTP 的定义略有不同，HTTP 提示如果本头字段不存在，那么可以使用任何编码形式，仅只是推荐 identity 编码而已。
+
+例如：
+
+```
+Accept-Encoding: gzip
+```
 
 ### 20.3 Accept-Language
 
+Accept-Language 头字段用在请求中指定首选的的语言支持，这个首选语言使用在请求中的推荐语言，用来支持原因短语分析，会话描述，或者响应状态中传输的消息体内容。如果没有 Accept-Language 出现，那么服务端应当假设客户端会接受所有的语言。
+
+Accept-Language 头字段遵从[H14.4]节定义的语法。对于 SIP 来说，也同样支持对语言排序，支持通过” q”参数来进行排序。
+
+例如：
+
+```
+Accept-Language: da, en-gb;q=0.8, en;q=0.7
+```
+
 ### 20.4 Alert-Info
+
+当 INVITE 请求有一个 Alert-Info 头字段的时候，Alert-Info 头字段就包含的是给 UAS的一个额外的信息。当在 180（Ringing）应答中出现的时候，Alter-Info 头字段给出了UAC 一个额外的回铃信息。这个头字段的一个典型用法就是让 proxy 增加这个头字段用来提供一个有差异的振铃功能。
+
+Alter-Info 头字段可能会带来潜在的安全隐患。这个隐患以及相应的处理在第 20.9 章节有讲述，这个隐患和 Call-Info 头字段的隐患是相同的。
+
+另外，用户应当可以有选择的屏蔽这个特定。
+
+这个可以保护用户不因为使用了未受信任节点发送过来的这个头字段而导致的破坏。
+
+例如：
+
+```
+Alert-Info: <http://www.example.com/sounds/moo.wav>
+```
 
 ### 20.5 Allow
 
+Allow 头字段列出了 UA 生成的方法列表。
+
+当 Allow 头字段支持出现时，所有只有 UA 支持的方法，包括 ACK 和 CANCEL 都必须列在这个 Allow 头字段中。如果没有 Allow 头字段缺省时，一定不能解析为发送消息的UA 何种方法都不支持。准确的说，发送这个消息的 UA 并没有通知对端它支持何种方法。
+
+在应答中提供 Allow 头字段支持不在 OPTIONS 提供支持支持头字段，这样会减小协商所需要的消息数量。
+
+例如：
+
+```
+Allow: INVITE, ACK, OPTIONS, CANCEL, BYE
+```
+
 ### 20.6 Authentication-Info
 
+通过 Authentication-Info 域提供和 HTTP 相同的认证方法。UAS 可以在一个请求的带2xx 的响应中包含一个头字段，这个请求是使用 digest 基于 Authorization 头字段一个成功认证的请求。
+
+这个头字段的语法和语义遵循 RFC2617[17]的规范。
+
+例如：
+
+```
+Authentication-Info: nextnonce="47364c23432d2e131a5fb210812c"
+```
 ### 20.7 Authorization
+
+Authorization 头字段包含了 UA 进行认证的信任书。第 22.2 章节介绍了对 Authorization 头字段的用法，第 22.4 章节介绍了和 HTTP 认证一起使用的时候的语法和语义。
+
+这个头字段连同 Proxy-Authorization 并不遵循通常的多头字段值的规则。虽然它不是由逗号分割的列表，这个头字段名可以重复出现多次，但是一定不能使用第 7.3 章节的规则合并这些头成为单个头字段。
+
+在下边的例子中，在 Digest 参数两边没有使用引号括起来。
+
+```
+Authorization: Digest username="Alice", realm="atlanta.com",
+ nonce="84a4cc6f3082121f32b42a2187831a9e",
+ response="7587245234b3434cc3412213e5f113a5432"
+```
 
 ### 20.8 Call-ID
 
+Call-ID 头字段用来唯一区别一个特定的邀请或者一个特定客户端的所有注册。单个多媒体会议可以生成多个不同 Call-ID 的呼叫，例如，当一个用户多次邀请单个个体加入同一个会议的场景。Call-ID 是大小写敏感，并且是以字节/字节进行比较的。
+
+Call-ID 头字段的简写就是 i
+
+例如:
+
+```
+Call-ID: f81d4fae-7dec-11d0-a765-00a0c91e6bf6@biloxi.com
+i:f81d4fae-7dec-11d0-a765-00a0c91e6bf6@192.0.2.4
+```
+
 ### 20.9 Call-Info
+
+Call-Info 头字段提供了对呼叫方或者被叫方的附加信息，取决于此头是在请求中被发现还是在响应中被发现。如果出现在应答中则是被叫方的。URL 的目的是通过 ”purpose” 参数加以说明。”icon” 参数包含了一个 呼叫方或者被叫方的图标。”info”参数描述了简要的呼叫方或者被叫方的基本信息，例如，置入一个网页对身份进行说明等。”card”参数提供了一个名片，例如，基于 vCard[36]或者 LDIF[37]格式生成的名片。如果附加新的标记，可以通过第 27 节描述的步骤通过在 IANA 注册来附加支持。
+
+使用 Call-Info 可能会带来一些安全风险。如果一个被叫方接到一个恶意呼叫方所提供的URI，被叫方可能会由显示一个不合适的内容，或者危险的甚至于一些非法的内容，等等。因此，规范推荐 UA 仅显示那些它自己能够检验并且信任的发送方身份的 Call-Info头字段中的内容。这个需求可能对于对方 U A 来说并不需要。代理服务器可以在请求中加入这个头字段。
+
+例如：
+
+```
+Call-Info: <http://wwww.example.com/alice/photo.jpg> ;purpose=icon,
+  <http://www.example.com/alice/> ;purpose=info
+```
 
 ### 20.10 Contact
 
+Contact 头字段提供了一个 URI，这个 URI 的含义取决于这个 contact 是在请求还是在应答中。
+
+Contact 头字段包含了一个显示的名字，一个 URL 以及包含的参数和 header 参数。
+
+本规范定义了一个 Contact 参数 ”q” 和 ”expires”。这些参数只有当 Contact 头字段在 REGISTER 的请求或者应答，或者 3xx 的应答中出现时才有效。其他参数可能在其他的规范中定义。当头字段值包含一个显示的名字，那么包含参数的 URI 应该用 ”<” 和 ”>” 括起来。如果没有 ”<”,”>” 括起来，所有 URI 以后的参数都将视为 header 参数，而不是 URI 参数。如果需要设置比较长的名称的话，显示姓名可以是符号， 或者引号引起来的字符串。
+
+即使 ”display-name” 为空，如果 ”addr-spec” 包含一个逗号或者分号，或者问号的话，也必须使用 ”name-addr” 的格式。这在 display-name 和 ”<” 之间可以有也可以没有 LWS(线性空白字符)。关于 LWS，参考：https://www.rfc-editor.org/std/std68.txt
+
+对于针对显示名字，URI 和 URI 的参数，header 参数的解析规则同样也适用于 To 和 From 头字段。
+
+> Contact 头字段的工作原理类似于 HTTP 中的 Location 头字段。但是 HTTP 头字段只允许 1 个地址，未作为引用数据。作为预留字符，由于 URI 中可以包含逗号和分号，所以它们在各自的 header 或者参数分隔符上出现的话就是错误的。
+
+Contact 头字段的缩写是 m(“moved”)。
+
+例如：
+
+```
+Contact: "Mr. Watson" <sip:watson@worcester.bell-telephone.com>
+   ;q=0.7; expires=3600,
+   "Mr. Watson" <mailto:watson@bell-telephone.com> ;q=0.1
+m: <sips:bob@192.0.2.4>;expires=60
+```
+
 ### 20.11 Content-Disposition
+
+Content-Disposition 头字段描述了消息体基本消息，或者对于对方消息来说，一个消息体部分是如何被 UAC 或者 UAS 解析的 。 这个 SIP 字段扩展了 MIME Content-Type(RFC2183[18]) 支持。
+
+SIP 定义了 Content-Disposition 中的多个新的 ”disposition-types” 。 如果取值是 ”session” 表示消息体表示的是一个会话，针对的是呼叫（calls）或者早期（pre-call）媒体流。如果取值是”render”，表示消息体可是被显示否则渲染展示给用户。注意，使用 ”render” 而不使用比 ”inline”，渲染更适用于避免内涵内容的展现，MIME 消息体作为一个大的消息的一部分做渲染（由于 SIP 消息的 MIME 消息体经常被过滤，不能渲染展示给用户）。因为向后兼容的考虑，如果 Content-Disposition 头字段丢失 ， 服务器应当假设 Content-Type application/sdp 的消息体是 disposition”session”，其他内容部分为 “render” 渲染的部分。
+
+disposition 类型是 “icon”，表示消息体部分包含了一个用于表示呼叫者或者被叫者的 icon 图像 ， 当 UA 收到这个消息，就可以渲染处理，或者在对话过程中渲染展示。”alert” 表示消息体部分包含了信息，比如是一段声音，应当由 UA 展示给用户，提示用户这个请求，通常是请求初始化一个对话；这个 altering 消息体可以是一个在 180 Ringing 临时应答发出后的一个铃声指示音。任何携带了 ”disposition-type” 的 MIME 消息体，在这个消息经过了适当的安全认证后渲染显示到 UA 端。处理参数 handling-param 描述了 UAS 在接收到这个内容类型或者部属类型以后，如果 UAS 不能理解这些内容消息体时，UAS 应当如何处理。这个参数定义了 ”optional” 和 ”required” 两个值。如果处理参数丢失，那么这个处理参数缺省值就是 ”required”。处理参数在 RFC3204[19] 中定义和描述。如果这个头字段不存在，那么 MIME 的类型决定了缺省的内容处理。如果没有任何 MIME 的类型，那么假设缺省值就是 ”render”。
+
+例如：
+
+```
+Content-Disposition: session
+```
 
 ### 20.12 Content-Encoding
 
+Content-Encoding 头字段是对”media-type”(媒体类型)的一个修正。当存在这个头字段的时候， 它的值就是对包体内容编码的附加说明，并且因此必须根据本字段应用正确的解码机制，这样才能得到正确的 Content-Type 头字段指出的媒体类型的解码。Content-Encoding 首要应用于在不丢失媒体类型标记的情况下对消息体进行压缩处理。
+
+如果包体应用了多个编码，那么包体编码必须按顺序在这个字段中进行列出。
+
+所有的 Content-Encoding 的值都是大小写不敏感的。IANA 是这个编码方式的注册机构。参见[H3.5]获得 Content-coding 的语法定义。
+
+客户端可以在请求中进行包体的内容编码。服务端也可以在应答中进行内容编码。服务端必须只能应用客户端在请求中的 Accept-Encoding 头字段中列出的编码类型。
+
+Content-Encoding 简写是 e。
+
+示例：
+
+```
+Content-Encoding: gzip
+e: tar
+```
+
 ### 20.13 Content-Language
+
+参见[H14.12]。 例如：
+
+```
+Content-Language: fr
+```
 
 ### 20.14 Content-Length
 
+```
+Content-Length: 349
+l: 173
+```
+
 ### 20.15 Content-Type
+
+
+```
+Content-Type: application/sdp
+c: text/html; charset=ISO-8859-4
+```
+
 
 ### 20.16 CSeq
 
+```
+CSeq: 4711 INVITE
+```
+
 ### 20.17 Date
+
+```
+Date: Sat, 13 Nov 2010 23:29:00 GMT
+```
 
 ### 20.18 Error-Info
 
+```
+SIP/2.0 404 The number you have dialed is not in service
+Error-Info: <sip:not-in-service-recording@atlanta.com>
+```
+
 ### 20.19 Expires
+
+```
+Expires: 5
+```
 
 ### 20.20 From
 
+```
+From: "A. G. Bell" <sip:agb@bell-telephone.com> ;tag=a48s
+From: sip:+12125551212@server.phone2net.com;tag=887s
+f: Anonymous <sip:c8oqz84zk7z@privacy.org>;tag=hyh8
+```
+
 ### 20.21 In-Reply-To
+
+```
+In-Reply-To: 70710@saturn.bell-tel.com, 17320@saturn.bell-tel.com
+```
 
 ### 20.22 Max-Forwards
 
+```
+Max-Forwards: 6
+```
+
 ### 20.23 Min-Expires
+
+```
+Min-Expires: 60
+```
 
 ### 20.24 MIME-Version
 
+```
+MIME-Version: 1.0
+```
+
 ### 20.25 Organization
+
+```
+Organization: Boxes by Bob
+```
 
 ### 20.26 Priority
 
+```
+Subject: A tornado is heading our way!
+Priority: emergency
+```
+
+```
+Subject: Weekend plans
+Priority: non-urgent
+```
+
 ### 20.27 Proxy-Authenticate
+
+```
+Proxy-Authenticate: Digest realm="atlanta.com",
+ domain="sip:ss1.carrier.com", qop="auth",
+ nonce="f84f1cec41e6cbe5aea9c8e88d359",
+ opaque="", stale=FALSE, algorithm=MD5
+```
 
 ### 20.28 Proxy-Authorization
 
+```
+Proxy-Authorization: Digest username="Alice", realm="atlanta.com",
+   nonce="c60f3082ee1212b402a21831ae",
+   response="245f23415f11432b3434341c022"
+```
+
 ### 20.29 Proxy-Require
+
+```
+Proxy-Require: foo
+```
 
 ### 20.30 Record-Route
 
+```
+Record-Route: <sip:server10.biloxi.com;lr>,
+              <sip:bigbox3.site3.atlanta.com;lr>
+```
+
 ### 20.31 Reply-To
+
+```
+Reply-To: Bob <sip:bob@biloxi.com>
+```
 
 ### 20.32 Require
 
+```
+Require: 100rel
+```
+
 ### 20.33 Retry-After
+
+```
+Retry-After: 18000;duration=3600
+Retry-After: 120 (I'm in a meeting)
+```
 
 ### 20.34 Route
 
+```
+Route: <sip:bigbox3.site3.atlanta.com;lr>,
+       <sip:server10.biloxi.com;lr>
+```
+
 ### 20.35 Server
+
+```
+Server: HomeServer v2
+```
 
 ### 20.36 Subject
 
+```
+Subject: Need more boxes
+s: Tech Support
+```
+
 ### 20.37 Supported
+
+```
+Supported: 100rel
+```
 
 ### 20.38 Timestamp
 
+```
+Timestamp: 54
+```
+
 ### 20.39 To
+
+```
+To: The Operator <sip:operator@cs.columbia.edu>;tag=287447
+t: sip:+12125551212@server.phone2net.com
+```
 
 ### 20.40 Unsupported
 
+```
+Unsupported: foo
+```
+
 ### 20.41 User-Agent
+
+```
+User-Agent: Softphone Beta1.5
+```
 
 ### 20.42 Via
 
 ### 20.43 Warning
 
+```
+Warning: 307 isi.edu "Session parameter 'foo' not understood"
+Warning: 301 isi.edu "Incompatible network address type 'E.164'"
+```
+
 ### 20.44 WWW-Authenticate
+
+```
+WWW-Authenticate: Digest realm="atlanta.com",
+  domain="sip:boxesbybob.com", qop="auth",
+  nonce="f84f1cec41e6cbe5aea9c8e88d359",
+  opaque="", stale=FALSE, algorithm=MD5
+```
 
 ## 21 Response Codes
 
