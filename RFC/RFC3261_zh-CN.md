@@ -4328,11 +4328,11 @@ n8HHGTrfvhJhjH776tbB9HG4VQbnj7567GhIGfHfYT6ghyHhHUujpfyF4
 
 隧道加密也可以使用此机制来进行描述，使用此机制在 CMS EncelopedData 消息S/MIME 消息体中对“message/sip”MIME 消息体加密，但是，在实际工作环境中，至少大多数头字段会使用在网络中；使用 S/MIME 加密的一般使用可以用于类似于 SDP那样的消息体安全，而不用于消息头安全。一些关于信息的头字段，例如，Subject 和Organization 可能可以保证端对端的安全。未来在 SIP 应用中定义的头可能也需要模糊处理。
 
-对加密头字段另一个可能的应用方式是可选匿名方式。可以 From 头字段来构建一个请求 ， 请 求 中 的 From 头 字 段 可 以 不 包 含 任 何 个 人 信 息 ( 例 ，sip:anonymous@anonymizer.invalid)。但是，第二个 From 头字段包含发起方的真正的 address-of-record （ AOR ） 地 址 信 息 ， 此 From 头 字 段 可 以 在“message/sip”MIME 消息体中加密，在该消息体中，它仅对 dialog 的终端可见。
+对加密头字段另一个可能的应用方式是可选匿名方式。可以 From 头字段来构建一个请求，请求中的 From 头字段可以不包含任何个人信息 (例，sip:anonymous@anonymizer.invalid)。但是，第二个 From 头字段包含发起方的真正的 address-of-record（AOR）地址信息，此 From 头字段可以在 “message/sip” MIME 消息体中加密，在该消息体中，它仅对 dialog 的终端可见。
 
 注意，如果匿名使用此加密机制，From 头字段将不再为消息的接收方使用，不能作为证书密钥链索引来获取与发送者相关的正确 S/MIME 密钥。消息首先需要解密，并且使用 “inner”的 From 头字段作为索引。
 
-为了提供端对端的安全完整性，应该由发送方对加密的“message/sip”MIME 消息体签名 。 这 样 会 创 建 一 个 “multipart/signed” 的 MIME 消 息 体 ， 此 消 息 体 包 含“application/pkcs7-mime” 类型的加密消息体和签名。
+为了提供端对端的安全完整性，应该由发送方对加密的 “message/sip” MIME 消息体签名 。 这样会创建一个 “multipart/signed” 的 MIME 消息体，此消息体包含 “application/pkcs7-mime” 类型的加密消息体和签名。
 
 以下是加密和签名的消息的示例，用 Asterisk “*” 星号框起来的文本是被已经加密的文本：
 
@@ -4399,9 +4399,325 @@ n8HHGTrfvhJhjH776tbB9HG4VQbnj7567GhIGfHfYT6ghyHhHUujpfyF4
 
 ## 24 Examples
 
+下面的实例中，为了表述相对简洁一些，我们通常忽略了消息体和其相应的 Content-Length 和 Content-Type 头字段。
+
 ### 24.1 Registration
 
+Bob 在开始阶段注册。消息流程如图 9 所示。为简化流程，这里没有显示注册所需要的认证机制。
+
+```
+                  biloxi.com         Bob's
+                   registrar       softphone
+                      |                |
+                      |   REGISTER F1  |
+                      |<---------------|
+                      |    200 OK F2   |
+                      |--------------->|
+
+                  Figure 9: SIP Registration Example
+```
+
+F1 REGISTER Bob -> Registrar
+
+```
+REGISTER sip:registrar.biloxi.com SIP/2.0
+Via: SIP/2.0/UDP bobspc.biloxi.com:5060;branch=z9hG4bKnashds7
+Max-Forwards: 70
+To: Bob <sip:bob@biloxi.com>
+From: Bob <sip:bob@biloxi.com>;tag=456248
+Call-ID: 843817637684230@998sdasdh09
+CSeq: 1826 REGISTER
+Contact: <sip:bob@192.0.2.4>
+Expires: 7200
+Content-Length: 0
+```
+
+注册在 2 小时后失效，注册服务器返回一个带 200 OK 的响应。
+
+F2 200 OK Registrar -> Bob
+
+```
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP bobspc.biloxi.com:5060;branch=z9hG4bKnashds7
+ ;received=192.0.2.4
+To: Bob <sip:bob@biloxi.com>;tag=2493k59kd
+From: Bob <sip:bob@biloxi.com>;tag=456248
+Call-ID: 843817637684230@998sdasdh09
+CSeq: 1826 REGISTER
+Contact: <sip:bob@192.0.2.4>
+Expires: 7200
+Content-Length: 0
+```
+
 ### 24.2 Session Setup
+
+本示例包含了第 4 章中会话建立所需要的全部细节。消息流在图 1 所示。注意这些消息流只显示了所需的最少要求的头字段--其它头字段如 Allow 和 Supported 通常都会出现在消息中。
+
+```
+                 atlanta.com  . . . biloxi.com
+             .      proxy              proxy     .
+           .                                       .
+   Alice's  . . . . . . . . . . . . . . . . . . . .  Bob's
+  softphone                                        SIP Phone
+     |                |                |                |
+     |    INVITE F1   |                |                |
+     |--------------->|    INVITE F2   |                |
+     |  100 Trying F3 |--------------->|    INVITE F4   |
+     |<---------------|  100 Trying F5 |--------------->|
+     |                |<-------------- | 180 Ringing F6 |
+     |                | 180 Ringing F7 |<---------------|
+     | 180 Ringing F8 |<---------------|     200 OK F9  |
+     |<---------------|    200 OK F10  |<---------------|
+     |    200 OK F11  |<---------------|                |
+     |<---------------|                |                |
+     |                       ACK F12                    |
+     |------------------------------------------------->|
+     |                   Media Session                  |
+     |<================================================>|
+     |                       BYE F13                    |
+     |<-------------------------------------------------|
+     |                     200 OK F14                   |
+     |------------------------------------------------->|
+     |                                                  |
+
+     Figure 1: SIP session setup example with SIP trapezoid
+
+```
+
+F1 INVITE Alice -> atlanta.com proxy
+
+```
+INVITE sip:bob@biloxi.com SIP/2.0
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+Max-Forwards: 70
+To: Bob <sip:bob@biloxi.com>
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 314159 INVITE
+Contact: <sip:alice@pc33.atlanta.com>
+Content-Type: application/sdp
+Content-Length: 142
+
+(Alice's SDP not shown)
+```
+
+F2 100 Trying atlanta.com proxy -> Alice
+
+```
+SIP/2.0 100 Trying
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+ ;received=192.0.2.1
+To: Bob <sip:bob@biloxi.com>
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 314159 INVITE
+Content-Length: 0
+```
+
+F3 INVITE atlanta.com proxy -> biloxi.com proxy
+
+```
+INVITE sip:bob@biloxi.com SIP/2.0
+Via: SIP/2.0/UDP bigbox3.site3.atlanta.com;branch=z9hG4bK77ef4c2312983.1
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+ ;received=192.0.2.1
+Max-Forwards: 69
+To: Bob <sip:bob@biloxi.com>
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 314159 INVITE
+Contact: <sip:alice@pc33.atlanta.com>
+Content-Type: application/sdp
+Content-Length: 142
+
+(Alice's SDP not shown)
+```
+
+F4 100 Trying biloxi.com proxy -> atlanta.com proxy
+
+```
+SIP/2.0 100 Trying
+Via: SIP/2.0/UDP bigbox3.site3.atlanta.com;branch=z9hG4bK77ef4c2312983.1
+ ;received=192.0.2.2
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+ ;received=192.0.2.1
+To: Bob <sip:bob@biloxi.com>
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 314159 INVITE
+Content-Length: 0
+```
+
+F5 INVITE biloxi.com proxy -> Bob
+
+```
+INVITE sip:bob@192.0.2.4 SIP/2.0
+Via: SIP/2.0/UDP server10.biloxi.com;branch=z9hG4bK4b43c2ff8.1
+Via: SIP/2.0/UDP bigbox3.site3.atlanta.com;branch=z9hG4bK77ef4c2312983.1
+ ;received=192.0.2.2
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+ ;received=192.0.2.1
+Max-Forwards: 68
+To: Bob <sip:bob@biloxi.com>
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 314159 INVITE
+Contact: <sip:alice@pc33.atlanta.com>
+Content-Type: application/sdp
+Content-Length: 142
+
+(Alice's SDP not shown)
+```
+
+F6 180 Ringing Bob -> biloxi.com proxy
+
+```
+SIP/2.0 180 Ringing
+Via: SIP/2.0/UDP server10.biloxi.com;branch=z9hG4bK4b43c2ff8.1
+ ;received=192.0.2.3
+Via: SIP/2.0/UDP bigbox3.site3.atlanta.com;branch=z9hG4bK77ef4c2312983.1
+ ;received=192.0.2.2
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+ ;received=192.0.2.1
+To: Bob <sip:bob@biloxi.com>;tag=a6c85cf
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+Contact: <sip:bob@192.0.2.4>
+CSeq: 314159 INVITE
+Content-Length: 0
+```
+
+F7 180 Ringing biloxi.com proxy -> atlanta.com proxy
+
+```
+SIP/2.0 180 Ringing
+Via: SIP/2.0/UDP bigbox3.site3.atlanta.com;branch=z9hG4bK77ef4c2312983.1
+ ;received=192.0.2.2
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+ ;received=192.0.2.1
+To: Bob <sip:bob@biloxi.com>;tag=a6c85cf
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+Contact: <sip:bob@192.0.2.4>
+CSeq: 314159 INVITE
+Content-Length: 0
+```
+
+F8 180 Ringing atlanta.com proxy -> Alice
+
+```
+SIP/2.0 180 Ringing
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+ ;received=192.0.2.1
+To: Bob <sip:bob@biloxi.com>;tag=a6c85cf
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+Contact: <sip:bob@192.0.2.4>
+CSeq: 314159 INVITE
+Content-Length: 0
+```
+
+F9 200 OK Bob -> biloxi.com proxy
+
+```
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP server10.biloxi.com;branch=z9hG4bK4b43c2ff8.1
+ ;received=192.0.2.3
+Via: SIP/2.0/UDP bigbox3.site3.atlanta.com;branch=z9hG4bK77ef4c2312983.1
+ ;received=192.0.2.2
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+ ;received=192.0.2.1
+To: Bob <sip:bob@biloxi.com>;tag=a6c85cf
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 314159 INVITE
+Contact: <sip:bob@192.0.2.4>
+Content-Type: application/sdp
+Content-Length: 131
+
+(Bob's SDP not shown)
+```
+
+F10 200 OK biloxi.com proxy -> atlanta.com proxy
+
+```
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP bigbox3.site3.atlanta.com;branch=z9hG4bK77ef4c2312983.1
+ ;received=192.0.2.2
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+ ;received=192.0.2.1
+To: Bob <sip:bob@biloxi.com>;tag=a6c85cf
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 314159 INVITE
+Contact: <sip:bob@192.0.2.4>
+Content-Type: application/sdp
+Content-Length: 131
+
+(Bob's SDP not shown)
+```
+
+F11 200 OK atlanta.com proxy -> Alice
+
+```
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+ ;received=192.0.2.1
+To: Bob <sip:bob@biloxi.com>;tag=a6c85cf
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 314159 INVITE
+Contact: <sip:bob@192.0.2.4>
+Content-Type: application/sdp
+Content-Length: 131
+
+(Bob's SDP not shown)
+```
+
+F12 ACK Alice -> Bob
+
+```
+ACK sip:bob@192.0.2.4 SIP/2.0
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds9
+Max-Forwards: 70
+To: Bob <sip:bob@biloxi.com>;tag=a6c85cf
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 314159 ACK
+Content-Length: 0
+```
+
+流程到此为止，在 Alice 和 Bob 之间媒体会话创建。
+
+Bob 首先挂机，注意 Bob 的 SIP 电话维持自己的 Cseq 序列号范围，在此示例中，其范围取值从 231 开始。因为是由 Bob 发起的请求，所以交换了 To URI 和 FromURI 以及标签。
+
+F13 BYE Bob -> Alice
+
+```
+BYE sip:alice@pc33.atlanta.com SIP/2.0
+Via: SIP/2.0/UDP 192.0.2.4;branch=z9hG4bKnashds10
+Max-Forwards: 70
+From: Bob <sip:bob@biloxi.com>;tag=a6c85cf
+To: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 231 BYE
+Content-Length: 0
+```
+
+F14 200 OK Alice -> Bob
+
+```
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 192.0.2.4;branch=z9hG4bKnashds10
+From: Bob <sip:bob@biloxi.com>;tag=a6c85cf
+To: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 231 BYE
+Content-Length: 0
+```
+
+SIP 呼叫流程文档[参考资料链接 40]包含了 SIP 消息更详细的示例。
+
 
 ## 25 Augmented BNF for the SIP Protocol
 
