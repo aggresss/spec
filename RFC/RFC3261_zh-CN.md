@@ -4721,57 +4721,882 @@ SIP 呼叫流程文档[参考资料链接 40]包含了 SIP 消息更详细的示
 
 ## 25 Augmented BNF for the SIP Protocol
 
+在本规范中所指定的所有机制都以普通文章和扩展 BNF 的方式进行描述，关于扩展的BNF 的定义参见 RFC2234[参考链接 10]。 在 RFC2234 第 6 章定义了一组在本规范使用的核心规则，这里不再重述。为了完整理解此规范，部署者需要熟悉 RFC2234 中的标识符号和内容。一些基本规则使用大写字母表述，如 SP、LWS、HTAB、CRLF、DIGIT、ALPHA 等。尖括号使用在定义中用来说明规则名称的使用方式。
+
+使用方括号是语法上的一种备用方式。它作为一种语义提示来表示特定参数是可选使用参数。
+
 ### 25.1 Basic Rules
+
+本规范使用了以下规则描述基本的解析结构。US-ASCII 编码字符集由 ANSI X3.4-1986定 义。
+
+```
+      alphanum  =  ALPHA / DIGIT
+```
+
+规范中有一些规则是从 RFC2396 [参考链接 5]中引入的，但为遵循 RFC2234 [参考链接10]，这里对它们进行了更新。这些规则包括：
+
+```
+      reserved    =  ";" / "/" / "?" / ":" / "@" / "&" / "=" / "+"
+                     / "$" / ","
+      unreserved  =  alphanum / mark
+      mark        =  "-" / "_" / "." / "!" / "~" / "*" / "'"
+                     / "(" / ")"
+      escaped     =  "%" HEXDIG HEXDIG
+```
+
+SIP 头字段值可分为多行，如果续行的话，可以连续以空格或换码符 '\t' 开始。所有的线性空格，包括叠层，这些空格有同样的语义，类似于 SP。接收发在解析字段值或向下游转发消息前，可以用一个单个的 SP 替代任何线性空格。这一点与 RFC2616[参考链接 8]中描述的 HTTP/1.1 完全相同。当线性空格是可选时，使用 SWS 结构，线性空格通常在标记和分隔符之间。
+
+```
+      LWS  =  [*WSP CRLF] 1*WSP ; linear whitespace
+      SWS  =  [LWS] ; sep whitespace
+```
+
+为了将头名称从其它值中分离出来，根据前面的规则需要使用一个冒号，允许冒号前出现在空格，但不允许冒号后出现换行和空格，包括一个换行 linebreak。HCOLON 定义的如下：
+
+```
+      HCOLON  =  *( SP / HTAB ) ":" SWS
+```
+
+TEXT-UTF8 规则仅用于可描述字段内容和值，这些值不用于消息解析器的解析。*TEXT-UTF8 的单词包含 UTF-8 字符集，它们来自于（RFC2279[7]）的字符。TEXT-UTF8-TRIM 规则用于描述性字段内容，该内容不是引用的字符串，在引用的字符串中，其中第一和尾部的一位 LWS 无任何意义。从这一点来说，SIP 区别于 HTTP，HTTP 使用的是ISO 8859-1 字符集。
+
+```
+      TEXT-UTF8-TRIM  =  1*TEXT-UTF8char *(*LWS TEXT-UTF8char)
+      TEXT-UTF8char   =  %x21-7E / UTF8-NONASCII
+      UTF8-NONASCII   =  %xC0-DF 1UTF8-CONT
+                      /  %xE0-EF 2UTF8-CONT
+                      /  %xF0-F7 3UTF8-CONT
+                      /  %xF8-Fb 4UTF8-CONT
+                      /  %xFC-FD 5UTF8-CONT
+      UTF8-CONT       =  %x80-BF
+```
+
+在 TEXT-UTF8-TRIM 定义中，CRLF 允许作为头字段的附加部分使用。在解析 TEXT-UTF8-TRIM 值前， 希望用一个 SP 替代叠层的 LWS。
+
+在几个协议网元中使用了十六进制数字字符。某些网元（authentication）强制十六进制的首字母为小写字母。
+
+```
+      LHEX  =  DIGIT / %x61-66 ;lowercase a-f
+```
+
+许多 SIP 头字段值由通过 LWS 或特殊字符分隔处理后的单词组成。除非有特殊说明，token 的字母对大小写不敏感。这些特殊字符必须为引用字符串，使用在参数值中。Word 结构使用在 Call-ID 中，允许使用多个分隔符。
+
+```
+      token       =  1*(alphanum / "-" / "." / "!" / "%" / "*"
+                     / "_" / "+" / "`" / "'" / "~" )
+      separators  =  "(" / ")" / "<" / ">" / "@" /
+                     "," / ";" / ":" / "\" / DQUOTE /
+                     "/" / "[" / "]" / "?" / "=" /
+                     "{" / "}" / SP / HTAB
+      word        =  1*(alphanum / "-" / "." / "!" / "%" / "*" /
+                     "_" / "+" / "`" / "'" / "~" /
+                     "(" / ")" / "<" / ">" /
+                     ":" / "\" / DQUOTE /
+                     "/" / "[" / "]" / "?" /
+                     "{" / "}" )
+```
+
+当标记或分隔符使用在要素之间时，在这些字符前后允许使用空格。
+
+```
+      STAR    =  SWS "*" SWS ; asterisk
+      SLASH   =  SWS "/" SWS ; slash
+      EQUAL   =  SWS "=" SWS ; equal
+      LPAREN  =  SWS "(" SWS ; left parenthesis
+      RPAREN  =  SWS ")" SWS ; right parenthesis
+      RAQUOT  =  ">" SWS ; right angle quote
+      LAQUOT  =  SWS "<"; left angle quote
+      COMMA   =  SWS "," SWS ; comma
+      SEMI    =  SWS ";" SWS ; semicolon
+      COLON   =  SWS ":" SWS ; colon
+      LDQUOT  =  SWS DQUOTE; open double quotation mark
+      RDQUOT  =  DQUOTE SWS ; close double quotation mark
+```
+
+一些 Commnet 注释可以包含在一些 SIP 头字段中，其方法是用小括号将注释文本括起来。 仅在字段值定义中包含“comment”的字段才允许包含注释。在其它字段中，小括号都作为字段值的一个部分。
+
+```
+      comment  =  LPAREN *(ctext / quoted-pair / comment) RPAREN
+      ctext    =  %x21-27 / %x2A-5B / %x5D-7E / UTF8-NONASCII
+                  / LWS
+```
+
+ctext 包括除了左括号、右括号和反斜杠之外的所有字符。如果文本字符串是以双引号标记的引用，那么该文本字符串解析为一个单个词语。在引用的字符串中忽略引号（“）和反斜杠（\）。
+
+```
+      quoted-string  =  SWS DQUOTE *(qdtext / quoted-pair ) DQUOTE
+      qdtext         =  LWS / %x21 / %x23-5B / %x5D-7E
+                        / UTF8-NONASCII
+```
+
+反斜杠（\）可作为在引用字符串和注释结构中的一个单字符引用机制使用。不像HTTP/1.1，在这个机制在，字符 CR 和 LF 不能被忽略，以免与行叠层和头分隔冲突。
+
+```
+quoted-pair  =  "\" (%x00-09 / %x0B-0C
+                / %x0E-7F)
+
+SIP-URI          =  "sip:" [ userinfo ] hostport
+                    uri-parameters [ headers ]
+SIPS-URI         =  "sips:" [ userinfo ] hostport
+                    uri-parameters [ headers ]
+userinfo         =  ( user / telephone-subscriber ) [ ":" password ] "@"
+user             =  1*( unreserved / escaped / user-unreserved )
+user-unreserved  =  "&" / "=" / "+" / "$" / "," / ";" / "?" / "/"
+password         =  *( unreserved / escaped /
+                    "&" / "=" / "+" / "$" / "," )
+hostport         =  host [ ":" port ]
+host             =  hostname / IPv4address / IPv6reference
+hostname         =  *( domainlabel "." ) toplabel [ "." ]
+domainlabel      =  alphanum
+                    / alphanum *( alphanum / "-" ) alphanum
+toplabel         =  ALPHA / ALPHA *( alphanum / "-" ) alphanum
+
+IPv4address    =  1*3DIGIT "." 1*3DIGIT "." 1*3DIGIT "." 1*3DIGIT
+IPv6reference  =  "[" IPv6address "]"
+IPv6address    =  hexpart [ ":" IPv4address ]
+hexpart        =  hexseq / hexseq "::" [ hexseq ] / "::" [ hexseq ]
+hexseq         =  hex4 *( ":" hex4)
+hex4           =  1*4HEXDIG
+port           =  1*DIGIT
+```
+
+电话用户的关于 BNF，参见 RFC2806[参考链接 9]。注意，但是在电话用户的语法 BNF 中允许任何字符，而 SIP URI 的用户部分不允许的话，这些字符必须要被忽略。
+
+```
+uri-parameters    =  *( ";" uri-parameter)
+uri-parameter     =  transport-param / user-param / method-param
+                     / ttl-param / maddr-param / lr-param / other-param
+transport-param   =  "transport="
+                     ( "udp" / "tcp" / "sctp" / "tls"
+                     / other-transport)
+other-transport   =  token
+user-param        =  "user=" ( "phone" / "ip" / other-user)
+other-user        =  token
+method-param      =  "method=" Method
+ttl-param         =  "ttl=" ttl
+maddr-param       =  "maddr=" host
+lr-param          =  "lr"
+other-param       =  pname [ "=" pvalue ]
+pname             =  1*paramchar
+pvalue            =  1*paramchar
+paramchar         =  param-unreserved / unreserved / escaped
+param-unreserved  =  "[" / "]" / "/" / ":" / "&" / "+" / "$"
+
+headers         =  "?" header *( "&" header )
+header          =  hname "=" hvalue
+hname           =  1*( hnv-unreserved / unreserved / escaped )
+hvalue          =  *( hnv-unreserved / unreserved / escaped )
+hnv-unreserved  =  "[" / "]" / "/" / "?" / ":" / "+" / "$"
+
+SIP-message    =  Request / Response
+Request        =  Request-Line
+                  *( message-header )
+                  CRLF
+                  [ message-body ]
+Request-Line   =  Method SP Request-URI SP SIP-Version CRLF
+Request-URI    =  SIP-URI / SIPS-URI / absoluteURI
+absoluteURI    =  scheme ":" ( hier-part / opaque-part )
+hier-part      =  ( net-path / abs-path ) [ "?" query ]
+net-path       =  "//" authority [ abs-path ]
+abs-path       =  "/" path-segments
+
+opaque-part    =  uric-no-slash *uric
+uric           =  reserved / unreserved / escaped
+uric-no-slash  =  unreserved / escaped / ";" / "?" / ":" / "@"
+                  / "&" / "=" / "+" / "$" / ","
+path-segments  =  segment *( "/" segment )
+segment        =  *pchar *( ";" param )
+param          =  *pchar
+pchar          =  unreserved / escaped /
+                  ":" / "@" / "&" / "=" / "+" / "$" / ","
+scheme         =  ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+authority      =  srvr / reg-name
+srvr           =  [ [ userinfo "@" ] hostport ]
+reg-name       =  1*( unreserved / escaped / "$" / ","
+                  / ";" / ":" / "@" / "&" / "=" / "+" )
+query          =  *uric
+SIP-Version    =  "SIP" "/" 1*DIGIT "." 1*DIGIT
+
+message-header  =  (Accept
+                /  Accept-Encoding
+                /  Accept-Language
+                /  Alert-Info
+                /  Allow
+                /  Authentication-Info
+                /  Authorization
+                /  Call-ID
+                /  Call-Info
+                /  Contact
+                /  Content-Disposition
+                /  Content-Encoding
+                /  Content-Language
+                /  Content-Length
+                /  Content-Type
+                /  CSeq
+                /  Date
+                /  Error-Info
+                /  Expires
+                /  From
+                /  In-Reply-To
+                /  Max-Forwards
+                /  MIME-Version
+                /  Min-Expires
+                /  Organization
+                /  Priority
+                /  Proxy-Authenticate
+                /  Proxy-Authorization
+                /  Proxy-Require
+                /  Record-Route
+                /  Reply-To
+                /  Require
+                /  Retry-After
+                /  Route
+                /  Server
+                /  Subject
+                /  Supported
+                /  Timestamp
+                /  To
+                /  Unsupported
+                /  User-Agent
+                /  Via
+                /  Warning
+                /  WWW-Authenticate
+                /  extension-header) CRLF
+
+INVITEm           =  %x49.4E.56.49.54.45 ; INVITE in caps
+ACKm              =  %x41.43.4B ; ACK in caps
+OPTIONSm          =  %x4F.50.54.49.4F.4E.53 ; OPTIONS in caps
+BYEm              =  %x42.59.45 ; BYE in caps
+CANCELm           =  %x43.41.4E.43.45.4C ; CANCEL in caps
+REGISTERm         =  %x52.45.47.49.53.54.45.52 ; REGISTER in caps
+Method            =  INVITEm / ACKm / OPTIONSm / BYEm
+                     / CANCELm / REGISTERm
+                     / extension-method
+extension-method  =  token
+Response          =  Status-Line
+                     *( message-header )
+                     CRLF
+                     [ message-body ]
+
+Status-Line     =  SIP-Version SP Status-Code SP Reason-Phrase CRLF
+Status-Code     =  Informational
+               /   Redirection
+               /   Success
+               /   Client-Error
+               /   Server-Error
+               /   Global-Failure
+               /   extension-code
+extension-code  =  3DIGIT
+Reason-Phrase   =  *(reserved / unreserved / escaped
+                   / UTF8-NONASCII / UTF8-CONT / SP / HTAB)
+
+Informational  =  "100"  ;  Trying
+              /   "180"  ;  Ringing
+              /   "181"  ;  Call Is Being Forwarded
+              /   "182"  ;  Queued
+              /   "183"  ;  Session Progress
+
+Success  =  "200"  ;  OK
+
+Redirection  =  "300"  ;  Multiple Choices
+            /   "301"  ;  Moved Permanently
+            /   "302"  ;  Moved Temporarily
+            /   "305"  ;  Use Proxy
+            /   "380"  ;  Alternative Service
+
+Client-Error  =  "400"  ;  Bad Request
+             /   "401"  ;  Unauthorized
+             /   "402"  ;  Payment Required
+             /   "403"  ;  Forbidden
+             /   "404"  ;  Not Found
+             /   "405"  ;  Method Not Allowed
+             /   "406"  ;  Not Acceptable
+             /   "407"  ;  Proxy Authentication Required
+             /   "408"  ;  Request Timeout
+             /   "410"  ;  Gone
+             /   "413"  ;  Request Entity Too Large
+             /   "414"  ;  Request-URI Too Large
+             /   "415"  ;  Unsupported Media Type
+             /   "416"  ;  Unsupported URI Scheme
+             /   "420"  ;  Bad Extension
+             /   "421"  ;  Extension Required
+             /   "423"  ;  Interval Too Brief
+             /   "480"  ;  Temporarily not available
+             /   "481"  ;  Call Leg/Transaction Does Not Exist
+             /   "482"  ;  Loop Detected
+             /   "483"  ;  Too Many Hops
+             /   "484"  ;  Address Incomplete
+             /   "485"  ;  Ambiguous
+             /   "486"  ;  Busy Here
+             /   "487"  ;  Request Terminated
+             /   "488"  ;  Not Acceptable Here
+             /   "491"  ;  Request Pending
+             /   "493"  ;  Undecipherable
+
+Server-Error  =  "500"  ;  Internal Server Error
+             /   "501"  ;  Not Implemented
+             /   "502"  ;  Bad Gateway
+             /   "503"  ;  Service Unavailable
+             /   "504"  ;  Server Time-out
+             /   "505"  ;  SIP Version not supported
+             /   "513"  ;  Message Too Large
+
+Global-Failure  =  "600"  ;  Busy Everywhere
+               /   "603"  ;  Decline
+               /   "604"  ;  Does not exist anywhere
+               /   "606"  ;  Not Acceptable
+
+Accept         =  "Accept" HCOLON
+                   [ accept-range *(COMMA accept-range) ]
+accept-range   =  media-range *(SEMI accept-param)
+media-range    =  ( "*/*"
+                  / ( m-type SLASH "*" )
+                  / ( m-type SLASH m-subtype )
+                  ) *( SEMI m-parameter )
+accept-param   =  ("q" EQUAL qvalue) / generic-param
+qvalue         =  ( "0" [ "." 0*3DIGIT ] )
+                  / ( "1" [ "." 0*3("0") ] )
+generic-param  =  token [ EQUAL gen-value ]
+gen-value      =  token / host / quoted-string
+
+Accept-Encoding  =  "Accept-Encoding" HCOLON
+                     [ encoding *(COMMA encoding) ]
+encoding         =  codings *(SEMI accept-param)
+codings          =  content-coding / "*"
+content-coding   =  token
+
+Accept-Language  =  "Accept-Language" HCOLON
+                     [ language *(COMMA language) ]
+language         =  language-range *(SEMI accept-param)
+language-range   =  ( ( 1*8ALPHA *( "-" 1*8ALPHA ) ) / "*" )
+
+Alert-Info   =  "Alert-Info" HCOLON alert-param *(COMMA alert-param)
+alert-param  =  LAQUOT absoluteURI RAQUOT *( SEMI generic-param )
+
+Allow  =  "Allow" HCOLON [Method *(COMMA Method)]
+
+Authorization     =  "Authorization" HCOLON credentials
+credentials       =  ("Digest" LWS digest-response)
+                     / other-response
+digest-response   =  dig-resp *(COMMA dig-resp)
+dig-resp          =  username / realm / nonce / digest-uri
+                      / dresponse / algorithm / cnonce
+                      / opaque / message-qop
+                      / nonce-count / auth-param
+username          =  "username" EQUAL username-value
+username-value    =  quoted-string
+digest-uri        =  "uri" EQUAL LDQUOT digest-uri-value RDQUOT
+digest-uri-value  =  rquest-uri ; Equal to request-uri as specified
+                     by HTTP/1.1
+message-qop       =  "qop" EQUAL qop-value
+
+cnonce            =  "cnonce" EQUAL cnonce-value
+cnonce-value      =  nonce-value
+nonce-count       =  "nc" EQUAL nc-value
+nc-value          =  8LHEX
+dresponse         =  "response" EQUAL request-digest
+request-digest    =  LDQUOT 32LHEX RDQUOT
+auth-param        =  auth-param-name EQUAL
+                     ( token / quoted-string )
+auth-param-name   =  token
+other-response    =  auth-scheme LWS auth-param
+                     *(COMMA auth-param)
+auth-scheme       =  token
+
+Authentication-Info  =  "Authentication-Info" HCOLON ainfo
+                        *(COMMA ainfo)
+ainfo                =  nextnonce / message-qop
+                         / response-auth / cnonce
+                         / nonce-count
+nextnonce            =  "nextnonce" EQUAL nonce-value
+response-auth        =  "rspauth" EQUAL response-digest
+response-digest      =  LDQUOT *LHEX RDQUOT
+
+Call-ID  =  ( "Call-ID" / "i" ) HCOLON callid
+callid   =  word [ "@" word ]
+
+Call-Info   =  "Call-Info" HCOLON info *(COMMA info)
+info        =  LAQUOT absoluteURI RAQUOT *( SEMI info-param)
+info-param  =  ( "purpose" EQUAL ( "icon" / "info"
+               / "card" / token ) ) / generic-param
+
+Contact        =  ("Contact" / "m" ) HCOLON
+                  ( STAR / (contact-param *(COMMA contact-param)))
+contact-param  =  (name-addr / addr-spec) *(SEMI contact-params)
+name-addr      =  [ display-name ] LAQUOT addr-spec RAQUOT
+addr-spec      =  SIP-URI / SIPS-URI / absoluteURI
+display-name   =  *(token LWS)/ quoted-string
+
+contact-params     =  c-p-q / c-p-expires
+                      / contact-extension
+c-p-q              =  "q" EQUAL qvalue
+c-p-expires        =  "expires" EQUAL delta-seconds
+contact-extension  =  generic-param
+delta-seconds      =  1*DIGIT
+
+Content-Disposition   =  "Content-Disposition" HCOLON
+                         disp-type *( SEMI disp-param )
+disp-type             =  "render" / "session" / "icon" / "alert"
+                         / disp-extension-token
+
+disp-param            =  handling-param / generic-param
+handling-param        =  "handling" EQUAL
+                         ( "optional" / "required"
+                         / other-handling )
+other-handling        =  token
+disp-extension-token  =  token
+
+Content-Encoding  =  ( "Content-Encoding" / "e" ) HCOLON
+                     content-coding *(COMMA content-coding)
+
+Content-Language  =  "Content-Language" HCOLON
+                     language-tag *(COMMA language-tag)
+language-tag      =  primary-tag *( "-" subtag )
+primary-tag       =  1*8ALPHA
+subtag            =  1*8ALPHA
+
+Content-Length  =  ( "Content-Length" / "l" ) HCOLON 1*DIGIT
+Content-Type     =  ( "Content-Type" / "c" ) HCOLON media-type
+media-type       =  m-type SLASH m-subtype *(SEMI m-parameter)
+m-type           =  discrete-type / composite-type
+discrete-type    =  "text" / "image" / "audio" / "video"
+                    / "application" / extension-token
+composite-type   =  "message" / "multipart" / extension-token
+extension-token  =  ietf-token / x-token
+ietf-token       =  token
+x-token          =  "x-" token
+m-subtype        =  extension-token / iana-token
+iana-token       =  token
+m-parameter      =  m-attribute EQUAL m-value
+m-attribute      =  token
+m-value          =  token / quoted-string
+
+CSeq  =  "CSeq" HCOLON 1*DIGIT LWS Method
+
+Date          =  "Date" HCOLON SIP-date
+SIP-date      =  rfc1123-date
+rfc1123-date  =  wkday "," SP date1 SP time SP "GMT"
+date1         =  2DIGIT SP month SP 4DIGIT
+                 ; day month year (e.g., 02 Jun 1982)
+time          =  2DIGIT ":" 2DIGIT ":" 2DIGIT
+                 ; 00:00:00 - 23:59:59
+wkday         =  "Mon" / "Tue" / "Wed"
+                 / "Thu" / "Fri" / "Sat" / "Sun"
+month         =  "Jan" / "Feb" / "Mar" / "Apr"
+                 / "May" / "Jun" / "Jul" / "Aug"
+                 / "Sep" / "Oct" / "Nov" / "Dec"
+
+Error-Info  =  "Error-Info" HCOLON error-uri *(COMMA error-uri)
+
+error-uri   =  LAQUOT absoluteURI RAQUOT *( SEMI generic-param )
+
+Expires     =  "Expires" HCOLON delta-seconds
+From        =  ( "From" / "f" ) HCOLON from-spec
+from-spec   =  ( name-addr / addr-spec )
+               *( SEMI from-param )
+from-param  =  tag-param / generic-param
+tag-param   =  "tag" EQUAL token
+
+In-Reply-To  =  "In-Reply-To" HCOLON callid *(COMMA callid)
+
+Max-Forwards  =  "Max-Forwards" HCOLON 1*DIGIT
+
+MIME-Version  =  "MIME-Version" HCOLON 1*DIGIT "." 1*DIGIT
+
+Min-Expires  =  "Min-Expires" HCOLON delta-seconds
+
+Organization  =  "Organization" HCOLON [TEXT-UTF8-TRIM]
+
+Priority        =  "Priority" HCOLON priority-value
+priority-value  =  "emergency" / "urgent" / "normal"
+                   / "non-urgent" / other-priority
+other-priority  =  token
+
+Proxy-Authenticate  =  "Proxy-Authenticate" HCOLON challenge
+challenge           =  ("Digest" LWS digest-cln *(COMMA digest-cln))
+                       / other-challenge
+other-challenge     =  auth-scheme LWS auth-param
+                       *(COMMA auth-param)
+digest-cln          =  realm / domain / nonce
+                        / opaque / stale / algorithm
+                        / qop-options / auth-param
+realm               =  "realm" EQUAL realm-value
+realm-value         =  quoted-string
+domain              =  "domain" EQUAL LDQUOT URI
+                       *( 1*SP URI ) RDQUOT
+URI                 =  absoluteURI / abs-path
+nonce               =  "nonce" EQUAL nonce-value
+nonce-value         =  quoted-string
+opaque              =  "opaque" EQUAL quoted-string
+stale               =  "stale" EQUAL ( "true" / "false" )
+algorithm           =  "algorithm" EQUAL ( "MD5" / "MD5-sess"
+                       / token )
+qop-options         =  "qop" EQUAL LDQUOT qop-value
+                       *("," qop-value) RDQUOT
+qop-value           =  "auth" / "auth-int" / token
+
+Proxy-Authorization  =  "Proxy-Authorization" HCOLON credentials
+
+Proxy-Require  =  "Proxy-Require" HCOLON option-tag
+                  *(COMMA option-tag)
+option-tag     =  token
+
+Record-Route  =  "Record-Route" HCOLON rec-route *(COMMA rec-route)
+rec-route     =  name-addr *( SEMI rr-param )
+rr-param      =  generic-param
+
+Reply-To      =  "Reply-To" HCOLON rplyto-spec
+rplyto-spec   =  ( name-addr / addr-spec )
+                 *( SEMI rplyto-param )
+rplyto-param  =  generic-param
+Require       =  "Require" HCOLON option-tag *(COMMA option-tag)
+
+Retry-After  =  "Retry-After" HCOLON delta-seconds
+                [ comment ] *( SEMI retry-param )
+
+retry-param  =  ("duration" EQUAL delta-seconds)
+                / generic-param
+
+Route        =  "Route" HCOLON route-param *(COMMA route-param)
+route-param  =  name-addr *( SEMI rr-param )
+
+Server           =  "Server" HCOLON server-val *(LWS server-val)
+server-val       =  product / comment
+product          =  token [SLASH product-version]
+product-version  =  token
+
+Subject  =  ( "Subject" / "s" ) HCOLON [TEXT-UTF8-TRIM]
+
+Supported  =  ( "Supported" / "k" ) HCOLON
+              [option-tag *(COMMA option-tag)]
+
+Timestamp  =  "Timestamp" HCOLON 1*(DIGIT)
+               [ "." *(DIGIT) ] [ LWS delay ]
+delay      =  *(DIGIT) [ "." *(DIGIT) ]
+
+To        =  ( "To" / "t" ) HCOLON ( name-addr
+             / addr-spec ) *( SEMI to-param )
+to-param  =  tag-param / generic-param
+
+Unsupported  =  "Unsupported" HCOLON option-tag *(COMMA option-tag)
+User-Agent  =  "User-Agent" HCOLON server-val *(LWS server-val)
+
+Via               =  ( "Via" / "v" ) HCOLON via-parm *(COMMA via-parm)
+via-parm          =  sent-protocol LWS sent-by *( SEMI via-params )
+via-params        =  via-ttl / via-maddr
+                     / via-received / via-branch
+                     / via-extension
+via-ttl           =  "ttl" EQUAL ttl
+via-maddr         =  "maddr" EQUAL host
+via-received      =  "received" EQUAL (IPv4address / IPv6address)
+via-branch        =  "branch" EQUAL token
+via-extension     =  generic-param
+sent-protocol     =  protocol-name SLASH protocol-version
+                     SLASH transport
+protocol-name     =  "SIP" / token
+protocol-version  =  token
+transport         =  "UDP" / "TCP" / "TLS" / "SCTP"
+                     / other-transport
+sent-by           =  host [ COLON port ]
+ttl               =  1*3DIGIT ; 0 to 255
+
+Warning        =  "Warning" HCOLON warning-value *(COMMA warning-value)
+warning-value  =  warn-code SP warn-agent SP warn-text
+warn-code      =  3DIGIT
+warn-agent     =  hostport / pseudonym
+                  ;  the name or pseudonym of the server adding
+                  ;  the Warning header, for use in debugging
+warn-text      =  quoted-string
+pseudonym      =  token
+
+WWW-Authenticate  =  "WWW-Authenticate" HCOLON challenge
+
+extension-header  =  header-name HCOLON header-value
+header-name       =  token
+header-value      =  *(TEXT-UTF8char / UTF8-CONT / LWS)
+message-body  =  *OCTET
+```
 
 ## 26 Security Considerations: Threat Model and Security Usage Recommendations
 
+SIP 协议不是一个很容易实现安全管理的协议。媒体中介的 SIP 使用、SIP 的多层面的信任关系，在完全不信任的网元之间中所期望的用法和 SIP 用户之间的操作，这些因素都让安全问题变得非常琐碎，安全也显得更加重要。在缺乏广泛协同，并且用户环境变化很大和使用的不同中，今天，可部署的安全解决方案是需要的。为了满足这些不同的产业化的需求变化，用户需要一些完全不同机制来适用于不同的用户场景。
+
+注意，SIP 信令本身自己的安全性和与 SIP 配合的概念所使用的协议安全性无关，例如，RTP 协议，或与具体的 SIP 消息体安全部署传输（虽然 MIME 的安全在 SIP 安全方面扮演角色）。任何与一个会话关联的媒体可以独立地进行端对端加密，这些对媒体加密独立于其任何关联的 SIP 信令。媒体加密的讨论超出了本规范讨论的范围。
+
+关于安全讨论，主要有两个方面需要考虑。按照这两个方面的讨论，首先审查一组传统安全威胁模式，这些传统的安全威胁模式比较宽泛地定义了 SIP 安全的需求。一组安全服务详细阐述了安全威胁的细节，然后介绍了提供安全服务所使用的几个安全机制概念解释。接下来，列举了对 SIP 部署的要求，并且还列举了几个比较典型的部署使用方式--这些部署方式所使用的安全机制可以用来提高 SIP 的安全性。 在此章节议定出针对隐私安全的一些提示。
+
 ### 26.1 Attacks and Threat Models
+
+本章详细描述了在 SIP 部署环境中出现的一些常见安全威胁。选择这些特别的安全威胁解释 SIP 所需的每个安全服务。
+
+下面例子并不能详尽地列出所有 SIP 受到的安全威胁；确切的说，这些“传统”的安全威胁论证了针对特别安全服务的需求，这些安全服务能够防止各种潜在威胁发生。
+
+这些安全攻击假设了一个这样的环境：在这个环境里，攻击者可能读取网络上任何数据信息包--我们可以预知在公网上频繁使用 SIP 环境。网络上的攻击者可以修改数据包中的内容（这些数据包可能在一些暴露的中间媒体）。攻击者可能希望盗取服务、对通信服务进行监听或破坏会话。
 
 #### 26.1.1 Registration Hijacking
 
+注册劫持是 SIP 安全威胁中的其中一种攻击方式。SIP 注册机制允许用户代理向注册服务器自识别用户身份，用户代理（由 AOR 地址选定的）通过终端实现自己的定位，向注册服务器进行注册。注册服务器评估 REGISTER 消息的 From 头字段中所声明的身份，决定此请求是否能修改 To 头字段中 contact 地址，这个 contact 地址关联 To 头字段中的 address-of-record（AOR）地址。如果这两个字段经常是相同的，那就会有许多有效部署，在这些部署环境中，软硬件第三方可以代表用户注册这些 contact。
+
+UA 的所有者能够任意修改 SIP 请求的 From 头字段，因此，这样就为恶意注册打开了后门。成功地冒充已被授权第三方授权的攻击者可以修改和 AOR 地址关联的 contact 地址，例如，攻 击者可以注销针 对一个 URI 的 所有现存 contacts，然后使用盗用的 contact 地址注册自己所有的设备，从而将所有向被感染的用户发出的请求直接发送到攻击者自己控制的的设备上，最终实现注册劫持。
+
+这种威胁是威胁分类中的其中一种威胁方式，此安全威胁分类依赖于请求发起方缺乏密码保障。任何充当有价值服务(例如, 网关设备，实现 SIP 请求与传统电话互通业务服务)的SIP UAS 可以通过接收认证请求方式来控制对其资源的访问。即使，终端用户 UA，例如SIP 电话都有这样的意愿，SIP 电话希望能确定请求发起方的身份。
+
+这种安全威胁说明了对安全服务的需求，这种需求使得 SIP 实体能够对请求的发起方进行认证。
+
 #### 26.1.2 Impersonating a Server
+
+服务器冒充或服务器伪装是攻击者在 SIP 网络安全威胁使用的另外一种攻击手段。请求要抵达的网络域通常在 Request-URI 中指定。为传输此请求，UA 通常与在此域的服务器直接联系。但是，这里存在着一个可能性，攻击者可以冒充为一个远程服务器，和 UA 所发送的请求就会被第三方服务器拦截。
+
+例如，讨论一种这样的情况，重定向服务器在一个网络域上，这个域是 chicago.com，使用这个域冒充另外一个重定向服务器域，此重定向服务器在 biloxi.com 上。用户代理向 biloxi.com 域发送请求，但是在 chicago.com 域的重定向服务器应答了这个请求，在回复中使用了一个伪造的响应，此伪造的响应包含来自于 biloxi.com 域的响应所需要的 SIP 头字段。在重定向响应中的伪装的 contact 地址会指引初始方 UA 指向一个不恰当的或不安全的资源，也可能简单地阻止后续请求继续向 biloxi.com 域发送请求。
+
+这种威胁分类具有很多子类成员，许多子类的安全威胁是非常危险的。与注册劫持相反，我们考虑这样一种情况，注册消息是应该发送到 biloxi.com 的，但是此注册请求被 chicago.com 这个域截获，chicago.com 使用一个伪造的 301（MovedPermanently）做的响应回复。这样的响应看起来像是来自指定的 biloxi.com 域，作为一个合理的注册服务，经过伪造以后，这个响应实际上是真正来自于 chicago.com 这个域。后续来自初始 UA 的所有 REGISTER 请求都会发到经过伪造的 chicago.com 域上。
+
+为防止这种安全威胁发生，需要 UA 对它们发送请求的服务器认证。
 
 #### 26.1.3 Tampering with Message Bodies
 
+篡改消息体也是 SIP 中的一种安全威胁。作为一种常规操作，SIP UA 通过可信任的代理服务器路由请求。不管这种信任是如何创建的（代理认证已经在其它章节讨论），一个UA 可以信任代理服务器路由请求，但是并不检查或可能修改请求中的消息体。
+
+我们现在讨论这样一种关于 UA 情况，UA 使用 SIP 消息体为媒体会话进行会话加密密钥的通信。虽然 UA 信任其代理服务器的域，使用此域正在正常传输信令，但 UA 不希望这个域的管理员具有对任何后续媒体会话的解密能力。更糟的是如果 代理服务器是恶意的，它就会修改会话密钥，发起拦截式攻击或改变源 UA 请求安全特性。更糟糕的是，如果代理服务器是活跃恶意的代理服务器，它可以修改会话密钥，或作为一个中间人，或可能修改初始方 UA 已请求安全特性。
+
+此威胁分类不仅使用在会话密钥中，对会话密钥构成威胁，还对大多数在 SIP 端对端传输中可想到的内容格式构成威胁。这些内容可能包括为用户呈现的 MIME 消息体、SDP 或封装的电话信号和其它的内容。攻击者可能试图修改 SDP 消息体，例如，将 RTP 媒体流指向一个窃听设备，这样就可以让窃听设备对后续的语音通信进行窃听操作。
+
+我们还要注意，在 SIP 中的一些头字段是有含义的端对端头字段，例如 Subject。UA 可能会保护这些头字段和消息体（例如，恶意中间媒体改变 Subject 这个头字段，通过这样的修改，可以使得一个重要的请求看上去像一条垃圾信息）。但是，因为在路由请求时，代理服务器已对许多头字段进行了合法检查和修改，所以，不是所有头字段都应该是安全的端对端头。
+
+因此，针对以上原因，UA 可能希望以端对端方式进行保护，保护 SIP 消息体，并且有时可能在某些有限环境中对一些头字段进行保护。消息体所要求的安全服务包括机密性、完整性和认证。这些端对端的服务独立于用于中间媒体（如代理服务器） 交互所使用的安全手段，这些中间媒体的安全交互和端对端安全服务无关。
+
 #### 26.1.4 Tearing Down Sessions
+
+在 SIP 中拆除会话是威胁分类中的其中一种安全威胁。dialog 一旦通过初始的消息建立以后，通过发送后续请求就可以修改 dialog 状态，和/或会话状态。对于此安全分类来说，非常重要的是，需要确保会话的原则，那就是这些请求不能被攻击者伪造。
+
+我们考虑这样一种情况，第三方攻击者捕获在 dialog 中的一些初始消息，这些初始消息是 dialog 中双方共享的消息，攻击者利用这些消息学习会话参数（To 标签、 From 标签等），然后在会话中插入攻击者所要求的 BYE 请求。攻击者可以选择伪造请求，这样就使得这些请求看起来是自于 dialog 参与方的其中一方。一旦其目标用户接收到 BYE 请求，曾会话就会被提前拆除。
+
+同样的，中期会话（mid-session）威胁包括了伪造 re-INVITE 传输，通过这个伪造的re-INVITE 来修改会话（可能会降低会话安全或对媒体流进行重定向来作为窃听攻击的一个部分）。
+
+对于这种安全威胁最有效的反制措施是对 BYE 请求发送方认证。在这种实例中，接收方仅需要获知 BYE 来自于同样的发送方，此发送方具有对应的已创建 dialog（与之相反的是探测发送方的绝对身份）。另外，因为某些安全设置的原因，如果攻击者不能获知会话参数的话，伪造 BYE 请求也是不可能的。但是，一些中间媒体（例如代理服务器）需要在会话创建时插入那些会话参数。
 
 #### 26.1.5 Denial of Service and Amplification
 
+拒绝服务攻击或者数据放大是威胁分类中的一种安全威胁。拒绝服务攻击主要针对网络环境进行攻击，表现为让网络中特定网元设备或者软件不可用，通常使用的攻击方式是对某些网元网络接口转发大量的网络数据。一个分布式的拒绝服务攻击允许一个网络用户通过多个网络宿主机对一个目标地址发送大量的网络数据来进行洪水攻击服务。
+
+在许多 SIP 网络架构中，SIP 代理服务器面对公网方便接受来自全世界部署的 IP 终端。SIP 为分布式拒绝攻击制造了很多潜在机会，SIP 系统部署用户或者 SIP 系统运营用户必须认识和应对分布式拒绝攻击的威胁。攻击者可以创建一个伪造的请求，在伪造的请求中包含了已篡改的源 IP 地址和一个对应的 Via 头字段，Via 头字段定位目标宿主机。
+
+攻击者使用这些篡改的消息作为请求初始方对 SIP 网络网元发送大量的请求。根据以上根据方式，因此攻击者可利用一个运气比较差的实体 SIP UA 或者代理针对目标地址生成大量的拒绝服务攻击请求流量。
+
+同样的思路，攻击者也可利用定位目标地址的请求进行攻击。攻击者使用此请求中已篡改的 Route 头字段对复制分叉处理的代理发送消息，然后复制分叉处理的代理再对目标地址发送大量类似消息。
+
+攻击者也可以使用 Record-Route 实现同样的效果。当攻击者已经确定通过请求初始的SIP dialog 将会导致大量在向后方向初始产生的事务。
+
+如果注册服务不能对 REGISTER 请求正确认证和授权的话，拒绝服务攻击数量会出现。攻击者可在管理员域对部分或所有用户撤销注册，从而阻止用户加入到新的会话中。攻击者也可以注册大量的 contacts，这些 contacts 选定同一主机支持给定的 AOR 地址（address-of-record），以便攻击者在拒绝服务攻击中将这个注册服务，和任何关联的代理服务器作为数据放大器来使用。攻击者也可能通过使用大量注册绑定消息来尝试耗尽注册服务器的有效内存和存储资源。
+
+使用多播传输 SIP 请求将大幅增加拒绝服务的可能性。
+
+以上这些问题阐述了基本的需求，这些需求定义一个最小化拒绝服务风险的技术架构，并且在针对此类威胁的安全机制的推荐中也需要考虑到此需求。
+
 #### 26.2 Security Mechanisms
+
+通过以上关于安全威胁的描述，我们获知 SIP 协议所要求的基本的安全服务是：维护消息的机密性和完整性，防止重放攻击和消息欺骗，在会话中为参与者提供认证和私密机制，和防止拒绝服务攻击。某些在 SIP 消息中的消息体要求独立的机密性、完整性和认证安全服务。
+
+SIP 协议尽可能重用了从 HTTP 和 SMTP 衍生出来的，现存安全模式，而不是专门为 SIP 协议定义新的安全机制。
+
+消息全加密提供了维护信令的机密性的最好方式，同时消息全加密方式也可以保证消息不会被任何恶意中间媒介修改。但是，在整个 SIP 处理流程中，不能对 SIP 的请求和其响应进行简单的端对端加密，因为在绝大部分的网络架构中，对代理来说，某些消息字段，例如：Request-URI、Route 和 Via 必须是可见的，这样才能保证经过多个代理以后，SIP请求能够被路由到正确的目标目的地。注意，代理服务器也需要修改某些消息的特性（增加一个 Via 头字段）来实现 SIP 功能。因此，从某种程度上来说，代理服务器对 SIP UA 来说，它们必须是可信任状态。为了此目的的实现，规范建议 SIP 使用较低层的安全机制，实现方式是基于逐跳对流程中的整个 SIP 请求或响进行加密，并且允许终端验证代理服务器的身份，确保此服务器是终端对其发送请求的代理服务器。
+
+SIP 实体还需要以一种安全的方式对另外一个实体进行确认。当一个 SIP 终端向对端 UA 或代理服务器声明了自己的用户身份时，此身份应该能够以某种方式可以进行验证。在 SIP 中提供一种密码认证机制来应对这种要求。
+
+一个独立的安全机制为 SIP 消息体提供了一种除端对端的相互认证以外的备选方式，同时，在用户代理必须信任中间媒体的情况下，这种独立的安全机制也提供了一个用户代理对中间媒体的信任限度。
 
 #### 26.2.1 Transport and Network Layer Security
 
+传输层或网络层安全对信令数据流量加密，确保消息的机密性和完整性。
+
+在很多场合中，证书用在较低层安全创建环境中，这些证书也可以在很多网络架构中提供一种认证方式。
+
+用于在传输层和网络层提供安全的两种受欢迎的可选方式分别是 TLS[参考链接 25]和IPSec[参考链接 26]。
+
+IPSec 是一个网络层协议工具集，它可整体用来作为一个传统 IP（Internet 协议）的安全替代。IPSec 通常使用在这样的架构中，在这样的技术架构中，主机集或者管理域集它们有一个现存的相互信任的关系。通常情况下，IPSec 部署在主机的操作系统级上，或部署在安全网关上，此安全网关针对它从特定接口（例如，在 VPN 架构中）接收的所有流量提供消息的机密性和完整性。 IPSec 也可以部署在基于逐跳的网络环境中。
+
+在许多网络架构中，IPSec 不要求和 SIP 应用集成；IPSec 也许是最合适部署在这样的环境中，对 SIP 主机增加安全机制异常困难，也许比较合适的方式就是部署 IPSec。UA 有共享密钥，此密钥和第一跳代理服务器存在共享密钥关系，这样的 UA 也非常适合使用IPSec。针对 SIP 的任何 IPSec 布署要求一个 IPSec 概述，此概述描述实现 SIP 安全所要求的协议工具。本规范没有提供这样的概述文档。
+
+TLS 在面向连接的协议层之上提供了传输层安全（本规范中是指 TCP 协议）；通过在 Via头字段值或 SIP-URI 中设定“tls”（表示通过 TCP 的 TLS），它可作为一个理想的传输协议。最适合部署 TLS 的架构是，主机间需要逐跳安全保护，主机之间无预设的信任关联。例如，Alice 信任她自己本地代理服务器，经过交换证书后，Alice 的本地代理服务器决定信任 Bob 的本地代理服务器，当然，Bob 自己也信任自己的本地代理服务器。因此，Bob 和 Alice 就可以安全地进行通信。
+
+TLS 必须与 SIP 的应用紧密配合使用。注意，在 SIP 中，传输机制是基于逐跳实现的，因此，通过 TLS 对代理服务器发送请求的 UA 并不能保证端对端使用了 TLS。
+
+当 SIP 应用中使用 TLS 时，部署者必须最少支持 TLS_RSA_WITH_AES_128_CBC_SHA密码套件 [参考链接 6] 。为了实现向后兼 容的目的，代理服务器、重定向服务器和注册服务器必 须支持 TLS_RSA_WITH_3DES_EDE_CBC_SHA。部署者也可以支持任何其他密码套件。
+
 #### 26.2.2 SIPS URI Scheme
+
+虽然此结构字符串是“sips”而不是“sip”，SIPS URI 模式仍然遵守 SIP URI 的语法结构（见 第 19 章描述）。但是，SIPS 的语义与 SIP URI 非常不同。SIPS 允许资源指定它们可以安全到达。
+
+SIPS URI 可为一个具体用户用作 address-of-record（AOR）使用--用户非常清楚此 URI（在用户的名片、在请求的 From 头字段、在 REGISTER 请求的 To 头字段）。当使用在请求的 Request-URI 时，SIPS 结构模式表示，从转发请求的每个跳跃点，一直到请求到达的 SIP 实体，此 SIP 实体负责 Request-URI 域部分，这些都必须用 TLS 进行安全保护。一旦请求到达一个有安全疑问域时，此请求就会根据本地安全和路由策略进行处理，相当有可能在到达 UAS 的最后一跳中使用 TLS。当请求的发起方使用 SIPS URI 发送请求时（可能会有一种情况，如果使用了一个 SIPS URL 作为目的地的 address-of-record（AOR）地址），SIPS 要求对目标域上的整个请求路径都要进行安全保护。
+
+今天，除了 Request-URI 以外，在 SIP 中，其他许多使用 SIP URL 的方式也可以应用SIPS 结构模式，包括 address-of-record（AOR），Contact 地址（Contact 头内容，还包括 它们的 REGISTER method）和 Route 头。在每个实例中，SIPS URI 结构模式允许现有字段指定安全资源。可以在任何 SIPS URL 的内容中取消 SIPS URL 引用关联，取消引用关联的方式有其自身的安全属性，关于其自身安全属性的描述参见参考链接[4]。
+
+使用 SIPS 尤其要求应该部署 TLS 的相互认证，就像应该需要密码套件 TLS-RSA-WITH-AES-128-CBC-SHA 一样。在认证过程中收到的证书须用客户端所持有的根证书进行有效验证；证书认证失败，请求也会失败。
+
+> 注意，在 SIPS URI 的结构模式中，传输独立于 TLS 协议，因此，sips:alice@atlanta.com;transport=tcp 和 sips:alice@atlanta.com;transport=sctp 都是有效的，（尽管，注意 UDP 对 SIPS 来说不是一个有效的传输协议）。transport=tls 使用因此已被废弃，部分原因是它特定于请求的单个一跳。这是从 RFC2543 以后的一个修改。
+
+用户分发了 SIPS URI 作为 address-of-record（AOR），这些用户可以选择运行一些设备，让这些设备拒绝通过非安全模式下传输的请求。
 
 #### 26.2.3 HTTP Authentication
 
+SIP 提供了基于 HTTP 认证的挑战能力，这种挑战能力依赖于 401 和 407 响应代码和头字段，头字段传输挑战和安全信息。此挑战能力没有进行重大修改，在 SIP 中重用 HTTP 摘要验证结构可以允许重放保护和单向认证。
+
+在第 22 章详细介绍了关于 SIP 摘要验证的用法。
+
 #### 26.2.4 S/MIME
+
+根据我们上面的介绍的内容来看，为了保密性的目的而对整个 SIP 消息进行端对端加密是不合适的，因为网络中间媒体（例如，代理服务器）需要查看某些头字段来确保正确地路由 SIP 消息，并且，如果把这些网络中间媒体排除在和安全关联之外，SIP 消息是根本不能路由的。
+
+但是，S/MIME 允许 SIPUA 在 SIP 中对 MIME 消息体进行加密，对这些消息体进行端对端加密并不影响消息头工作。S/MME 能够为消息体提供端对端的完整性和保密性，也能够提供相互认证。还有一种可能是，通过 SIP 消息隧道，使用 S/MME 为 SIP 头字段提供完整性和机密性的格式。
+
+在第 23 章详细介绍了关于 SIP 中 S/MIME 的使用方法。
 
 ### 26.3 Implementing Security Mechanisms
 
 #### 26.3.1 Requirements for Implementers of SIP
 
+代理服务器、重定向服务器和注册服务器都必须支持 TLS 部署，并且都必须支持相互认证和单向认证。规范强烈推荐 UA 有能力初始 TLS；UA 也可以作为 TLS 服务器使用。代理服务器、重定向服务器和注册服务器应该拥有站点证书--其主题和服务器规范的主机名对应。UA 可以拥有自己的证书，使用这些证书使用 TLS 进行相互认证，在规范中没有其使用说明。所有支持 TLS 的 SIP 网元必须有一种机制来验证在 TLS 协商中收到的证书。这就要求证书授权机构签发一个或多个根证书（最好是非常知名的站点证书发布方，这些权威发布方可与网站浏览器根证书签发的发布方相比）。
+
+所有支持 TLS 的 SIP 网元必须支持 SIPS URI 模式结构。
+
+代理服务器、重定向服务器、注册服务器和 UA 也可以部署 IPSec 或其它较低层安全协议。
+
+当 UA 尝试联系代理服务器、重定向服务器或者注册服务器时，UAC 应该通过它将发送SIP 消息的连接来初始启动一个 TLS 连接。在一些技术架构中，UAS 也可以通过这样的TLS 连接接收请求。代理服务器、重定向服务器、注册服务器和 UA 必须围绕着第 22 章要求的所有方面部署摘要授权。
+
+代理服务器、重定向服务器和注册服务器应该至少要配置一个摘要 realm域，并且由给定服务器支持的至少一个 realm 字符串应该和此服务器主机名或域名对应。
+
+UA 可支持 MIME 消息体的签名和加密和带 S/MIME 的凭证转移，凭证转移在本规范第23 章进行说明。如果一个 UA 为了验证 TLS 或 IPSec 的证书，而持有一个或多个认证机构的根证书，那么，在适当时，它应该能够重用这些证书来验证 S/MIME 证书。UA 可以持有一个根证书专门用于验证 S/MIME 证书。
+
+> 注意，可预期的是，需要 S/MIME 部署时，将来的安全扩展可以提升和 S/MIME 相关联的标准强度，问题空间就变得容易理解。
+
 #### 26.3.2 Security Solutions
+
+在某种程度上，这些安全机制运行需要一致，安全机制运行都可参照已有的 web 和email 安全模式。在较高层级中，UA 会使用摘要的用户名和密码向服务器（代理服务器、重定向服务器和注册服务器） 进行自我验证；服务器使用由 TLS 传输的站点证书向UA 单跃点或另外一个服务器单跃点（反之亦然）进行自验证。
+
+在点对点的层级中，通常来说，UA 信任网络，让此网络对另一方进行验证。但是，如果该网络没有验证， 或者网络本身是不可信网络，那么，S/MIME 可以用来提供直接的验证。
+
+下面是一个说明的实例，在此实例中，不同的 UA 和服务器使用这些安全机制防止安全威胁，这些威胁讨论在第 26.1 章节中有具体描述。部署方和网络管理员可按照本章的后续部分给出的标准指南来实现，这些实例仅为部署的示例。
 
 ##### 26.3.2.1 Registration
 
+当 UA 处于在线状态，通过本地管理域注册时，UA 一个和它的注册服务器创建一个 TLS连接（第 10 章描述了 UA 如何到达其注册服务器）。注册服务器应该为 UA 提供一个证书，而且，此证书识别的站点必须对应 UA 要进行注册的域；例如，如果 UA 想要注册的address-of-record（AOR）的记录地址为 alice@atlanta.com，那么站点证书必须识别域 atlanta.com 上的主机（如 sip.atlanta.com）。当 UA 接收到 TLS 证书消息时，UA应该验证证书，并且检查证书识别的站点。如果证书无效、被撤销或者不能识别正确的对端实体，UA 就不能发送 REGISTER 消息，否则将继续注册。
+
+> 当注册服务器已提供了有效证书，UA 知道该注册服务器不是一个对 UA 进行重定向、盗窃密码或尝试类似攻击的攻击者。然后 UA 创建一个 REGISTER 请求，在请求中说明 Request-URI 对应从注册服务器接收的站点证书中的 Request-URI。
+
+当 UA 通过现存 TLS 连接发送 REGISTER 请求时，注册服务器应该挑战请求，返回 401(Proxy Authentication Required) 响应码。响应码中的 Proxy-Authenticate 头字段的 realm 参数应该与前面站点证书给出的域对应。当 UAC接收到此挑战，它应该提示用户提供凭证，或者从挑战信息中的的 realm 参数所对应的密钥环中提取正确的凭证。凭证的用户名应该和 REGISTER 请求中的 To 头字段 URI 的 USERINFO 一致。一旦摘要凭证插入到正确的 Proxy-Authenticate 头字段中， 应该对注册服务器重新提交 REGISTER 请求。
+
+> 因为注册服务器要求用户代理对其身份进行认证，这将使得攻击者伪造 REGISTER请求中的用户 address-of-record（AOR）地址变得非常困难。也要注意的是，由于REGISTER 请求是通过安全的 TLS 连接发送，所以攻击者不可能截获 REGISTER 请求，通过记录的注册请求凭证发动任何可能的重放攻击。
+
+一旦注册服务器接受了注册请求，UA 应该将 TLS 连接开放给注册服务器来作为代理服务器使用，在此管理域的用户可以向此代理服务器发送请求。为了对刚完成注册的 UA 传输入局请求，将重用现存的 TLS 连接。
+
+因为 UA 已经对在 TLS 连接的另一边的服务器进行了认证，通过此连接的所有请求已被获知经过了此代理服务器-因此，攻击者不能通过此代理服务器发送欺骗请求。
+
 ##### 26.3.2.2 Interdomain Requests
+
+现在，我们假设 Alice 的 UA 想对一个位于远端管理域 bob@biloxi.com 的用户发起会话。我们假设本地管理域（atlanta.com）支持了一个本地的 outbound proxy 出局代理。
+
+一个负责管理域的 inbound 请求的代理服务器也可以作为一个本地的 outbound proxy代理；为了方便起见，对 atlanta.com 来说，我们假设这样一个场景（否则，在这一点上，用户代理将为独立的服务器发起一个新的 TLS 连接）。假设，用户完成了上述的注册流程后，当它对其它用户发送 INVITE 请求时，它应该重用本地代理服务器的 TLS。UA 应该重用 INVITE 中缓存的安全凭证，避免对用户再次提出不必要的提示。
+
+当本地 outbound proxy 出局代理验证了 UA 在 INVITE 中出示的安全凭证，此本地出局代理服务器应该检查 Request-URI 值来决定如何路由消息（见参考链接[4]）。如果 Request-URI 中的 “domainname” 和本地域(Atlanta.com)一致，而不是和 biloxi.com 一致，那么代理服务器就会查询其定位服务器来决定如何以最优方式抵达请求的用户。
+
+假设 alice@atlanta.com 已试图联系了 alex@atlanta.com，那么本地代理服务器将把此请求代理到一个 TLS 连接上，这个连接是当 Alex 注册后，Alex 和注册服务器之间已创建的 TLS 连接。因为 Alex 已通过他的认证通道接收到了此请求，因此，Alex 确信 Alice 的请求已经通过本地管理域下的代理服务器的授权。
+
+但是，在本示例中，Request-UR 指定了一个远程域 。 在 atlanta.com 域的本地 outbound proxy 出局代理服务器应该和远端代理服务器（在 biloxi.xom 域上代理服务器）建立一个 TLS 连接。因为，在此 TLS 连接中的双方都是服务器方，它们都拥有站点证书，应该进行证书互相认证。连接的对端都应该验证和检查对端的证书，注意，出现在证书中的域名，将和 SIP 消息中的头字段进行比较。例如，atlanta.com 代理服务器应该在从 biloxi.xom 域对应的远端收到证书的这个阶段开始验证证书。一旦完成了这样的操作验证，并且成功完成 TLS 协商，在两个代理服务器之间就会生成一个安全通道。那么，atlanta.com 代理服务器就可以向 biloxi.com 转发 INVITE 请求。
+
+反过来，在 biloxi.com 域的代理服务器也应该检查在 atlanta.com 域的代理服务器的证书，并且将证书中声明的域和 INVITE 请求中的 From 头字段中的 “domainname” 部分进行对比。Biloxi 域的代理服务器可以有非常严格的安全策略，在安全策略中，它可以拒绝请求，这些发出请求的管理域不能匹配它已代理的管理域。
+
+> 建立这样的安全策略可防止在 SIP 中出现和 SMTP 中的‘开放转发’类似的场景发生，利用开放转发类似的业务会生成垃圾邮件一样的垃圾信息。
+
+但是，此策略只保证来自于所属它自己域的请求的安全；此策略不允许 biloxi.com 探测 atlanta.com 是如何认证 Alice 的。仅如果 biloxi.com 已有其它的方式获知 atlanta.com 的认证策略时，biloxi.com 它才可能探测 Alice 如何证明自己的身份。biloxi.com 可以建立更严格的安全策略，禁止来自未知管理域的请求和 biloxi.com 分享一个共有的认证策略。
+
+一旦 INVITE 请求被 biloxi 的代理确认，如果有任何和用户关联，此用户是由请求发出的目标用户（这里是 bob@biloxi.com），代理服务器应该识别现存的 TLS 通道。此请求应该通过这个通道代理到 Bob。因为，此请求是通过一个就像代理服务器一样已认证的TLS 连接接收的请求。虽然没有必要是否信任 Alice 的身份，但是，Bob 知道 From 头字段没有被篡改，而且 atlanta.com 已验证了 Alice 的身份。
+
+在代理转发请求之前，所有代理服务器都应该在请求中添加一个 Record-Route 头字段，以便在此 dialog 中的后续请求都能通过代理服务器。因此，代理服务器就可以继续在此 dialog 的生命周期中仍然提供安全服务。如果代理服务器没有把自己添加到 Record-Route 头字段，那么，后续消息将直接在 Alice 和 Bob 之间以端对端方式进行传输而不经过任何安全服务（除非双方同意在一些独立的端对端安全上进行，例如，S/MIME）。从 SIP 的角度来看，梯形模型（不规则四边形模式-两个代理服务器，两个终端的示例模型）可以提供一个非常好的架构，这个模型规范了在两个站点代理之间的协商约定，通过此约定为 Alice 和 Bob 之间提供一个合理的安全通道。
+
+> 例如，作为一个攻击者，试图在此架构捕获某些漏洞或者进行攻击时，攻击者不可能伪造一个 BYE 请求，也不可能将攻击者插入到 Bob 和 Alice 之间的信令流中。因为攻击者无法探知到此会话的参数，也因为完整性机制通过可传递的方式保护了 Alice和 Bob 之间的流量。
 
 ##### 26.3.2.3 Peer-to-Peer Requests
 
+换个角度来说，我们考虑这样一个场景，UA 声明了在 carol@chicago.com 的身份，此身份不支持本地出局代理。当 Carol 希望对 bob@biloxi.com 地址发送 INVITE 请求时，她的 UA 应该直接对 biloxi 代理发起一个 TLS 连接（使用[参考链接 4]中描述的机制决定如何以最佳方式抵达指定的 Request-URI）。当 Carol 的 UA 接收到从 biloxi 代理发送的证书，通常情况下，它的 UA 应该先验证其证书，然后 UA 通过其验证以后，使用通过的 TLS 连接传输 INVITE 请求。但是，Carol 无法向 biloxi 代理确认自己的身份，她可以在 INVITE 中的“message/sip” 消息体上增加一个 CMS 独立的签名来确认自己的身份。因为她和 biloxi.com 没有正式的关联关系，所以，在此例中， Carol 也不可能有biloxi.com 域的安全凭证。Biloxi 代理也可以创建一个严格的安全策略，通过这种严格的安全策略来排除代理对挑战请求的干扰，在这些请求中的 From 头字段 “domainname” 域没有 biloxi.com 的值的话--代理将认为这些用户是未认证用户。
+
+Biloxi 代理针对 Bob 有一个策略，所有未认证的请求应该重定向到在 Bob@biloxi.com 上注册的、正确的 contact 地址，命名为 <sip:bob@192.0.2.4>。Carol 通过她已和 biloxi 代理服务器创建的 TLS 连接来接收重定向响应，因此，Carol 信任此 contact 地址的真实性。
+
+然后，Carol 应该使用指定的地址创建一个 TCP 连接，发送一个带有 Request-URI 的新 INVITE，Request-URI 中要包含收到的 contact 地址（当请求已经准备好以后，重新计算消息体中的签名）。Bob 在一个非安全的接口收到此 INVITE，但是 Bob 的 UA 会检查并识别请求中的 From 头字段，然后将本地缓存的证书与 INVITE 消息体中出现的签名进行对比。Bob 以同样的方式回复，向 Carol 进行自验证，然后开始安全 dialog。
+
+> 有时，在管理域中的防火墙或 NAT 阻止了 TCP 直接和 UA 连接的创建。在这些环境中，以一个不信任暗示的方式作为本地策略的规则，代理服务器也可以通过潜在转发方式对 UA 转发请求（例如，废弃现存的 TLS 连接，并且通过明文 TCP 转发请求）。
+
 ##### 26.3.2.4 DoS Protection
+
+为了将针对网络架构的拒绝服务攻击风险减少到最小，使用这些安全解决方案时，部署者应该注意以下几个方面的指定原则。
+
+当主机是在一个正在运行 SIP 代理服务器的主机，此主机是一个可从公网路由，此主机应该部署在一个带防御操作策略管理域上（过滤源路由的流量，最好优先过滤 ping 流量）。TLS 和 IPSec 也都可以在管理域边缘使用堡垒机，在边缘处参与安全关联来聚合安全隧道和套接字。这些部署在边缘处的堡垒机可以承受拒绝服务攻击，保护管理域内的 SIP 主机不被过多的消息阻塞。
+
+无论部署何种安全解决方案，直接发送到代理服务器的消息洪水会锁定代理服务器资源，而且阻止预期的消息流到达目的地地址。在代理服务器端有一个和处理 SIP 事务相关的运算支出，作为有状态代理服务器时对 SIP 事务处理的费用支出大于作为无状态代理服务器时对 SIP 事务处理的费用。因此，有状态代理比无状态代理服务器更容易受到洪水攻击的影响。
+
+UA 和代理服务器仅使用 401（Unauthorized）或 407（Proxy AuthenticationRequired）对有疑问的请求进行挑战，丢弃正常的响应传输算法，并且，对未认证的请求执行无状态处理。
+
+重传 401（Unauthorized）或 407（Proxy Authentication Required）状态响应放大了攻击者问题，攻击者使用篡改的头字段值（例如，Via）将流量转发到一个第三方。
+
+总之，通过机制，例如 TLS，代理服务器之间实现了证书相互认证，这样极大地减少了流氓中间媒体入侵的可能性，这些中间媒体引入篡改的请求或者响应，这些被篡改的请求和响应可以造成拒绝服务。这样也让攻击者试图将合法的 SIP 节点作为放大的代理的操作变得更加困难。
 
 ### 26.4 Limitations
 
+当用户以合理的方式使用这些安全机制后，尽管这些安全机制能够防止很多安全威胁发生，但是部署者和网络运营人员仍然必须理解这些安全机制的局限性。
+
 #### 26.4.1 HTTP Digest
+
+在 SIP 中使用 HTTP 摘要其中一个主要的局限性，其局限性是摘要的完整性机制不能很好配合 SIP 工作。具体来说，HTTP 摘要提供了对 Request-URI 和消息 methods 的保护，但是 HTTP 摘要不能对任何 UA 所期望提供安全机制的头字段提供保护。
+
+在 RFC2617 中所描述的现存的重放保护机制，也对 SIP 有一定的限制。例如，下一代随机数机制不支持基于管道的请求。应该使用随机数计数机制用于重放保护。
+
+在 SIP 中使用 HTTP 摘要的另一个限制就是 realm 域的范围。摘要是否有效取决于应用环境。当用户们期望向它们的预存关联资源进行自验证时，摘要是有效的，如服务提供商的客户，这里，用户是此服务提供商的一个客户（这只是一个非常常见的使用场景，此摘要提供一种非常有用的功能）。对比来看，TLS 的使用范围是在域间或者多网域环境中使用，因为证书部署经常是全局可验证的，所以 UA 能够在无预存关联的情况下认证服务器。
 
 #### 26.4.2 S/MIME
 
+使用 S/MIME 机制有一个最显著的缺陷，对终端用户来说，证书机构缺乏广布的公钥基础设施。如果使用自签证书（或者在 dialog 中的其中一方参与方不能验证证书），那么基于 SIP 的密钥交换机制，在第 23.2 节所描述的这种机制就容易受到自己人式的攻击，攻击者极可能检查和修改 S/MIME 消息体。攻击者需要非法获取通信双方在 dialog 中的第一次密钥交换，从请求和响应移除现存的 CMS 独立签名，并且插入一个攻击者自己的不同 CMS 独立的签名，并且在此签名中包含了攻击者所提供的证书（而且此证书看似是一个带正确 AOR 记录地址的证书）。事实上，当每一方都持有了攻击者的公共密钥后，在 dialog 中的每一方将认为它们已经和对方交换了密钥。
+
+需要特别注意的是，攻击者仅能够利用 dialog 中双方的第一次密钥交换的漏洞-在后续的场合中，密钥的改变会向 UA 发出提示。攻击者长时间停留在双方后续的 dialog 的路径上是非常困难的（可能需要停留几天、几周或几年）。
+
+SSH 在第一次密钥交换中也容易受到同样的自己人攻击；而且，大家都认可，虽然 SSH不完美，但是，SSH 也确实提升了连接的安全性。就像为 SSH 所提供协助一样，使用指纹也能够向 SIP 提供协助。例如，如果双方使用 SIP 创建了语音通信的会话，那么每一方能够读取到它们从对方收到的密钥指纹，该密钥指纹可以和初始的密钥指纹相进行对比。这样可以确信的是，对中间人攻击来说，模拟会话参与者的语音比模拟会话参与者的信令更难以实现（一种通常实践方式-基于 Clipper 芯片的安全电话）。
+
+如果 UA 在它们的密钥环上持有对目的地的 AOR 的证书，S/MIME 机制则允许 UA 无需提前声明而直接发送加密的请求。但是，也有一种可能，使用了 AOR 记录地址注册的某个特定终端设备不持有这个证书，此证书是设备当前用户以前部署使用的证书，因此，此设备将不能正确地处理加密请求，这样就会导致一些可避免的错误信令。特别是，当加密请求经过分叉处理时很可能出现这样的情况。
+
+当密钥关联的是一个具体用户（AOR）而不是和设备（一个 UA）关联时，和 S/MIME关联的密钥也是非常有用的。当用户在几台设备之间移动使用时，在 UA 之间安全传输私钥是非常困难的。在本规范中没有说明设备如何获得这种私钥。
+
+另外，使用 S/MIME 机制更大难题是它会导致大量消息，特别是当使用 SIP 隧道机制时，具体 SIP 隧道机制的使用参考第 23.4 章描述。因为这个原因，当部署 S/MIME 隧道时，规范推荐使用 TCP 作为传输协议。
+
 #### 26.4.3 TLS
+
+对于 TLS 来说，最受关注的是，TLS 不能在 UDP 上运行；TLS 要求面向连接为基础传输协议，在本规范中特指 TCP。
+
+对于本地出局代理服务器和/或注册服务器来说，它们需要与大量的 UA 同时维护长 TLS连接，这种操作也是非常困难的。这样就产生了一些有效可扩展的担忧，特别是使用了大量的密码套件。维护长 TLS 连接的冗余是繁琐的，尤其是，当 UA 独自负责 TLS 长连接创建时显得更加繁琐。
+
+TLS 只允许 SIP 实体对和其在网络上相邻的服务器进行验证；TLS 提供了严格的逐跳的安全。TLS 和在本规范指定的其他任何机制都不允许客户端对那些它们不能创建一个直接TCP 连接的实体认证代理服务器。
 
 #### 26.4.4 SIPS URIs
 
+实际上，在请求路径每一个分段上使用 TLS 意味着通过 TLS 连接的终端 UAS 必须是可达的（可能以 SIPS URI 注册作为 contact 地址）。这是 SIPS 推荐用法。尽管，许多有效的技术架构使用 TLS 保证请求路径的安全，但是，UAS 的最后一跳的安全依赖于一些其他机制。因此，SIPS 不能保证 TLS 的使用方式是真正的端对端方式。注意，因为很多UA 不接受入局方向的 TLS 连接，甚至于这些支持 TLS 的 UA 可能要求维护持续的 TLS连接，关于 TLS 连接在 TLS 局限性在以上部分有具体介绍，作为 UAS，通过这个持续的TLS 的连接来接收请求。
+
+定位服务不要求提供 SIPS 和 SIPS Request-URI 的绑定关系。尽管，通常情况下定位服务是通过注册服务器计算（如第 10.2.1 节所述），其他各种协议和接口能够可靠地为AOR 提供 contact 地址，并且这些工具可以视情况自由地在 SIPS URI 和 SIP URI 之间映射。当定位服务器查询绑定关系时，无论定位服务器是否接收到带 SIPS Request-URI 的请求，定位服务都返回它的 contact 地址。如果重定向服务器正在访问定位服务，由处理重定向的 Contact 头字段的实体决定 contact 地址的属性。
+
+确保将 TLS 用于所有请求分段到目标域是非常复杂的。有一种可能，经过密码处理的认证的代理服务器，这些代理服务器是非规范或者非协定的代理服务器，按照一种方式，这些代理服务器可以选择丢弃和 SIPS 相关的转发规则（一般转发规则，参考第 16.6 节中的描述）。这样的恶意的中间媒体能够将请求从 SIPS URI 方式重定向为 SIP URI 方式，试图降低安全级别。
+
+此外，一个中间媒体可以合法地将一个请求从 SIP 重定向为 SIPS URI。请求接收者的Request-URI 使用了 SIPS URI 结构模式，因此不能基于 Request-URI 前提下单独假设SIPS 被使用在整个请求路径上（从客户端以后）。
+
+为了处理这些顾虑，规范推荐请求接收方，并且这些接收方的 Request-URI 中包括 SIP或者 SIPS URI，请求接收方检查 To 头字段值查看它是否包含了 SIPS URI（不过要注意，如果此 URI 和 To 头字段中的 URI 有相同的结构模式，但是并不相等的话，这也并能构成一个安全漏洞）。虽然客户端可以选择通过不同的方法计算请求中的的 Request-URI 和 To 头字段，但是，当使用了 SIPS 时，这种不同的计算方法的差别可能被解释为潜在的安全侵犯，于是，请求的接收方可以因此拒绝这个请求。在请求到达本地管理域之前，接收者也可以检查 Via 头字段链来重复确认整个请求路径是否使用了 TLS。初始的UAC 也可以使用 S/MIME 体以确保 To 头字段的初始格式可以以端对端方式传输。
+
+如果 UAS 有理由认为，在传输过程中 Request-URI 的结构模式被违规修改，此 UA 应该通知其用户这个潜在的安全漏洞。
+
+作为防止降级攻击的改进的方法，仅接受 SIPS 请求的实体也可以拒绝来自于不安全端口的连接。
+
+毫无疑问，终端用户将识别 SIPS 和 SIP URI 之间的区别，并且终端用户可以手动修改它们来应对刺激。这种操作可能对安全有利，也可能降低安全性。例如，如果攻击者破坏了DNS 缓存，插入了一个伪造的记录集合-这个记录集合实际上删除了所有对代理服务器的SIPS 记录，那么，任何穿越此代理服务器的 SIPS 请求可能会失败。但是，当用户看到对SIPS AOR 的地址重复呼叫失败时，它们可以在一些设备上手动将 SIPS 转换到 SIP 模式，然后重试。当然，有一些保护措施保护安全机制（如果目的地 UA 确实不能正常工作，它会拒绝所有的非 SIPS 请求），但是，它仍是一个值得关注的限制。好的一个方面是，当它们仅和 SIP URI 一起出现，用户仍可以预测”SIPS“将是有效的。
+
 ### 26.5 Privacy
+
+SIP 消息中经常包含和发送方相关的敏感信息--不仅仅是发送方谈话的内容，还包括和发送方通信的人、他们通信的时间和通信时长以及参与会话的地址。许多应用及其用户要求对无需获知对端的用户隐藏这些私密信息。
+
+注意，还有一些非直接的方法能够使得私密信息被泄漏。如果用户或者服务选择了可达的地址，这个地址可以从人名和组织的隶属关系（它描述了大部分的 AOR 记录地址）猜出的话，通过未入册“电话号码”来确保私密性的传统方法可能会造成安全损害。通过对呼叫方泄密接收方的具体的呼叫方的轨迹，用户定位服务可以侵犯会话邀请接收方的隐私；因此，部署方案可以对基于每个用户，定位类型进行限定，并且根据给出的有效信息来确定呼叫方的类别。这是问题的整个类型，希望在未来继续进行的 SIP 工作中做进一步的研究。
+
+在某些场景中，用户可能希望在传输身份的头字段中隐藏个人信息。这不仅适用于 From字段和代表请求发起方的相关头字段，也适用于 To--它可能不适合向最终目的地表示快速拨号的别名或对一组目标表示未扩展的身份标识。当请求被路由，这两者都会从Request-URI 中删除；但是，如果两者最初是相同的，那么，不会在 To 头字段中被修改。因此，因为私密的原因，期望创建一个和 Request-URI 不同的 To 头字段。
 
 ## 27 IANA Considerations
 
