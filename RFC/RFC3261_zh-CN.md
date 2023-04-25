@@ -4001,13 +4001,136 @@ UAS 接收的请求中包含加密 MIME 体，接收方没有能力对此 MIME �
 
 ## 22 Usage of HTTP Authentication
 
+SIP 为身份验证提供了无状态，基于挑战的机制，该机制以 HTTP 中的验证为基础。任何时候，代理服务器或者 UA 接收到请求（第 22.1 节中涉及的情况除外），代理服务器或者 UA 都可以挑战请求发起方提供身份确认。一旦发起方身份确认以后，请求接收方将探知此正在被挑战的用户是否被授权发起请求。在本规范中，无可推荐和被讨论的授权系统。
+
+本章中描述的 “Digest” 认证机制，仅提供了消息认证和重放保护，不提供消息的完整性和安全性保护。为防止主动攻击者修改 SIP 请求和响应，需要采用除 Digest 以外的其它保护措施来实现。
+
+注意，由于其弱安全性特征，因此 “Basic” 认证的用法已经废止。服务器不能接受使用 “Basic” 授权模式的安全认证，而且服务器也一定采用 “Basic” 挑战机制。此修改来自于 RFC2543。
+
 ### 22.1 Framework
+
+SIP 认证的架构和 HTTP（RFC2617[17]）的架构非常相似。具体来说，对认证模式、认证参数、挑战、网络域、域值和安全的 BNF 是一样的（尽管不允许使用“Basic”作为模式）。在 SIP 中，UAS 使用 401 响应（Unauthorized）来挑战 UAC 的身份。另外，注册服务和重定向服务器可以使用 401 响应（Unauthorized）进行认证，但是代理一定不能 401 响应来进行认证，它可以使用 407 响应（Proxy Authentication Required）来替代。对于在各种消息中所包含的 Proxy-Authenticate、Proxy-Authorization、WWW-Authenticate 和 Authorization 的要求，和 RFC2617[17] 中描述的是一样的。
+
+因为 SIP 没有典型的根 URL 的概念，因此，在 SIP 中，保护机制的解释是不相同的。realm 网络域字符串单独定义了保护域的机制。这一点和 RFC2543 是不同。在RFC2543 中，Request-URI 和域共同定义了保护域的机制。
+
+> 因为 UAC 发送的 Request-URI 和挑战服务器接收的 Request-URI 可能是不同的，甚至于，UAC 可能也不知道 Request-URI 的最终格式，因此前面讨论的保护域的定义会产生一些混淆。另外，前面讨论的定义是取决于 Request-URI 中 SIP URI 的状态，此状态看起来排除了可选的 URI 模式（例如，tel URL）。
+
+接收了请求，将进行认证的用户代理和代理服务器的操作者必须遵守以下指导，此指导是为其服务器网络域字符串创建的指导规定：
+
+- 域字符串必须全局唯一的。本规范推荐域字符串包含主机名或者域名，遵循 RFC2617[17]中 3.2.1 节的推荐。
+- 网络域字符串应该是以用户可读的身份呈现，此呈现内容对于用户来说是可提交的。
+
+例如：
+
+```
+INVITE sip:bob@biloxi.com SIP/2.0
+Authorization: Digest realm="biloxi.com", <...>
+```
+
+通常来说，SIP 认证机制对于具体的网络域、保护域是有含义的。因此，对于 Digest 认证机制来说，每个这样的保护域有它自己的用户名和密码。如果服务器针对一个具体请求不需要认证，它可以接受默认用户名 “anonymous”和无密码（password of“”）。同样，UAC 代表多用户，例如 PSTN 网关，这些 UAC 可以有它们自己指定的设备用户名和密码，而不用针对它们的网络域的具体用户账户。
+
+当服务器可以合法地对大部分 SIP 请求挑战时，本规范定义了两个要求认证特殊处理的请求：ACK 和 CANCEL。
+
+在一种认证模式中，认证模式使用响应消息来传输用于计算 nonces 值（例如 ，Digest）。如果某些请求没有收到响应的话，这样的请求就会产生一些问题，包括 ACK。因为这个原因，任何服务器端接受了 INVITE 中的安全凭证，此服务器一定要接受此安全凭证的 ACK。 创建 ACK 消息的 UAC 将复制 ACK 对应的 INVITE 中出现的所有 Authorization 和 Proxy-Authorization 头字段值。服务器一定不能尝试挑战 ACK。
+
+虽然 CANCEL method 确实产生了一个响应（2xx），因为不能重提交这些请求，服务器一定不能尝试挑战 CANCEL 请求，因 为不能重提 交这些请求。一般来说， 如果CANCEL 请求和发送的已被取消的请求来自相同的跳点（提供了某种传输层或者网络层安全关联，具体描述参考第 26.2.1 章节内容），服务器应该接受此 CANCEL 请求。
+
+当 UAC 收到了一个挑战，如果 UAC 设备不知道这个有待确认的所属网络域的安全信息，它应该向用户提交挑战中 realm 参数的内容（出现在 WWW-Authenticate 或 Proxy-Authenticate 头字段中）。当挑战预设设备时，为 UA 提供此网络域安全预设的服务供应商应该意识到用户将无机会为该网络域提供它们自己的安全信息。
+
+最后，请注意，即使 UAC 能够通过恰当的安全消息确定了网络域的关联，仍然存在潜在问题：这些安全信息不再是有效的，或者挑战服务器将不接受这些安全信息，无论是什么原因（尤其是当提交的是 “anonymous” 和没有密码的情况下）。在这样的示例中，服务器可以重复它的挑战，或者使用 403 禁止响应替代。UAC 一定不能用刚被拒绝的安全凭证来重试请求（不过如果 nonce 失效的话，请求可以重试）。
 
 ### 22.2 User-to-User Authentication
 
+当 UAS 收到了来自 UAC 的请求时，UAS 可以在处理请求之前对发起方进行认证。如果在请求中没有提供安全凭证（在 Authorization 头字段中），UAS 可以对发起方挑战验证，要求提供安全凭证，使用 401（Unauthorized）状态响应码拒绝此请求。
+
+WWW-Authenticate 响应头字段必须包含在 401（Unauthorized）响应消息中。字段值至少由一个挑战和可使用的网络域参数组成，该挑战指示网络域域可用的认证模式。
+
+在 401 挑战中 WWW-Authenticate 头字段的实例：
+
+```
+WWW-Authenticate: Digest
+        realm="biloxi.com",
+        qop="auth,auth-int",
+        nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093",
+        opaque="5ccc069c403ebaf9f0171e9517f40e41"
+```
+
+当初始 UAC 收到了 401（Unauthorized）后，它应该，如果可以的话，使用恰当的安全凭证重新初始化请求。处理之前，UAC 可以要求来自于初始化用户的输入。一旦提供了认证凭证（或者用户直接提供，或在内部密钥环中发现此安全凭证），UA 将为已给定值的 To 头字段和 realm 缓存此安全凭证，并且为那个目的地的下一请求尝试重用这些安全凭证值。UA 可以用任何一种喜欢的方式缓存安全凭证。
+
+如果不能为网络域确定安全 凭证，UAC 可以使用用户名“anonymous”和无密码（password of “”）尝试请求。一旦启动了安全凭证，任何希望向 UAS 或者注册服务器自认证的 UA--通常情况下，但不是必要，UA 在收到了 401（Unauthorized）响应后，可以通过在请求中包含 Authorization 头字段实现自认证。 Authorization 字段值由安全凭证和认证支持所要求的参数和重放保护组成，安全凭证包含 UA 认证信息需要的安全凭证，该认证信息用于被请求资源网络域。
+
+Authorization 头字段实例：
+
+```
+Authorization: Digest username="bob",
+        realm="biloxi.com",
+        nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093",
+        uri="sip:bob@biloxi.com",
+        qop=auth,
+        nc=00000001,
+        cnonce="0a4f113b",
+        response="6629fae49393a05397450978507c4ef1",
+        opaque="5ccc069c403ebaf9f0171e9517f40e41"
+```
+
+在收到了 401（Unauthorized）或者 407（Proxy Authentication Required）响应后，当 UAC 使用它的安全凭证重新提交请求时，UAC 必须递增 Cseq 头字段值--就像当发送更新的请求时的操作。
+
 ### 22.3 Proxy-to-User Authentication
 
+同样的处理方式，当 UAC 向代理服务器发送请求时，代理服务器可以在请求处理之前对发起方进行认证。 如果在在请求中没有提供安全凭证（在 Proxy-Authorization 头字段中），代理服务器可以对认证发起方进行挑战并要求提供安全凭证，通过拒绝此请求并且使用 407（Proxy Authentication Required）状态码指示认证要求。代理服务器必须使用代理可用的 Proxy-Authentication 头字段值针对已请求资源填写 407 填写(ProxyAuthentication Required)消息。
+
+[参考链接 17]中描述了 Proxy-Authentication 和 Proxy-Authorization 平行用法，其中有一点不同。代理一定不能向 Proxy-Authorization 头字段添加值。所有的 407（ProxyAuthentication Required）响应必须被转发到上游，上游是 UAC 正在遵守的为其他资源服务的流程。 它是 UAC 的责任，负责添加 Proxy-Authorization 头字段值，此头字段中包含被要求认证的代理网络域的安全凭证。
+
+> 如果代理重提交请求，在新请求中增加 Proxy-Authorization 头字段值的话，将要求在新请求中递增 Cseq 值。但是，因为两个 Cseq 值不同，这样会造成已发初始请求的 UAC 会丢弃来自 UAS 的响应的问题。
+
+当初始 UAC 收到了 407（Proxy Authentication Required），它应该，如果可以的话，使用恰当的安全凭证重发起请求。它应该遵守和为“realm”参数显示同样的流程，“realm” 参数给定用来响应 401。
+
+如果不能确定网络域的安全凭证，UAC 可以使用户名 “anonymous” 和无密码（Password of “”）重试请求。
+
+UAC 也应该将重发请求中使用的安全凭证执行缓存保存。
+
+本规范推荐使用以下规则执行代理安全凭证缓存：
+
+如果一个 UA 在 401/407 响应中收到了 Proxy-Authenticate 头字段值，并且和这个响应对应的请求中携带了特定的 Call-ID 值，此 UA 应该为所有包含相同 Call-ID 的后续请求处理此网络域安全凭证。这些跨越 dialog 的安全凭证一定不能被执行缓存处理；但是，如果用 UA 的本地 outbound 代理网络域配置了此 UA，当存在一个这样的配置的话，那么 UA 可以为此网络域（跨越 dialogs）执行缓存保存此安全凭证。 注意，这表示dialogs 中的未来请求可以包含安全凭证，此 Route 头路径中的代理不需要此安全凭证。
+
+任何希望向代理服务器自认证的 UA--通常来说，但不是必要，在收到 407（ProxyAuthentication Required）响应后，它可以通过在请求中包含 Proxy-Authorization 头字段 来完成自认证流程。Proxy-Authorization 请求头字段允许客户端向要求认证的代理确认自己（或其用户）的身份。Proxy-Authorization 头字段值由安全凭证和/或所要求的资源网络域组成，安全凭证中包含对代理的 UA 认证信息。
+
+Proxy-Authorization 头字段值仅适用于这样的代理，这个代理的 realm 通过 realm 参数来确定(此代理以前可能已经使用 Proxy-Authenticate 字段请求认证)。在一条代理链上使用了多个代理时，此链上的任何代理，它的 realm 值不能匹配“realm”参数中指定的值的话，此代理不能占用 Proxy-Authorization 头字段值。
+
+注意，如果在 Proxy-Authorization 头字段中使用了不支持网络域的认证模式，代理服务器 必须尝试解析所有的 Proxy-Authorization 头字段值来确定它们中是否存在代理服务器确认有效的安全凭证。在大型网络中，这样的操作可能会消耗大量时间，因此代理服务器应该使用一种认证模式，此认证模式在 Proxy-Authorization 头字段中指示支持网络域。
+
+如果请求做了分叉处理（就像第 16.7 节中所描述的），各个代理服务器和/或 UA 可以希望挑战 UAC。在这种情况下，分叉代理服务器负责将这些挑战聚合在一个响应中。对于分叉代理请求所对应的响应收到的每个 WWW-Authenticate 和 Proxy-Authenticate 值来说，每个值必须被置入到单一响应中（此响应是由分叉代理发送到 UA 的响应）。这些头字段值的顺序是并不重要。
+
+> 当代理服务器在响应中对请求发起挑战时，直到 UAC 已使用有效的安全凭证重试请求，代理服务器才代理此请求。分叉处理的代理可以同时向要求认证的多个代理服务器转发请求，直到初始 UAC 在它们各自的网络域中完成自认证为止，每个代理服务器才依次转发请求。如果 UAC 没有为每个挑战提供安全凭证，发起挑战的代理服务器将不会向可能是目的用户所在的 UA 转发此请求，因此，分叉处理的优势也大打折扣。
+
+当在对 401（Unauthorized）或者 407（Proxy Authentication Required）的响应中重提交，这些响应中包含多个挑战时，一个 UAC 可以在每个 WWW-Authenticate 值中包含一个 Authorization 值，在每个 Proxy-Authenticate 值中包含一个 Proxy-Authorization 值，这些值用于 UAC 希望对挑战所提供的安全凭证。就像以上注意事项所讨论的那样，在请求中的多个安全凭证可以通过 realm 参数来加以区分。
+
+这里存在一定的可能性，关联了同样 realm 网络域的多个挑战出现在了相同的 401（Unauthorized）或者 407（Proxy Authentication Required）中。这种情况是可能发生的。例如，当分叉请求抵达了共有网络域时，在同一管理域的多个代理使用此共有网络域。当它重试请求时，UAC 因此也可以在 Authorization 或者 Proxy-Authorization 头字段中使用相同 realm 参数值提供来多个安全凭证。相同的网络域应该使用相同的安全凭证。
+
 ### 22.4 The Digest Authentication Scheme
+
+本章节描述了 SIP 在应用 HTTP Digest 认证模式所需的修改和说明。SIP 模式的用法与HTTP[参考链接 17] 的用法几乎完全相同。 因为 RFC2543 是基于 RFC2069[39]中定义的 HTTP Digest 模式，支持 RFC2617 的 SIP 服务器必须保证它们向后兼容 RFC2069。在 RFC2617 中规定了向后兼容流程。注意，SIP 服务器不能接受或者请求 Basic 认证模式。Digest 认证规则遵循[参考链接 17]中的定义，用 “SIP/2.0”代替了 “HTTP/1.1”，另外还有以下不同：
+
+1. 挑战中包含的 URI 有以下的 BNF 格式：
+    ```
+    URI = SIP-URI / SIPS-URI
+    ```
+2. 在 RFC2617 中的 BNF 有一个错误，HTTP Digest 认证的 Authorization 头字段的 ‘uri’ 参数没有引号。（在 RFC2617 第 3.5 节中的示例格式是正确的。）对于 SIP 来说 ‘uri’ 必须有引号。
+3. digest-uri-value 的 BNF 格式是：
+    ```
+    digest-uri-value = Request-URI ; 如在第 25 章中定义。
+    ```
+4. 基于 Etag 选择 nonce 的示例流程不适用于 SIP。
+5. 在 RFC2617[参考链接 17]中关于缓存操作的文本不适用于 SIP。
+6. RFC2617[参考链接 17] 要求服务器检查请求行中的 URI 和 Authorization 头字段中的 URI 是否指向同一个资源。在 SIP 文本中，因为在一些代理处转发，这两个 URI 可以用来区别不同的用户。因此，在 SIP 网络环境中，服务器可以检查 Authorization头字段值中的 Request-URI 对应一个用户，此用户是服务器愿意为此用户接受前转或指引此请求，但是， 如果这两个字段不相等，并不一定是失败的。
+7. 作为一个对 A2 值计算的阐述说明支持在 Digest 认证机制中的消息完整性保证，部署用户应该假设，当实体为空时（即当 SIP 消息中没有消息体时），实体的哈希解析为空字符串的 MD5 哈希，或：
+    ```
+    H(entity-body) = MD5("") =
+        "d41d8cd98f00b204e9800998ecf8427e"
+    ```
+8. RFC2617 规范提醒，如果没有发送 qop 指向时，不能在 Authorization（和扩展的Proxy-Authorization）头字段中发送 cnonce 值。因此，任何依赖于 conoce（包括“MD5-Sess”） 的算法，都要求发送 qop 指 向。为了保持 RFC2617 向 后兼容RFC2069，在 RFC2617 中，qop 参数是可选参数；因为 RFC2543 是基于 RFC2069发布的，为了支持客户端和服务器能够接收，qop 参数必须为可选状态。但是，服务器必须一直在 WWW-Authenticate 和 Proxy-Authenticate 头字段值中发送 qop 参数。如果客户端在挑战头字段中接收了 qop 参数，客户端必须在任何由此产生的authorization 头字段中发送 qop 参数。
+
+RFC2543 不允许使用 Authentication-Info 头字段（但它有效地使 用在了 RFC2069中）。因为 Authentication-Info 提供了在消息体上的完整性检查，并且提供了相互认证，我们现在允许使用该头字段。RFC 2617[参考链接 17]定义了在请求中使用 qop 属性的向后兼容机制。服务器端必须使用这些机制来确定客户端是否支持在 RFC2617 中的新的机制，这些新机制是没有在 RFC2069 中指定的。
 
 ## 23 S/MIME
 
