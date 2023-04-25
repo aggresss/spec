@@ -4134,23 +4134,268 @@ RFC2543 不允许使用 Authentication-Info 头字段（但它有效地使 用�
 
 ## 23 S/MIME
 
+SIP 消息传输 MIME 消息体，MIME 标准包括了一个机制用来保护 MIME 内容，确保其内容的完整性和安全性（包括 ‘multipart/signed’ 和 ‘application/pkcs7-mime’ MIME 类型 ， 参见 RFC1847[参考链接 22]、RFC2630[参考链接 23] 和 RFC2633[参考链接 24]）。但是，部署用户应该注意，网络环境中有一些少见的网络中间媒介（非典型代理服务器），这些网络中介需要查看或者修改 SIP 消息体（特别是SDP），部署用户也应该注意，为了确保 MIME 的安全，防止这些中间媒介运行。
+
+> 这样的应用特别针对某些类型的防火墙。
+> 在 RFC2543 中定义的针对头字段和 SIP 消息体加密的 PGP 机制已经废弃。
+
 ### 23.1 S/MIME Certificates
+
+用于确定终端用户的 S/MIME 使用的证书和服务器使用的证书有一个重要的不同点--这些证书声明持有者地址来确定证书持有者，而不是声明证书持有者的身份对应一个具体主机名称。该地址由 userinfo “@”和 SIP 或者 SIPS URI 中的 domainname 部分构成（换言之，类似于电子邮件地址的格式，如 bob@biloxi.com），通常与用户的 address-of-record 一致。
+
+这些证书还和用于签名或者对 SIP 消息体加密的密钥关联。消息体签名附带了发送方的私钥（发送方可以把它们的公钥使用恰当的方式包含在消息中），但是，使用计划接收消息的接收方的公钥对消息体加密。显然，发送者必须提前获知接收方的公钥来执行对消息体的加密处理。公钥能够存储在虚拟密钥环的 UA。
+
+每个支持 S/MIME 的用户代理必须包含一个特定的适用于终端用户证书的密钥环。此密钥环应该在记录地址和相应的证书之间映射。随着时间的推移，当用户使用用相同的记录地址计算信令的初始 URI（From 头字段）时，用户应该使用相同的证书。
+
+任何依赖于现存终端用户证书需要严格地限定在一个现实状态，目前实际上没有统一的权威组织能够为终端应用提供证书。但是，用户确实要求从熟知的证书机构获得证书。作为一种可选的方法，用户可以创建自签名证书。关于自签名证书使用将在第 26.4.2 章节中做进一步讨论。部署实施也可以在预设证书实现，部署中的所有 SIP 实体之间已在先前建立了信任关系。
+
+除了上述讨论的获取终端用户证书的问题，还有一些集中目录来分发终端用户证书。但是，证书持有者应该以适当方式在任何公共目录发布它们的证书。同样，UAC 应该支持一种机制，这种机制可以导入（通过手动地或者自动方式）证书，在公共目录中找到的证书对应 SIP 请求的目的地 URI 地址。
 
 ### 23.2 S/MIME Key Exchange
 
+SIP 本身也可以作为一种分发公钥的手段，通过以下方式来实现。
+
+无论何时在 SIP 的 S/MIME 中使用了 CMS SignedData 消息，该消息必须包含证书，它用来对公钥进行验证。
+
+当 UAC 发送了包含 S/MIME 消息体的请求时，这个 S/MIME 消息体初始了 dialog 或者在 dialog 内容之外发送了一个非 INVITE 请求），UAC 应该构建消息体作为 一个S/MIME‘multipart/signed’的 CMS SignedDate 消息体。如果期望的 CMS 服务是EnvelopedData（并且已知目标用户的公钥），此 UAC 将发送封装在 SignedData 消息中的 EnvelopedData 消息。
+
+当 UAS 收到了一个包含证书的 S/MIME CMS 消息体的请求时，UAS 应该首验证此证书，如果可能的话，使用证书机构的的有效根证书验证。UAS 还应该决定证书的主题（对于 S/MIME，SubjectAltName 将包含相应的身份），并且将该值与请求的 From头字段进行比较。如果不能验证证书的话，其原因可能是证书是自签名证书或者未知证书机构签发的签名，或者如果证书是可验证的，但是它的主题不对应请求的 From 头字段，在处理之前，UAS 必须通知其用户证书的状态（包括证书的主题、 它的签名者和密钥指纹信息）和明确的权限请求。如果证书验证成功，并且证书的主题和 SIP 请求的 From 头字段对应，或者如果用户（提示后）明确授权使用该证书，UAS 应该将证书添加到本地密钥环中，通过证书持有者的 address-of-record 来检索。
+
+当 UAS 发送了一个包含 S/MIME 消息体的响应，该 S/MIME 消息体应答 dialog 中的第一个请求，或者 UAS 向 dialog 内容之外的非 INVITE 请求发送响应时，UAS 应该构建消息体作 为 S/MIME 的‘multipart/signed’ CMS SignedData 消 息体。如果 期望的CMS 服 务 是 EnvelopedData，UAS 应该发送封装在 SignedData 消息中的 EnvelopedData 消息。
+
+当 UAC 收到了一个包含 S/MIME 消息体的响应时，该 S/MIME 消息体包括了证书，UAC 应该首先验证证书，如果可能的话，UAC 将使用恰当的根证书进行验证。UAC 应该决定证书的主题，将该值和响应中的的 To 字段进行对比；虽然这两个值可能存在很大区别，但这并不一定说明是安全漏洞。如果证书不能验证成功，原因可能是证书是自签名证书或者未知机构签发的证书，则 UAC 必须在继续处理之前，通知其用户证书的状 态（包括证书的主题、它的签名者和密钥指纹信息）和明确的许可请求。如果证书验证成功，并且证书的主题和响应中 To 头字段对应，或者如果用户（在通知后）明确授权使用此该证书，UAC 应该将证书添加到本地密钥环中，通过证书持有者的 address-of-record 来检索。
+
+如果 UAC 没有在任何以前的事务中向 UAS 发送它自己的证书，UAC 应该使用 CMSSignedData 消息体支持它的后续请求或者响应。
+
+在将来的一些场景中，当 UA 收到请求或者响应时，请求或者响应中包含的 From 头字段与 UA 密钥环中的值对应，UA 应该对比这些消息中所提供的证书和在它的密钥环中现有的证书。如果两者不一致，那么 UA 必须在继续处理信令之前，通知其用户关于相关证书的改变（换句话说，这可能说明存在潜在的安全漏洞）并且要求获得用户允许。如果用户授权了该证书，将把该证书和其 address-of-record 相关的前值添加到密钥环。
+
+这里一定要注意，当使用自签名证书或者未知证书机构签发的证书时（它们会非常容易被攻击），该密钥交换机制不能保证密钥的安全交换。但是，作者观点认为，事实上，和被已经广泛使用的 SSH 应用相比较，该密钥的交换机制所提供的安全性比没有任何安全保障要好。第 26.4.2 章节中更加详细地解释了这些限制。
+
+如果 UA 收到了 S/MIME 消息体，对于接收方来说，此消息体是通过公网未知公钥加密的，UA 必须使用 493（Undecipherable） 响应拒绝请求。此响应应该在 MIME 消息体中，通过‘certs-only’的“smime-type”参数包含一个有效证书（如果可能，和在拒绝请求的 To 头字段中所提供的 address-of-record 对应）。
+
+在发送的 493（Undecipherable）响应中没有证书则表示尽管它们仍支持 S/MIME 签名，应答者不能或者将不使用 S/MIME 加密消息 。
+
+注意，如果用户代理收到一个请求，请求中包含了一个非可选的 S/MIME 类型（携带了一个 Content-Disposition 头的"required"参数 handling），如果用户代理不能解析MIME 消息体时，此用户代理必须拒绝此请求，返回响应码使用 415 不支持的媒体类型。当发送 S/MIME 时，接收这种响应的用户代理应该通知其远端用户，远程设备不支持 S/MIME，并且在随后如果合适的话，重发送请求时可能会发送没有 S/MIME 的请求；可是，此 415 响应可能造成降级攻击。
+
+如果用户代理在请求中发送 S/MIME 消息体，在收到的响应中包含不安全的 MIME 消息，UAC 将通知其用户，会话是不安全的。但是，如果支持 S/MIME 的用户代理收到了一个带不安全消息体的请求，此用户代理不应该用安全的消息体来响应，但是如果它期望发送方的 S/MIME（例如，因为发送方的 From 字段值和它的密钥链上的身份对应），UAS 应该将通知其用户，此会话是不安全的。
+
+当发生异常证书管理事件时，针对用户提示来说，多种情况会出现在在以前的文本中。用户可以询问在这些状态下，用户应该怎么处理。 首先也是最重要的，需要安全管理的情况下，证书中意外修改，或者在需要安全缺失都会引起警惕。但这样的警觉不一定表示安全攻击正在发生。用户可以中止任何连接尝试或者拒绝它们正在接收的连接请求；用通信领域的俗语来说，它们可以对此呼叫进行挂机或者回呼。用户期望找到一个可选方式来联系其他对端，并且确定它们已经合法修改了它们的密钥。注意，有时用户被迫修改它们的证书，例如，当它们被怀疑它们私钥被泄露。当它们的的私钥不再是秘密状态时，用户必须合法地产生新的密钥，并且和拥有它们的旧密钥的用户重新建立信任关系。
+
+最后，如果在 dialog 进行过程中，UA 在 CMS SignedData 消息中收到了一个证书，此证书不能对应在以前 dialog 中交换的证书，UA 必须通知其用户此修改状态，这表示，可能这是一个潜在的安全漏洞。
+
 ### 23.3 Securing MIME bodies
+
+和 SIP 相关的关于 MIME 安全支持的消息体有两种类型：这些消息体的使用将遵循S/MIME 规范[24]，带有某些变化。
+
+- “multipart/signed”必须和 CMS 独立签名一起使用。这样的变化允许与未遵循 S/MIME 的接收方的向后兼容。
+- S/MIME 消息体应该包含 Content-Disposition 头字段，"handling"参数值应该是"required"的。
+- 如果 UAC 在其密钥环上没有证书存在，此密钥所关联的 AOR 地址是 UAC 计划发送请求的地址，则 UACUAC 不能发送加密的 “application/pkcs7-time” MIME 消息。UAC 可以发送一个带用 CMS 独立的签名初始请求，例如，OPTION 消息，来索取远端证书（签名应该包含在第 23.4 章节中描述的“message/sip”消息体类型中）。
+    > 注意，未来关于 S/MIME 标准化工作可以定义为基于密钥的非证书形式。
+- 为了进一步通信，S/MIME 消息体的发送方应该采用 “SMIMECapabilities” 的属性（参见[参考链接 24]的 2.5.2 章节）来表示其服务能力和推荐偏好。特别注意，发送方也可以使用 “preferSignedData” 服务能力来支持接收方使用 CMS SignedData 消息响应请求（例如，当发送上述类似 OPTIONS 请求时）。
+- S/MIME 部署至少必须支持 SHA1 作为数字签名算法和 3DES 作为加密算法。其他数字签名算法和加密算法也可以获得支持。部署方式能够通过 “SMIMECapabilities” 属性支持的协商机制实现对这些算法的支持。
+- 在 SIP 消息中的每个 S/MIME 消息体使用签名仅获得一个证书。如果 UA 收到了带多个签名的消息，最外层的签名将视为此消息体的单一证书，不使用其他相应签名。以下是在 SIP 消息中加密 S/MIME SDP 消息体的一个示例：
+
+```
+INVITE sip:bob@biloxi.com SIP/2.0
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+To: Bob <sip:bob@biloxi.com>
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 314159 INVITE
+Max-Forwards: 70
+Contact: <sip:alice@pc33.atlanta.com>
+Content-Type: application/pkcs7-mime; smime-type=enveloped-data;
+     name=smime.p7m
+Content-Disposition: attachment; filename=smime.p7m
+   handling=required
+
+*******************************************************
+* Content-Type: application/sdp                       *
+*                                                     *
+* v=0                                                 *
+* o=alice 53655765 2353687637 IN IP4 pc33.atlanta.com *
+* s=-                                                 *
+* t=0 0                                               *
+* c=IN IP4 pc33.atlanta.com                           *
+* m=audio 3456 RTP/AVP 0 1 3 99                       *
+* a=rtpmap:0 PCMU/8000                                *
+*******************************************************
+```
 
 ### 23.4 SIP Header Privacy and Integrity using S/MIME: Tunneling SIP
 
+针对 SIP 头安全的完整性来说，作为一种在某种程度提供提供端对端认证的手段，S/MIME 可以在“message/sip”类型的 MIME 消息体中封装整个 SIP 消息，并且可以使用同样的方法将 MIME 安全应用于这些消息体中，这些消息体作为典型的消息体。这些封装的 SIP 请求和响应不构成分离的 dailog 或者事务，它们是“outer”消息的副本，用来验证安全的完整性或提供其它信息。
+
+如果 UAS 接收了一个请求，这个请求中包含了一个隧道“message/sip”的 S/MIME 消息体，它应该在响应中使用相同 smime-type 来包含一个隧道“message/sip”消息体。
+
+任何常用的 MIME 消息体（比如，SDP）应该附加在“inner”消息中，以便它们也可以从 S/MIME 安全中获得保障。
+
+注意，如果任何非安全的 MIME 类型也应该在请求中发送的话，“message/sip” 消息体也可以 MIME 的 “multipart/mixed” 消息体的一个部分来发送。
+
 #### 23.4.1 Integrity and Confidentiality Properties of SIP Headers
+
+当使用了 S/MIME 完整性或安全性机制时，“inner” 消息中的值与 “outer” 消息中的值可能会有一定的差异。在本节中我们将介绍如何处理这些差异所遵守的规则，此规则仅适用于本规范中描述的所有头字段。
+
+注意，为了实现释放时间戳的目的，所有经过隧道处理的 “message/sip” SIP 消息应该在“inner”和 “outer” 头中包含一个 Date 头。
 
 ##### 23.4.1.1 Integrity
 
+无论何时执行完整性检查，决定头字段完整性是通过在签名消息体中的头字段值来匹配对比 “outer” 消息中的头字段， 匹配对比规则在第 20 章中有相关描述。
+
+被代理服务器可以合法修改的头字段是：Request-URI、Via、Record-Route、Route、Max-Forwards 和 Proxy-Authorization。如果这些头字段不是完整的端对端，部署方案不应该认为这是一个安全漏洞。本规范中定义的任何其它头字段的改变都算作是完整性的破坏；这个差异必须通知用户。
+
 ##### 23.4.1.2 Confidentiality
+
+当消息加密时，可以在已加密的消息 体中包含一个 头字段，这个头字段未出现在“outer”消息中。
+
+因为一些头字段必须是以明文的形式出现，这些头字段要求出现在请求和响应中，这些字段包括：To、From、Call-ID、Cseq 和 Contact。虽然对 Call-ID、Cseq 或 Contact 来说，加密可选方式可能不是非常有用，但是对一些在 “outer” 信息中的 To 或者 From头字段来说，对 To 或者 From 来说提供一个可选方式是允许的。注意，加密的消息体中的值不是用于识别事务或者 dialog 的--它们仅仅是一些信息。如果加密的消息体中的From 头字段与 “outer” 消息中的 From 字段的值不同，加密的消息体中的值应该显示给用户，但是此值一定不能在未来消息的 “outer” 头字段中使用。
+
+基本上来说，用户代理希望对一些包含端对端语义的头字段加密，这些头字段包括：Subject 、 Reply-To 、 Organization 、 Accept 、 Accept-Encoding 、 Accept-Language、Alert-Info、Error-Info、Authentication-Info、Expires、In-Reply-To、Require 、 Supported 、 Unsupported 、 Retry-After 、 User-Agent 、 Server 和Warning 字段。如果以上的这些头字段出现在加密的消息体中，应该使用这些头字段替代“outer”头字段，无论是否涉及对用户显示头字段值或涉及设置在 UA 中其内部状态。无论如何，这些头字段不应该使用在未来消息的“outer”头字段中。
+
+如果出现的话，此 Date 头字段必须总是和出现在 “inner” 和 “outer” 中的 Date 头字段值相同。
+
+因为 MIME 消息体附加在了 “inner” 消息中，部署方案通常对具体 MIME 中的头字段加密，加密的字段包括：MIME-Version、Content-Type、Content-Length、Content-Language、Content-Encoding 和 Content-Disposition 。在 “outer” 消息中，对S/MIME 消息体来说，将包含特定的 MIME 头字段。这些头字段（和这些头字段开始使用的任何 MIME 消息体）将看作在接收的 SIP 消息中的正常的 MIME 头字段和消息体。
+
+对于以下的头字段的加密不是非常有用，这些字段包括：Min-Expires、Timestamp、Authorization、Priority 和 WWW-Authenticate。此类别的头字段还包括那些代理服务器可改变的头字段（前面章节所描述的字段）。UA 从来都不应该包括这些字段。具体来说，如果“outer”消息中没有包括那些头字段，UA 也将不能在“inner”消息中包括那些字段。UA 收到了一个加密的消息体，此消息体中没有包含任何以上头字段的话，UA 应该其加密值。
+
+注意，SIP 的扩展可以定义附加的头字段；这些扩展的发布者应该说明关于完整性和机密性属性中的这样的头字段。如果 SIP UA 遇到了一个未知的头字段，这些头字段违反了安全的完整性机制，UA 必须忽略此头字段。
 
 #### 23.4.2 Tunneling Integrity and Authentication
 
+如果发送方希望加密头字段，这个头字段被复制在“message/sip”MIME 消息体中，此消息体使用了 CMS 分离的签名签署，那么带此 S/MIME 消息体的隧道 SIP 消息就可以为此 SIP 头字段提供安全完整性。
+
+如果隧道 SIP 消息已提供了 “message/sip” 消息体，这个消息体至少包含基础 dialog 标识符(To、From、Call-ID 和 CSeq)的标识，那么签名的 MIME 消息体就可以提供有限的认证努力。最起码，对接收方来说，如果接收方不知道对消息体签名所使用的证书，并且证书不能被验证的话，那么，签名可用来确认初始 dialog 的证书持有者是否和在此 dialog 中后续发送请求的证书持有者是否是同一证书持有者。如果此签名的 MIME 消息体的接收方有非常强烈的激励机制信任此证书(接收方能够验证此证书，接收者从可信任的仓库获取该证书，或者接收方经常使用此证书)，那么此签名可视为是证书主体身份的一个有力声明。
+
+为了减少因为添加或减少整个头字段处理可能造成的困惑，发送方从在签名的消息体的请求中复制所有的头字段。任何需要完整性保护的消息体必须附加 “inner” 消息。
+
+如果一个 Date 头字段出现在了带签名消息体的消息中，如果可行的话，接收方应该将此 Date 头字段值和它自己的内部时钟值进行比较。如果检测到明显的时间差异(大约一小时或更久时间)，用户代理应该对用户发出异常告警，并且提醒这是一个潜在的安全漏洞。
+
+如果接收方检测到消息中的完整性被破坏，如果这是一个请求，返回响应使用 403(Forbidden)，或结束现有的 dialog。UA 应该通知用户情况，并且请求明确说明处理的流程。以下是隧道 “message/sip” 消息体的使用示例：
+
+```
+INVITE sip:bob@biloxi.com SIP/2.0
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+To: Bob <sip:bob@biloxi.com>
+From: Alice <sip:alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 314159 INVITE
+Max-Forwards: 70
+Date: Thu, 21 Feb 2002 13:02:03 GMT
+Contact: <sip:alice@pc33.atlanta.com>
+Content-Type: multipart/signed;
+  protocol="application/pkcs7-signature";
+  micalg=sha1; boundary=boundary42
+Content-Length: 568
+
+--boundary42
+Content-Type: message/sip
+
+INVITE sip:bob@biloxi.com SIP/2.0
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+To: Bob <bob@biloxi.com>
+From: Alice <alice@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 314159 INVITE
+Max-Forwards: 70
+Date: Thu, 21 Feb 2002 13:02:03 GMT
+Contact: <sip:alice@pc33.atlanta.com>
+Content-Type: application/sdp
+Content-Length: 147
+
+v=0
+o=UserA 2890844526 2890844526 IN IP4 here.com
+s=Session SDP
+c=IN IP4 pc33.atlanta.com
+t=0 0
+m=audio 49172 RTP/AVP 0
+a=rtpmap:0 PCMU/8000
+
+--boundary42
+Content-Type: application/pkcs7-signature; name=smime.p7s
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=smime.p7s;
+   handling=required
+
+ghyHhHUujhJhjH77n8HHGTrfvbnj756tbB9HG4VQpfyF467GhIGfHfYT6
+4VQpfyF467GhIGfHfYT6jH77n8HHGghyHhHUujhJh756tbB9HGTrfvbnj
+n8HHGTrfvhJhjH776tbB9HG4VQbnj7567GhIGfHfYT6ghyHhHUujpfyF4
+7GhIGfHfYT64VQbnj756
+
+--boundary42-
+```
+
 #### 23.4.3 Tunneling Encryption
+
+隧道加密也可以使用此机制来进行描述，使用此机制在 CMS EncelopedData 消息S/MIME 消息体中对“message/sip”MIME 消息体加密，但是，在实际工作环境中，至少大多数头字段会使用在网络中；使用 S/MIME 加密的一般使用可以用于类似于 SDP那样的消息体安全，而不用于消息头安全。一些关于信息的头字段，例如，Subject 和Organization 可能可以保证端对端的安全。未来在 SIP 应用中定义的头可能也需要模糊处理。
+
+对加密头字段另一个可能的应用方式是可选匿名方式。可以 From 头字段来构建一个请求 ， 请 求 中 的 From 头 字 段 可 以 不 包 含 任 何 个 人 信 息 ( 例 ，sip:anonymous@anonymizer.invalid)。但是，第二个 From 头字段包含发起方的真正的 address-of-record （ AOR ） 地 址 信 息 ， 此 From 头 字 段 可 以 在“message/sip”MIME 消息体中加密，在该消息体中，它仅对 dialog 的终端可见。
+
+注意，如果匿名使用此加密机制，From 头字段将不再为消息的接收方使用，不能作为证书密钥链索引来获取与发送者相关的正确 S/MIME 密钥。消息首先需要解密，并且使用 “inner”的 From 头字段作为索引。
+
+为了提供端对端的安全完整性，应该由发送方对加密的“message/sip”MIME 消息体签名 。 这 样 会 创 建 一 个 “multipart/signed” 的 MIME 消 息 体 ， 此 消 息 体 包 含“application/pkcs7-mime” 类型的加密消息体和签名。
+
+以下是加密和签名的消息的示例，用 Asterisk “*” 星号框起来的文本是被已经加密的文本：
+
+```
+INVITE sip:bob@biloxi.com SIP/2.0
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8
+To: Bob <sip:bob@biloxi.com>
+From: Anonymous <sip:anonymous@atlanta.com>;tag=1928301774
+Call-ID: a84b4c76e66710
+CSeq: 314159 INVITE
+Max-Forwards: 70
+Date: Thu, 21 Feb 2002 13:02:03 GMT
+Contact: <sip:pc33.atlanta.com>
+Content-Type: multipart/signed;
+  protocol="application/pkcs7-signature";
+  micalg=sha1; boundary=boundary42
+Content-Length: 568
+
+--boundary42
+Content-Type: application/pkcs7-mime; smime-type=enveloped-data;
+     name=smime.p7m
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=smime.p7m
+   handling=required
+Content-Length: 231
+
+***********************************************************
+* Content-Type: message/sip                               *
+*                                                         *
+* INVITE sip:bob@biloxi.com SIP/2.0                       *
+* Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKnashds8 *
+* To: Bob <bob@biloxi.com>                                *
+* From: Alice <alice@atlanta.com>;tag=1928301774          *
+* Call-ID: a84b4c76e66710                                 *
+* CSeq: 314159 INVITE                                     *
+* Max-Forwards: 70                                        *
+* Date: Thu, 21 Feb 2002 13:02:03 GMT                     *
+* Contact: <sip:alice@pc33.atlanta.com>                   *
+*                                                         *
+* Content-Type: application/sdp                           *
+*                                                         *
+* v=0                                                     *
+* o=alice 53655765 2353687637 IN IP4 pc33.atlanta.com     *
+* s=Session SDP                                           *
+* t=0 0                                                   *
+* c=IN IP4 pc33.atlanta.com                               *
+* m=audio 3456 RTP/AVP 0 1 3 99                           *
+* a=rtpmap:0 PCMU/8000                                    *
+***********************************************************
+
+--boundary42
+Content-Type: application/pkcs7-signature; name=smime.p7s
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=smime.p7s;
+   handling=required
+
+ghyHhHUujhJhjH77n8HHGTrfvbnj756tbB9HG4VQpfyF467GhIGfHfYT6
+4VQpfyF467GhIGfHfYT6jH77n8HHGghyHhHUujhJh756tbB9HGTrfvbnj
+n8HHGTrfvhJhjH776tbB9HG4VQbnj7567GhIGfHfYT6ghyHhHUujpfyF4
+7GhIGfHfYT64VQbnj756
+
+--boundary42-
+```
 
 ## 24 Examples
 
