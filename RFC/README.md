@@ -31,11 +31,19 @@ RFC | 名称
 
 RFC | 名称
 ---|---
-[RFC3261](https://datatracker.ietf.org/doc/html/rfc3261) | SIP: Session Initiation Protocol
 [RFC3264](https://datatracker.ietf.org/doc/html/rfc3264) | An Offer/Answer Model with the Session Description Protocol (SDP)
 [RFC4566](https://datatracker.ietf.org/doc/html/rfc4566) | SDP: Session Description Protocol
 [RFC2326](https://datatracker.ietf.org/doc/html/rfc2326) | Real Time Streaming Protocol (RTSP)
 [RFC8829](https://datatracker.ietf.org/doc/html/rfc8829) | JavaScript Session Establishment Protocol (JSEP)
+
+### SIP
+
+RFC | 名称
+---|---
+[RFC3261](https://datatracker.ietf.org/doc/html/rfc3261) | SIP: Session Initiation Protocol
+[RFC2976](https://datatracker.ietf.org/doc/html/rfc2976) | The SIP INFO Method
+[RFC3428](https://datatracker.ietf.org/doc/html/rfc3428) | Session Initiation Protocol (SIP) Extension for Instant Messaging
+
 
 ### RTP/RTCP
 
