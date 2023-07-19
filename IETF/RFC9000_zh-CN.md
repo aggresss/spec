@@ -1,3 +1,7 @@
+# QUIC: A UDP-Based Multiplexed and Secure Transport
+
+> 原文 [https://datatracker.ietf.org/doc/html/rfc9000](https://datatracker.ietf.org/doc/html/rfc9000)
+
 # 摘要
 本文定义了QUIC传输协议的核心特性。QUIC为应用提供经过流控的流（Stream），可用于结构化通信、低延迟连接建立和网络路径迁移。QUIC还包含在多种部署情况下确保机密性、完整性和可用性的安全措施。随附文件描述了用于密钥协商的TLS集成、丢包检测和一个拥塞控制算法示例。
 
@@ -26,7 +30,7 @@ QUIC为终止连接提供多个选项，使得应用可以优雅关闭，终端�
   - 第2章 流相关的核心概念
   - 第3章 流状态参考模型
   - 第4章 流控操作
-  
+
 * 连接是QUIC终端通信的上下文
   - 第5章 连接相关的核心概念
   - 第6章 版本协商
@@ -35,7 +39,7 @@ QUIC为终止连接提供多个选项，使得应用可以优雅关闭，终端�
   - 第9章 连接迁移
   - 第10章 连接关闭的选项及流程
   - 第11章 流和连接的错误处理指引
-  
+
 * 包和帧是QUIC通信的基本单位
   - 第12章 包和帧相关的概念
   - 第13章 数据传输、重传和确认模型
@@ -344,7 +348,7 @@ Data Recvd状态持续到数据被投递给应用，一旦数据投递完，流�
 |Reset Sent / Reset Recvd	|Data Recvd / Data Read	    |closed|
 |Reset Sent / Reset Recvd	|Reset Recvd / Reset Read	|closed|
 |Data Recvd	                |Data Recvd / Data Read	    |closed|
-|Data Recvd	                |Reset Recvd / Reset Read	|closed|      
+|Data Recvd	                |Reset Recvd / Reset Read	|closed|
 
 表2: Possible Mapping of Stream States to HTTP/2
 
@@ -657,7 +661,7 @@ CRYPTO帧可以在不同的数据包编号（Packet Number，后续统一简称�
                           <----------   1-RTT (HANDSHAKE_DONE)
 
    1-RTT                  <=========>                    1-RTT
- 
+
 ```
 图4: Simplified QUIC Handshake
 
@@ -1195,7 +1199,7 @@ preferred_address传输参数中提供的CID不特定于所提供的地址。提
 
 流标签生成方式，必须（**MUST**）尽量降低与先前使用的流标签关联的可能，因为稳定的流标签将能够关联多个路径上的活动，参见第9.5节。
 
-[RFC6437] 建议使用伪随机数函数来生成流标签。一种可能的实现是用加密散列函数生成流标签，散列函数的参数有本地秘钥、源地址和目的地址、DCID字段，这可确保变更与其他可观察到的标识符的变更同步。 
+[RFC6437] 建议使用伪随机数函数来生成流标签。一种可能的实现是用加密散列函数生成流标签，散列函数的参数有本地秘钥、源地址和目的地址、DCID字段，这可确保变更与其他可观察到的标识符的变更同步。
 
 # 10. 连接关闭（Connection Termination）
 
@@ -1492,26 +1496,26 @@ QUIC终端不得（**MUST NOT**）在一个连接中的相同包号空间内重�
 
    | Type Value  | Frame Type Name      | Definition    | Pkts | Spec |
    |:---|:---|:---|:---|:---|
-   |0x00       | PADDING              | 第19.1节 | IH01 | NP   |   
-   |0x01       | PING                 | 第19.2节 | IH01 |      |   
-   |0x02-0x03| ACK                  | 第19.3节 | IH_1 | NC   |   
-   |0x04       | RESET_STREAM         | 第19.4节 | __01 |      |   
-   |0x05       | STOP_SENDING         | 第19.5节 | __01 |      |   
-   |0x06       | CRYPTO               | 第19.6节 | IH_1 |      |   
-   |0x07       | NEW_TOKEN            | 第19.7节 | ___1 |      |   
-   |0x08-0x0f| STREAM               | 第19.8节 | __01 | F    |   
-   |0x10       | MAX_DATA             | 第19.9节 | __01 |      |   
-   |0x11       | MAX_STREAM_DATA      | 第19.10节| __01 |      |   
-   |0x12-0x13| MAX_STREAMS          | 第19.11节| __01 |      |   
-   |0x14       | DATA_BLOCKED         | 第19.12节| __01 |      |   
-   |0x15       | STREAM_DATA_BLOCKED  | 第19.13节| __01 |      |   
-   |0x16-0x17| STREAMS_BLOCKED      | 第19.14节| __01 |      |   
-   |0x18       | NEW_CONNECTION_ID    | 第19.15节| __01 | P    |   
-   |0x19       | RETIRE_CONNECTION_ID | 第19.16节| __01 |      |   
-   |0x1a       | PATH_CHALLENGE       | 第19.17节| __01 | P    |   
-   |0x1b       | PATH_RESPONSE        | 第19.18节| ___1 | P    |   
-   |0x1c-0x1d| CONNECTION_CLOSE     | 第19.19节| ih01 | N    |   
-   |0x1e       | HANDSHAKE_DONE       | 第19.20节| ___1 |      |   
+   |0x00       | PADDING              | 第19.1节 | IH01 | NP   |
+   |0x01       | PING                 | 第19.2节 | IH01 |      |
+   |0x02-0x03| ACK                  | 第19.3节 | IH_1 | NC   |
+   |0x04       | RESET_STREAM         | 第19.4节 | __01 |      |
+   |0x05       | STOP_SENDING         | 第19.5节 | __01 |      |
+   |0x06       | CRYPTO               | 第19.6节 | IH_1 |      |
+   |0x07       | NEW_TOKEN            | 第19.7节 | ___1 |      |
+   |0x08-0x0f| STREAM               | 第19.8节 | __01 | F    |
+   |0x10       | MAX_DATA             | 第19.9节 | __01 |      |
+   |0x11       | MAX_STREAM_DATA      | 第19.10节| __01 |      |
+   |0x12-0x13| MAX_STREAMS          | 第19.11节| __01 |      |
+   |0x14       | DATA_BLOCKED         | 第19.12节| __01 |      |
+   |0x15       | STREAM_DATA_BLOCKED  | 第19.13节| __01 |      |
+   |0x16-0x17| STREAMS_BLOCKED      | 第19.14节| __01 |      |
+   |0x18       | NEW_CONNECTION_ID    | 第19.15节| __01 | P    |
+   |0x19       | RETIRE_CONNECTION_ID | 第19.16节| __01 |      |
+   |0x1a       | PATH_CHALLENGE       | 第19.17节| __01 | P    |
+   |0x1b       | PATH_RESPONSE        | 第19.18节| ___1 | P    |
+   |0x1c-0x1d| CONNECTION_CLOSE     | 第19.19节| ih01 | N    |
+   |0x1e       | HANDSHAKE_DONE       | 第19.20节| ___1 |      |
 
 表3: Frame Types
 
@@ -3345,7 +3349,7 @@ Parameter Name：参数名称，简短的参数助记符。
 |0x0f|	initial_source_connection_id	    |第18.2节|
 |0x10|	retry_source_connection_id	        |第18.2节|
 
-表6: Initial QUIC Transport Parameters Registry 
+表6: Initial QUIC Transport Parameters Registry
 
 对于形如 31 * N + 27（N为整数）值（即27, 58, 89, ...）都是保留的，这些值不得（**MUST NOT**）由IANA分配，也不得（**MUST NOT**）出现在分配值列表中。
 

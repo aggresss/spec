@@ -1,3 +1,7 @@
+# Version-Independent Properties of QUIC
+
+> 原文 [https://datatracker.ietf.org/doc/html/rfc8999](https://datatracker.ietf.org/doc/html/rfc8999)
+
 # 1. An Extremely Abstract Description of QUIC
 
 QUIC是两个终端之间面向连接的协议。这些终端交换包含QUIC数据包的UDP数据报。

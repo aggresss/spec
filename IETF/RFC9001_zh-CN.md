@@ -1,3 +1,7 @@
+# Using TLS to Secure QUIC
+
+> 原文 [https://datatracker.ietf.org/doc/html/rfc9001](https://datatracker.ietf.org/doc/html/rfc9001)
+
 # 1. Introduction
 
 本文描述了如何使用TLS [TLS13]来保证QUIC [QUIC-TRANSPORT]的安全
@@ -227,7 +231,7 @@ QUIC将 TLS Handshake records的未保护内容作为CRYPTO帧的内容。
 QUIC不使用TLS record protection。
 QUIC将CRYPTO帧组合成QUIC数据包，并使用QUIC packet protection对其进行保护。
 
-QUIC CRYPTO帧仅携带TLS握手消息，TLS警报被转换为QUIC CONNECTION_CLOSE错误码（第4.8节）。 
+QUIC CRYPTO帧仅携带TLS握手消息，TLS警报被转换为QUIC CONNECTION_CLOSE错误码（第4.8节）。
 QUICK不能以任何加密级别传送TLS application data和其他content类型；如果从TLS协议栈收到了这些数据，就是一种错误。
 
 当终端从网络中接收到包含CRYPTO帧的QUIC包时，它的操作如下。
@@ -504,7 +508,7 @@ QUIC中对HKDF-Expand-Label的所有使用都使用零长上下文。
 
 Initial包应用了数据包加密保护过程，但使用从客户端第一个初始数据包的目标连接ID字段导出的secret。
 
-这个secret是通过HKDF-Extract（[HKDF]第2.2节）确定的，使用了值为0x38762cf7f55934b34d179ae6a4c80cadccbb7f0a的salt和Destination Connection ID字段的IKM。 
+这个secret是通过HKDF-Extract（[HKDF]第2.2节）确定的，使用了值为0x38762cf7f55934b34d179ae6a4c80cadccbb7f0a的salt和Destination Connection ID字段的IKM。
 这将产生一个中间伪随机密钥(PRK)，可用于派生两个单独的secret以进行发送和接收。
 
 客户端使用PRK和"client in"标签来构建初始数据包，作为TLS [TLS13] 中HKDF-Expand-Label函数的输入，产生一个32字节的secret。由服务器构建的数据包使用相同的过程和标签"server in"。
@@ -846,7 +850,7 @@ ODCID：ODCID包含该Retry包响应的Initial包的OCID的值。此字段的长
 启动密钥更新的结果是两个终端都更新密钥。这与TLS不同，在TLS中，终端可以独立更新密钥。
 
 这种机制取代了TLS的密钥更新机制，后者依赖于使用1-RTT加密密钥发送的KeyUpdate消息。
-终端不得（MUST NOT）发送TLS KeyUpdate消息。 
+终端不得（MUST NOT）发送TLS KeyUpdate消息。
 终端必须将收到的TLS KeyUpdate消息视为类型为0x10a的连接错误，相当于unexpected_message的"fatal"TLS警报；参见4.8节。
 
 图9显示了一个密钥更新过程，在这个过程中，使用的初始密钥集（用@M标识）被更新后的密钥（用@N标识）所取代。密钥相位的值用括号[]表示。
@@ -900,7 +904,7 @@ ODCID：ODCID包含该Retry包响应的Initial包的OCID的值。此字段的长
 开始了密钥更新的终端也会更新它收包的密钥。更新密钥之后需要用这些密钥来处理对端发送的数据包。
 
 终端必须（MUST）保留旧的密钥，直到它成功地解除了使用新密钥发送的数据包的保护。
-终端应该（SHOULD）在解除使用新密钥发送的数据包的保护后，保留旧密钥一段时间。 
+终端应该（SHOULD）在解除使用新密钥发送的数据包的保护后，保留旧密钥一段时间。
 过早的丢弃旧的密钥会导致包延迟并被丢弃。丢弃包最终会被对端判定为网络丢包，并降低性能。
 
 ## 6.2. Responding to a Key Update
@@ -1007,7 +1011,7 @@ KEY_UPDATE_ERROR错误码（0xe）用来通知跟密钥更新有关的错误。
 # 7. Security of Initial Messages
 
 Initial包不受密钥保护，因此它们可能会被攻击者篡改。
-QUIC提供了针对无法读取数据包的攻击者的保护，但并不试图提供额外的保护，以防止攻击者可以观察和注入数据包的攻击。 
+QUIC提供了针对无法读取数据包的攻击者的保护，但并不试图提供额外的保护，以防止攻击者可以观察和注入数据包的攻击。
 有些形式的篡改（如修改TLS消息本身）是可以检测到的，但有些形式的篡改（如修改ACK）是检测不到的。
 
 例如，攻击者可以注入一个包含ACK帧的数据包，使其看起来没有收到数据包，或者对连接状态产生错误的印象（例如，通过修改ACK延迟）。
