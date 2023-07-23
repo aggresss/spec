@@ -1514,7 +1514,7 @@ QUIC终端不得（**MUST NOT**）在一个连接中的相同包号空间内重�
    |0x19       | RETIRE_CONNECTION_ID | 第19.16节| __01 |      |
    |0x1a       | PATH_CHALLENGE       | 第19.17节| __01 | P    |
    |0x1b       | PATH_RESPONSE        | 第19.18节| ___1 | P    |
-   |0x1c-0x1d| CONNECTION_CLOSE     | 第19.19节| IH01 | N    |
+   |0x1c-0x1d| CONNECTION_CLOSE     | 第19.19节| ih01 | N    |
    |0x1e       | HANDSHAKE_DONE       | 第19.20节| ___1 |      |
 
 表3: Frame Types
