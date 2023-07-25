@@ -84,6 +84,11 @@ RFC | 名称
 [RFC9001](https://datatracker.ietf.org/doc/html/rfc9001) | Using TLS to Secure QUIC
 [RFC9002](https://datatracker.ietf.org/doc/html/rfc9002) | QUIC Loss Detection and Congestion Control
 [RFC9221](https://datatracker.ietf.org/doc/html/rfc9221) | An Unreliable Datagram Extension to QUIC
+[RFC9287](https://datatracker.ietf.org/doc/html/rfc9287) | Greasing the QUIC Bit
+[RFC9368](https://datatracker.ietf.org/doc/html/rfc9368) | Compatible Version Negotiation for QUIC
+[RFC9369](https://datatracker.ietf.org/doc/html/rfc9369) | QUIC Version 2
+[RFC9308](https://datatracker.ietf.org/doc/html/rfc9308) | Applicability of the QUIC Transport Protocol
+[RFC9312](https://datatracker.ietf.org/doc/html/rfc9312) | Manageability of the QUIC Transport Protocol
 
 ### HTTP
 
