@@ -508,7 +508,7 @@ QUIC以设置了初始值拥塞窗口的slow start开始每个连接。终端应
 Probe包必须不能（MUST NOT）被拥塞控制器阻塞。发送端必须（MUST）将这些包计入到in-flight中，因为这些包增加了网络负载，却没有确认包丢失。
 值得注意的是，发送probe包可能导致发送者在链路上的数据量超过拥塞窗口，直至收到证实包丢失或者送达的ACK。
 
-## 7.6. Persistent Congestion、
+## 7.6. Persistent Congestion
 
 当发送方确定在足够长的持续时间内发送的所有数据包都丢失时，网络将被视为持续拥塞。
 
