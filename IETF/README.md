@@ -31,7 +31,8 @@ RFC | 名称
 ---|---
 [RFC5681](https://datatracker.ietf.org/doc/html/rfc5681) | TCP Congestion Control
 [RFC6582](https://datatracker.ietf.org/doc/html/rfc6582) | The NewReno Modification to TCP's Fast Recovery Algorithm
-
+[RFC6937](https://datatracker.ietf.org/doc/html/rfc6937) | Proportional Rate Reduction for TCP
+[RFC8312](https://datatracker.ietf.org/doc/html/rfc8312) | CUBIC for Fast Long-Distance Networks
 
 ### UDP
 
