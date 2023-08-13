@@ -208,17 +208,84 @@ TCP友好区域是根据[FHP00]中描述的分析设计的。 该分析研究了
 
 ```
 
+表2描述了RTT = 0.01秒网络中标准TCP、HSTCP和CUBIC的响应函数。 平均窗口大小以 MSS 大小的段为单位。
+
+两个表都表明，具有这三个 C 值中任何一个的 CUBIC 比 HSTCP 对 TCP 更友好，尤其是在 RTT 较短且 TCP 性能相当好的网络中。 例如，在 RTT = 0.01 秒且 p=10^-6 的网络中，TCP 的平均窗口为 1200 个数据包。 如果数据包大小为1500字节，则TCP可以达到1.44 Gbps的平均速率。 在这种情况下，C=0.04 或 C=0.4 的 CUBIC 实现与标准 TCP 完全相同的速率，而 HSTCP 的攻击性大约是标准 TCP 的十倍。
+
+我们可以看到，C 决定了 CUBIC 与其他拥塞控制算法竞争带宽的积极性。 C 值越低，CUBIC 对标准 TCP 越友好。 但是，我们不建议将 C 设置为非常低的值（例如 0.04），因为具有较低 C 的 CUBIC 无法有效地利用长 RTT 和高带宽网络中的带宽。 基于这些观察和我们的实验，我们发现 C=0.4 在 TCP 友好性和窗口增加的积极性之间提供了良好的平衡。 因此，C 应设置为 0.4。 当 C 设置为 0.4 时，等式： 6 简化为：
+
+```
+   AVG_W_cubic = 1.054 * (RTT^0.75) / (p^0.75)（等式 7）
+```
+
+等式。 然后在下一小节中使用图 7 来展示 CUBIC 的可扩展性。
+
 ### 5.2. Using Spare Capacity
+
+CUBIC在长RTT和高带宽网络下使用比标准TCP更积极的窗口增加功能。
+
+从下表可以看出，要达到10Gbps的速率，Standard TCP需要的丢包率为2.0e-10，而CUBIC需要的丢包率为2.9e-8。
+
+```
+      +------------------+-----------+---------+---------+---------+
+      | Throughput(Mbps) | Average W | TCP P   | HSTCP P | CUBIC P |
+      +------------------+-----------+---------+---------+---------+
+      |                1 |       8.3 | 2.0e-2  | 2.0e-2  | 2.0e-2  |
+      |               10 |      83.3 | 2.0e-4  | 3.9e-4  | 2.9e-4  |
+      |              100 |     833.3 | 2.0e-6  | 2.5e-5  | 1.4e-5  |
+      |             1000 |    8333.3 | 2.0e-8  | 1.5e-6  | 6.3e-7  |
+      |            10000 |   83333.3 | 2.0e-10 | 1.0e-7  | 2.9e-8  |
+      +------------------+-----------+---------+---------+---------+
+
+                                  Table 3
+```
+
+表 3 描述了标准 TCP、HSTCP 和 CUBIC 实现一定吞吐量所需的丢包率。 我们使用 1500 字节的数据包和 0.1 秒的 RTT。
+
+我们在 [HKLRX06] 中的测试结果表明，CUBIC 使用同一瓶颈链路中现有标准 TCP 流未使用的备用带宽，而不会从现有流中占用太多带宽。
+
 ### 5.3. Difficult Environments
+
+CUBIC 旨在弥补 TCP 在快速和长距离网络中性能不佳的问题。
+
 ### 5.4. Investigating a Range of Environments
+
+CUBIC 已通过 NS-2 模拟和覆盖广泛网络环境的测试台实验进行了广泛研究。 更多信息可以在[HKLRX06]中找到。
+
+与标准 TCP 一样，CUBIC 是一种基于丢失的拥塞控制算法。 由于 CUBIC 被设计为在快速和长距离网络中比标准 TCP 更积极（由于更快的窗口增加函数和更大的乘法减少因子），因此它可以比标准 TCP 更快地填充大型 drop-tail 缓冲区并增加风险 站立队列[KWAF17]。 在这种情况下，可以使用适当的队列大小和管理[RFC7567]来减少数据包排队延迟。
+
 ### 5.5. Protection against Congestion Collapse
+
+关于导致拥塞崩溃的可能性，CUBIC 的行为类似于标准 TCP，因为 CUBIC 仅修改了 TCP 的窗口调整算法。 因此，它不会修改标准 TCP 的 ACK 时钟和超时行为。
+
 ### 5.6. Fairness within the Alternative Congestion Control Algorithm
+
+CUBIC 确保同一瓶颈链路中具有相同 RTT 的竞争 CUBIC 流收敛到相等的吞吐量。 当竞争流具有不同的 RTT 时，它们的吞吐量比与其 RTT 比的倒数成线性正比。 这确实与链路中统计复用的级别无关。
+
 ### 5.7. Performance with Misbehaving Nodes and Outside Attackers
+
+目前的CUBIC中没有考虑这一点。
+
 ### 5.8. Behavior for Application-Limited Flows
+
+如果流量当前受到应用程序而不是拥塞窗口的限制，则 CUBIC 不会提高其拥塞窗口大小。 如果由于应用速率限制导致 cwnd 长时间未更新，例如空闲期，则式（1）中的 t 为： 1 不得包含这些期间； 否则，从这些周期重新启动后，W_cubic(t) 可能会非常高。
+
 ### 5.9. Responses to Sudden or Transient Events
+
+如果出现突然拥塞、路由更改或移动事件，CUBIC 的行为与标准 TCP 相同。
+
 ### 5.10. Incremental Deployment
+
+CUBIC只需要改变TCP发送者，而不对TCP接收者做任何改变。 也就是说，CUBIC 发送方可以与标准 TCP 接收方一起正常工作。 此外，CUBIC不需要对路由器进行任何改变，也不需要路由器的任何帮助。
+
 ## 6. Security Considerations
+
+该提案没有改变 TCP 的底层安全性。 有关 TCP 安全问题的更多信息可以在 [RFC5681] 中找到。
+
 ## 7. IANA Considerations
+
+本文档不需要任何 IANA 操作。
+
 ## 8. References
 ### 8.1. Normative References
 ### 8.2. Informative References
