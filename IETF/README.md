@@ -73,7 +73,8 @@ Codec Name | RFC
 PCMU | https://datatracker.ietf.org/doc/html/rfc7655
 PCMA | https://datatracker.ietf.org/doc/html/rfc7655
 G722 | https://datatracker.ietf.org/doc/html/rfc5577
-AAC | https://datatracker.ietf.org/doc/html/rfc6416
+AAC ADTS | https://datatracker.ietf.org/doc/html/rfc3640
+AAC LATM | https://datatracker.ietf.org/doc/html/rfc6416
 OPUS | https://datatracker.ietf.org/doc/html/rfc7587
 VP8 | https://datatracker.ietf.org/doc/html/rfc7741
 H264 | https://datatracker.ietf.org/doc/html/rfc6184
