@@ -46,7 +46,7 @@ TLS是一个独立的应用协议；上层协议可以透明地运行于 TLS 之
 
 以下是 TLS 1.2 和 TLS 1.3 的主要差异。这并不是全部差异，还有很多次要的差别。
 
-- 支持的对称算法列表已经删除了所有被认为是遗留问题的算法。列表保留了所有使用“关联数据的认证加密”（AEAD）算法。密码套件的概念已经改变，将认证和密钥交换机制与记录保护算法（包括密钥长度）和 Hash（用于秘钥导出函数和握手消息认证码 MAC）分离。
+- 支持的对称算法列表已经删除了所有被认为是遗留问题的算法。列表保留了所有使用 "关联数据的认证加密"（AEAD）算法。密码套件的概念已经改变，将认证和密钥交换机制与记录保护算法（包括密钥长度）和 Hash（用于秘钥导出函数和握手消息认证码 MAC）分离。
 - 增加 0-RTT 模式，为一些应用数据在连接建立阶段节省了一次往返，这是以牺牲一定的安全特性为代价的。
 - 静态 RSA 和 Diffie-Hellman 密码套件已经被删除；所有基于公钥的密钥交换算法现在都能提供前向安全。
 - 所有 ServerHello 之后的握手消息现在都已经加密。扩展之前在 ServerHello 中以明文发送，新引入的 EncryptedExtensions 消息可以保证扩展以加密方式传输。
@@ -64,18 +64,221 @@ TLS是一个独立的应用协议；上层协议可以透明地运行于 TLS 之
 
 - 4.1.3 节中的版本降级保护机制。
 - 4.2.3 节中的 RSASSA-PSS 签名方案。
-- ClientHello 中 “supported_versions” 扩展可以用于协商 TLS 使用的版本，优先于 ClientHello 中的 legacy_version 字段。
+- ClientHello 中 "supported_versions" 扩展可以用于协商 TLS 使用的版本，优先于 ClientHello 中的 legacy_version 字段。
 - "signature_algorithms_cert" 扩展允许一个 client 声明它使用哪种签名算法验证 X.509 证书。
 
 此外，本文提出了支持 TLS 的早期版本需要实现的部分；见 9.3 节。
 
 ## 2. Protocol Overview
 
+安全通道使用的密码参数由 TLS 握手协议生成。这个 TLS 的子协议在 client 和 server 第一次通信时使用。握手协议使两端协商协议版本、选择密码算法、选择性互相认证，并得到共享的密钥数据。一旦握手完成，双方就会使用得出的密钥保护应用层流量。
+
+握手失败或其它协议错误会触发连接中止，在这之前可以有选择地发送一个警报消息（第6章）。
+
+TLS支持3种基本的密钥交换模式：
+- (EC)DHE (基于有限域或椭圆曲线的Diffie-Hellman)
+- PSK-only
+- PSK 结合 (EC)DHE
+
+图 1 显示了基本 TLS 握手全过程：
+
+```
+       Client                                           Server
+
+Key  ^ ClientHello
+Exch | + key_share*
+     | + signature_algorithms*
+     | + psk_key_exchange_modes*
+     v + pre_shared_key*       -------->
+                                                  ServerHello  ^ Key
+                                                 + key_share*  | Exch
+                                            + pre_shared_key*  v
+                                        {EncryptedExtensions}  ^  Server
+                                        {CertificateRequest*}  v  Params
+                                               {Certificate*}  ^
+                                         {CertificateVerify*}  | Auth
+                                                   {Finished}  v
+                               <--------  [Application Data*]
+     ^ {Certificate*}
+Auth | {CertificateVerify*}
+     v {Finished}              -------->
+       [Application Data]      <------->  [Application Data]
+
+              +  Indicates noteworthy extensions sent in the
+                 previously noted message.
+
+              *  Indicates optional or situation-dependent
+                 messages/extensions that are not always sent.
+
+              {} Indicates messages protected using keys
+                 derived from a [sender]_handshake_traffic_secret.
+
+              [] Indicates messages protected using keys
+                 derived from [sender]_application_traffic_secret_N.
+
+               Figure 1: Message Flow for Full TLS Handshake
+```
+
+握手可以分为三个阶段（上图中已表明）：
+
+- 密钥交换：确定共享密钥材料并选择加密参数，在这个阶段之后所有的数据都会被加密。
+- Server 参数：确定其它的握手参数（client是否被认证，应用层协议支持等）。
+- 认证：认证 server（并且选择性认证 client），提供密钥确认和握手完整性。
+
+在密钥交换阶段，client 会发送 ClientHello (4.1.1节) 消息，其中包含了一个随机 nonce (ClientHello.random)、协议版本、对称密码或 HKDF hash 对的列表、Diffie-Hellman 共享密钥列表（在4.2.8中的 "key_share" 扩展中）或预共享密钥标签列表（4.2.11 中的 "pre_shared_key" 扩展中），或二者都有、和其它额外扩展。还可能存在其他字段或消息，以实现中间件的兼容性。
+
+Server 处理 ClientHello 并为连接确定合适的加密参数，然后以 ServerHello（4.1.3节）响应（其中携带了协商好的连接参数）。ClientHello 和 ServerHello 一起确定共享密钥。如果使用的是 (EC)DHE 密钥，则 ServerHello 中会包含一个携带临时 Diffie-Hellman 共享参数的 "key_share" 扩展，这个共享参数必须与 client 的在相同的组里。如果使用的是 PSK 密钥，则 ServerHello 中会包含一个 "pre_shared_key" 扩展以表明 client 提供的哪一个 PSK 被选中。需要注意的是实现上可以将 (EC)DHE 和 PSK 一起使用，这种情况下两种扩展都需要提供。
+
+随后 Server 会发送两个消息来确定 Server 参数：
+
+- EncryptedExtensions：用来响应不用于确定密码参数的 ClientHello 扩展，除了针对用户证书的扩展。[4.3.1]
+- CertificateRequest: 如果需要基于证书的 client 认证，则包含与证书相关的参数。如果不需要 client 认证则此消息会被省略。[4.3.2]
+
+最后，client 和 server 交换认证消息。TLS 在每次认证时使用相同的消息集，（基于 PSK 的认证随密钥交换进行）特别是：
+
+- Certificate: 终端和任何每证书扩展的证书。如果不带证书认证则此消息会被 server 忽略；如果 server 没有发送 CertificateRequest（这表明 client 不使用证书认证），此消息会被 client 忽略。需要注意的是如果原始公钥[RFC7250] 或缓存信息扩展 [RFC7924] 正在被使用，则此消息不会包含证书而是包含一些与 server 的长期密钥相关的其它值。[4.4.2]
+- CertificateVerify: 使用与证书消息中的公钥配对的私钥对整个握手消息进行签名。如果终端没有使用证书进行验证则此消息会被忽略。
+- Finished: 对整个握手消息的 MAC(消息认证码)。这个消息提供了密钥确认，将终端身份与交换的密钥绑定在一起，这样在 PSK 模式下也能认证握手。[4.4.4]
+
+接收到 server 的消息之后，client 会响应认证消息，即 Certificate，CertificateVerify (如果需要), 和 Finished。
+
+这时握手已经完成，client 和 server 会提取出密钥材料用于记录层交换应用层数据，这些数据需要通过认证的加密来保护。应用层数据一定不能在 Finished 消息之前发送，必须等到记录层开始使用加密密钥之后才可以发送。需要注意的是server 可以在收到 client 的认证消息之前发送应用数据，任何在这个时间点发送的数据，当然都是在发送给一个未被认证的对端。
+
 ### 2.1. Incorrect DHE Share
+
+如果 client 没有提供足够的 "key_share" 扩展（例如，只包含 server 不接受或不支持的 DHE 或 ECDHE 组），server 会使用 HelloRetryRequest 来纠正这个不匹配问题，client 需要使用一个合适的 "key_share" 扩展来重启握手，如图 2 所示。如果没有通用的密码参数能够协商，server 必须使用一个适当的警报来中止握手。
+
+```
+        Client                                               Server
+
+        ClientHello
+        + key_share             -------->
+                                                  HelloRetryRequest
+                                <--------               + key_share
+        ClientHello
+        + key_share             -------->
+                                                        ServerHello
+                                                        + key_share
+                                              {EncryptedExtensions}
+                                              {CertificateRequest*}
+                                                     {Certificate*}
+                                               {CertificateVerify*}
+                                                         {Finished}
+                                <--------       [Application Data*]
+        {Certificate*}
+        {CertificateVerify*}
+        {Finished}              -------->
+        [Application Data]      <------->        [Application Data]
+
+             Figure 2: Message Flow for a Full Handshake with
+                           Mismatched Parameters
+```
+
+注：这个握手过程包含初始的 ClientHello/HelloRetryRequest 交换，不能被新的 ClientHello 重置。
+
+TLS 也支持几个基本握手中的优化变体，下面的章节将描述。
 
 ### 2.2. Resumption and Pre-Shared Key (PSK)
 
+虽然 TLS 预共享密钥（PSK）能够在带外建立，PSK 也能在之前的连接中确定然后用来建立新连接（会话恢复或使用 PSK 恢复）。一旦握手完成，server 就能给 client 发送一个与来自初次握手的唯一密钥对应的 PSK 身份（见 4.6.1）。然后 client 能够使用这个 PSK 身份在将来的握手中协商相关 PSK 的使用。如果 server 接受 PSK，新连接的安全上下文在密码学上就与初始连接关联在一起，从初次握手中得到的密钥就会用于装载密码状态来替代完整的握手。在 TLS 1.2 以及更低的版本中，这个功能由 "session IDs" 和 "session tickets" [RFC5077] 来提供。这两个机制在 TLS 1.3 中都被废除。
+
+PSK 可以与 (EC)DHE 密钥交换算法一同使用以便使共享密钥具备前向安全，PSK 也可以单独使用，这样以丢失了应用数据的前向安全为代价。
+
+图3显示了两次握手，第一次建立了一个PSK，第二次时使用它：
+
+```
+          Client                                               Server
+
+   Initial Handshake:
+          ClientHello
+          + key_share               -------->
+                                                          ServerHello
+                                                          + key_share
+                                                {EncryptedExtensions}
+                                                {CertificateRequest*}
+                                                       {Certificate*}
+                                                 {CertificateVerify*}
+                                                           {Finished}
+                                    <--------     [Application Data*]
+          {Certificate*}
+          {CertificateVerify*}
+          {Finished}                -------->
+                                    <--------      [NewSessionTicket]
+          [Application Data]        <------->      [Application Data]
+
+
+   Subsequent Handshake:
+          ClientHello
+          + key_share*
+          + pre_shared_key          -------->
+                                                          ServerHello
+                                                     + pre_shared_key
+                                                         + key_share*
+                                                {EncryptedExtensions}
+                                                           {Finished}
+                                    <--------     [Application Data*]
+          {Finished}                -------->
+          [Application Data]        <------->      [Application Data]
+
+               Figure 3: Message Flow for Resumption and PSK
+```
+
+当 server 通过 PSK 进行认证时，它不会发送 Certificate 或 CertificateVerify 消息。当 client 通过 PSK 恢复时，它也应当提供一个 "key_share" 给server，以允许 server 在需要的情况下拒绝恢复并回退到完整的握手。Server 响应一个 "pre_shared_key" 扩展来协商确定 PSK 密钥的使用方法，并响应一个 "key_share" 扩展（如图所示）来进行 (EC)DHE 密钥确定，由此提供前向安全。
+
+当 PSK 在带外提供时，必须一起提供 PSK 身份和与 PSK 一起使用的 KDF hash 算法。
+
+注：当使用带外提供的预共享密钥时，一个关键的考虑是在密钥生成时使用足够的熵，就像 [RFC4086] 中讨论的那样。从口令或其它低熵源导出的共享密钥并不安全。一个低熵密码或口令，容易受到基于PSK绑定器的字典攻击。就算使用了 Diffie-Hellman 密钥建立方法，这种 PSK 认证也不是强口令认证的密钥交换。它不能防止可以观察到握手的攻击者对 密码/PSK 执行暴力攻击。
+
 ### 2.3. 0-RTT Data
+
+当 client 和 server 共享一个 PSK（从外部获得或通过以前的握手获得）时，TLS 1.3 允许 client 在第一个发送出去的消息（"early data"）中携带数据。Client 使用这个 PSK 来认证 server 并加密 early data。
+
+如图 4 所示，0-RTT 数据在第一个发送的消息中被加入到 1-RTT 握手里。握手的其余消息与带 PSK 恢复的 1-RTT 握手消息相同。
+
+```
+         Client                                               Server
+
+         ClientHello
+         + early_data
+         + key_share*
+         + psk_key_exchange_modes
+         + pre_shared_key
+         (Application Data*)     -------->
+                                                         ServerHello
+                                                    + pre_shared_key
+                                                        + key_share*
+                                               {EncryptedExtensions}
+                                                       + early_data*
+                                                          {Finished}
+                                 <--------       [Application Data*]
+         (EndOfEarlyData)
+         {Finished}              -------->
+         [Application Data]      <------->        [Application Data]
+
+               +  Indicates noteworthy extensions sent in the
+                  previously noted message.
+
+               *  Indicates optional or situation-dependent
+                  messages/extensions that are not always sent.
+
+               () Indicates messages protected using keys
+                  derived from a client_early_traffic_secret.
+
+               {} Indicates messages protected using keys
+                  derived from a [sender]_handshake_traffic_secret.
+
+               [] Indicates messages protected using keys
+                  derived from [sender]_application_traffic_secret_N.
+
+               Figure 4: Message Flow for a 0-RTT Handshake
+```
+
+注意：0-RTT 数据的安全属性比其它类型的 TLS 数据弱，特别是：
+
+1. 这类数据没有前向安全，它只使用了从提供的 PSK 中导出的密钥进行加密。
+2. 不能保证在多条连接之间不会重放。为普通的 TLS 1.3 1-RTT 数据提供抗重放的保护方法是使用 server 的随机数据，但 0-RTT 不依赖于 ServerHello，因此只能得到更弱的保护。如果数据使用 TLS client 认证或在应用协议认证，这一点尤其重要。这个警告适用于任何使用 early_exporter_master_secret 的情况。
+
+0-RTT 数据不能在一个连接内复制（如 server 不会处理同一连接内相同数据两次），攻击者不能使 0-RTT 数据看起来像 1-RTT 数据（因为它们是用不同秘钥保护的）。附录 E.5 包含了潜在攻击的描述，第 8 章描述了 server 可以用来限制重放影响的机制。
 
 ## 3. Presentation Language
 
