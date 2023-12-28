@@ -464,11 +464,118 @@ PSK 可以与 (EC)DHE 密钥交换算法一同使用以便使共享密钥具备�
 
 ## 4. Handshake Protocol
 
+握手协议用于协商连接的安全参数。把握手消息传递给 TLS 记录层，TLS 记录层把它们封装到一个或多个 TLSPlaintext 或 TLSCiphertext 中，然后按照当前活动连接状态的规定进行处理和传输。
+
+```
+      enum {
+          client_hello(1),
+          server_hello(2),
+          new_session_ticket(4),
+          end_of_early_data(5),
+          encrypted_extensions(8),
+          certificate(11),
+          certificate_request(13),
+          certificate_verify(15),
+          finished(20),
+          key_update(24),
+          message_hash(254),
+          (255)
+      } HandshakeType;
+
+      struct {
+          HandshakeType msg_type;    /* handshake type */
+          uint24 length;             /* remaining bytes in message */
+          select (Handshake.msg_type) {
+              case client_hello:          ClientHello;
+              case server_hello:          ServerHello;
+              case end_of_early_data:     EndOfEarlyData;
+              case encrypted_extensions:  EncryptedExtensions;
+              case certificate_request:   CertificateRequest;
+              case certificate:           Certificate;
+              case certificate_verify:    CertificateVerify;
+              case finished:              Finished;
+              case new_session_ticket:    NewSessionTicket;
+              case key_update:            KeyUpdate;
+          };
+      } Handshake;
+```
+
+协议消息必须以 4.4.1 中定义的顺序发送，这也已经在第 2 章的图中展示了。对端如果收到了不按顺序发送的握手消息必须使用一个 "unexpected_message" 警报来中止握手。
+
+新的握手消息类型已经由 IANA 指定并在第 11 章中描述。
+
 ### 4.1. Key Exchange Messages
+
+密钥交换消息用于确定 client 和 server 之间的安全能力，并确定包括流量密钥在内的共享密钥来保护其余的握手消息和数据。
 
 #### 4.1.1. Cryptographic Negotiation
 
+在TLS中，密码协商通过 client 在 ClientHello 中提供下面 4 个选项集合来实现：
+
+- 一个密码族列表，指的是 client 所支持的 AEAD 算法或 HKDF hash 对。
+- 一个 "supported_groups" (4.2.7) 扩展，指的是 client 支持的 (EC)DHE 组；一个 "key_share" (4.2.8) 扩展，包含了一些或全部组所共享的 (EC)DHE 秘钥。
+- 一个 "signature_algorithms" (4.2.3) 扩展，指的是 client 能接受的签名算法；可能会添加一个 "signature_algorithms_cert" 扩展（4.2.3）来指明证书指定的签名算法。
+- 一个 "pre_shared_key" (4.2.11) 扩展，包含了一个 client 知晓的对称密钥；一个 "psk_key_exchange_modes" (4.2.9) 扩展，表明与 PSK 一起使用的密钥交换模式。
+
+如果 server 没有选择PSK，则这些选项的前 3 个是完全正交的：server 独立地选择一个密码族，一个 (EC)DHE 组和用于确定密钥的密钥共享，一个签名算法或证书对用于认证自己和 client。如果接收到的 "supported_groups" 和 server 所支持的组之间没有重叠，则 server 必须用一个 "handshake_failure" 或一个 "insufficient_security" 警报中止握手。
+
+如果 server 选择了一个 PSK，则必须从 client 的 "psk_key_exchange_modes" 扩展（目前是仅 PSK 或带 (EC)DHE）所携带的集合中选择一个密钥建立模式。需要注意的是如果可以不带 (EC)DHE 就使用 PSK，则 "supported_groups" 参数不重叠不一定是致命的，就像之前讨论过的非 PSK 场景一样。
+
+如果 server 选择了一个 (EC)DHE 组并且 client 没有在初始 ClientHello 中提供兼容的 "key_share" 扩展，server 必须响应 HelloRetryRequest (4.1.4) 消息。
+
+如果 server 成功地选择了参数且没有发送 HelloRetryRequest，表明 ServerHello 中所选的参数如下：
+
+- 如果使用 PSK，则 server 会发送一个 "pre_shared_key" 扩展表明所选的密钥。
+- 使用 (EC)DHE 时，server 也会提供 "key_share" 扩展。如果没有使用 PSK，则一直使用 (EC)DHE 和基于证书的认证。
+- 当通过证书进行验证时，server 将会发送 Certificate(4.4.2) 和 CertificateVerify(4.4.3) 消息。在本文定义的 TLS 1.3 中，会一直使用一个 PSK 或一个证书，但两者不会同时使用。将来的文档可能会定义怎样同时使用它们。
+
+如果 server 不能协商出支持的参数集合（例如，client 和 server 的参数集合没有重叠），它必须用一个 "handshake_failure" 或一个 "insufficient_security" 警报（见第6章）中止握手。
+
 #### 4.1.2. Client Hello
+
+当 client 第一次连接一个 server 时，它需要发送 ClientHello 作为第一个消息。当 server 用 HelloRetryRequest 来响应 client 的 ClientHello 时，client 也应当发送 ClientHello。这种条件下，client 必须发送相同的 ClientHello（无修改），除非：
+
+- 如果 HelloRetryRequest 带有一个 "key_share" 扩展，则将共享列表用包含指定组中的一个 KeyShareEntry 的列表取代。
+- 如果存在 "early_data" 扩展则将其移除。Early data 不允许在 HelloRetryRequest 之后出现。
+- 如果 HelloRetryRequest 中提供了一个 "cookie" 扩展，则需要也包含一个 "cookie" 扩展。
+- 如果需要重新计算 "obfuscated_ticket_age" 和绑定值、(可选地)删除与 server 指定的密码族不兼容的任何 PSK，则更新 "pre_shared_key" 扩展。
+- 选择性增加、删除或更改 "padding" 扩展 [RFC7685] 的长度。
+- 将来定义的其他 HelloRetryRequest 中扩展允许的修改。
+
+由于 TLS 1.3 禁止重协商，如果 server 已经协商完成了 TLS 1.3，在任何其它时间收到了 ClientHello，必须用 "unexpected_message" 警报中止连接。
+
+如果 server 用以前版本的 TLS 建立了连接并在重协商时接收了一个 TLS 1.3 的 ClientHello，它必须保持以前的协议版本，不能协商 TLS 1.3。
+
+这个消息的结构：
+
+```
+      uint16 ProtocolVersion;
+      opaque Random[32];
+
+      uint8 CipherSuite[2];    /* Cryptographic suite selector */
+
+      struct {
+          ProtocolVersion legacy_version = 0x0303;    /* TLS v1.2 */
+          Random random;
+          opaque legacy_session_id<0..32>;
+          CipherSuite cipher_suites<2..2^16-2>;
+          opaque legacy_compression_methods<1..2^8-1>;
+          Extension extensions<8..2^16-1>;
+      } ClientHello;
+```
+
+- **legacy_version**：在以前版本的 TLS 里，这个字段用于版本协商和表示 client 支持的最高版本号。经验表明很多 server 没有适当地实现版本协商，导致 “版本容忍”，会使 server 拒绝本来可接受的版本号高于支持的ClientHello。在 TLS 1.3 中，client 在 "supported_versions" 扩展(4.2.1节)中表明版本偏好，且 legacy_version 字段必须设置为 TLS 1.2 的版本号 0x0303。TLS 1.3 ClientHello 的 legacy_version 为 0x0303，supported_versions 扩展值为最高版本 0x0304（关于后向兼容的细节见附录 D）
+- **random**： 由一个安全随机数生成器产生的 32 字节随机数，更多信息见附录 C。
+- **legacy_session_id**： 之前的 TLS 版本支持 "会话恢复" 特性，在 TLS 1.3 中此特性与预共享密钥合并了(见 2.2 节)。client 需要将此字段设置为 TLS 1.3 之前版本的 server 缓存的 session ID。在兼容模式下(见附录 D.4)此字段必须非空，所以一个不能提供 TLS 1.3 之前版本会话的 client 必须产生一个 32 字节的新值。这个值不必是随机的但应该是不可预测的以避免实现上固定为一个具体的值(也被称为僵化)。否则，它必须被设置为一个 0 长度向量(例如，一个 0 字节长度字段)。
+- **cipher_suites**： client 支持的对称密码族选项列表，具体有记录保护算法（包括密钥长度）和与 HKDF 一起使用的 hash 算法，这些算法以 client 偏好降序排列。值定义在附录 B.4。如果列表中包含 server 不认识，不支持，或不想使用的密码族，server 必须忽略这些密码族并且正常处理其余的密码族。如果 client 试图确定一个 PSK，应该通告至少一个密码族以表明 PSK 关联 hash 算法。
+- **legacy_compression_methods**：TLS 1.3 以前的版本支持压缩，并提供一个支持的压缩方法列表。对于 TLS 1.3 的每个ClientHello，这个向量必须只包含 1 字节并设置为 0，对应以前 TLS 版本的 "null" 压缩方法。如果收到的 TLS 1.3 ClientHello 这个字段是其它的值，server 必须以一个 "illegal_parameter" alert 来中止握手。请注意，TLS 1.3 server 可能会接收 TLS 1.2 或之前的 ClientHello 包含其它压缩方法，（如果与这样一个先前版本协商）必须遵循适当的 TLS 先前版本的流程。
+- **extension**： Client 通过在 extension 字段发送数据来向 server 请求扩展的功能。实际的 "Extension" 格式定义在 4.2 节中。TLS 1.3 强制使用特定的 extension，因为一些功能被转移到了 extension 里以保留 ClientHello 与先前 TLS 版本的兼容性。Server 必须忽略无法识别的 extension。
+
+所有版本的 TLS 都允许 compression_method 字段后跟着 extension 字段。TLS 1.3 ClientHello 消息始终包含 extension（至少包含 "supported_versions"，否则将被当做 TLS 1.2 ClientHello消息）。但是，TLS1.3 server 可能会从以前版本的 TLS 接收不带 extension 字段的 ClientHello 消息。可以通过 ClientHello 末尾 compression_methods 字段后面是否有字节来检测扩展的存在。注意，这种检测可选数据的方法不同于检测可变长度字段的常规 TLS 方法，但是可用于与 extension 定义之前的 TLS 版本兼容。TLS 1.3 server 需要首先执行此检查，并且只有存在 "supported_versions" 扩展时才尝试协商 TLS 1.3。如果协商 TLS 1.3 之前的版本，server 必须检查消息是否在 legacy_compression_methods 之后不包含任何数据，或者是否包含一个后面没有数据的有效扩展块。如果不是，则必须以 "decode_error" alert 中止握手。
+
+如果 client 使用 extension 请求附加功能，而 server 不提供此功能，则 client 可能会中止握手。
+
+client 发送 ClientHello 消息后，等待 ServerHello 或 HelloRetryRequest 消息。如果正在使用 early data，则 client 可以在等待下一个握手消息时传输早期应用数据（2.3节）。
 
 #### 4.1.3. Server Hello
 
