@@ -638,7 +638,7 @@ TLS 1.3 客户端接收到 TLS 1.2 或更低版本的 ServerHello 必须检查�
 
 Client 接收到 HelloRetryRequest 必须如 4.1.3 所说的检查 egacy_version、legacy_session_id_echo、cipher_suite 和 legacy_compression_method，然后处理扩展，先用 "supported_versions" 确定版本号。如果 HelloRetryRequest 不会对 ClientHello 造成任何改变，Client 必须以 "illegal_parameter" alert 终止握手。如果 client 在同一个链接中收到第二个 HelloRetryRequest（如即以 ClientHello 本身响应 HelloRetryRequest），必须以 "unexpected_message" alert 终止连接。
 
-否则， 客户端必须处理 HelloRetryRequest 中的所有扩展，并发送第二个更新的 ClientHello。本规范中定义的 HelloRetryRequest 扩展包括：
+否则，客户端必须处理 HelloRetryRequest 中的所有扩展，并发送第二个更新的 ClientHello。本规范中定义的 HelloRetryRequest 扩展包括：
 
 -  supported_versions (见4.2.1节)
 -  cookie (见4.2.2节)
@@ -654,11 +654,208 @@ HelloRetryRequest 中的 "supported_versions" 扩展的 selected_version 值必�
 
 ### 4.2. Extensions
 
+许多 TLS 消息包含 tag-length-value 编码的扩展结构：
+
+```
+    struct {
+        ExtensionType extension_type;
+        opaque extension_data<0..2^16-1>;
+    } Extension;
+
+    enum {
+        server_name(0),                             /* RFC 6066 */
+        max_fragment_length(1),                     /* RFC 6066 */
+        status_request(5),                          /* RFC 6066 */
+        supported_groups(10),                       /* RFC 8422, 7919 */
+        signature_algorithms(13),                   /* RFC 8446 */
+        use_srtp(14),                               /* RFC 5764 */
+        heartbeat(15),                              /* RFC 6520 */
+        application_layer_protocol_negotiation(16), /* RFC 7301 */
+        signed_certificate_timestamp(18),           /* RFC 6962 */
+        client_certificate_type(19),                /* RFC 7250 */
+        server_certificate_type(20),                /* RFC 7250 */
+        padding(21),                                /* RFC 7685 */
+        pre_shared_key(41),                         /* RFC 8446 */
+        early_data(42),                             /* RFC 8446 */
+        supported_versions(43),                     /* RFC 8446 */
+        cookie(44),                                 /* RFC 8446 */
+        psk_key_exchange_modes(45),                 /* RFC 8446 */
+        certificate_authorities(47),                /* RFC 8446 */
+        oid_filters(48),                            /* RFC 8446 */
+        post_handshake_auth(49),                    /* RFC 8446 */
+        signature_algorithms_cert(50),              /* RFC 8446 */
+        key_share(51),                              /* RFC 8446 */
+        (65535)
+    } ExtensionType;
+```
+
+这里:
+
+- "extension_type" 表示特定扩展类型。
+- "extension_data" 包含特定扩展类型指定的信息。
+
+扩展类型表由 IANA 维护，见 11 章。
+
+扩展通常以 请求/响应 方式构造，尽管一些扩展仅仅是没有相应响应的指示。客户端在 ClientHello 消息中发送其扩展请求，服务器在 ServerHello、EncryptedExtensions 和 HelloRetryRequest 消息中发送其扩展响应。服务器在 CertificateRequest 消息中发送扩展请求，客户端可能以 Certificate 消息进行响应。服务器也可以在 NewSessionTicket 中发送未经请求的扩展，但客户端不直接响应这些。
+
+如果对端没有发送相应的扩展请求（除 HelloRetryRequest 中的 "cookie" 扩展外），严禁发送扩展响应。在接收到这样的扩展时，端点必须用 "unsupported_extension" alert 中止握手。
+
+下表列出了给定扩展可能出现的消息：
+
+- CH (ClientHello)
+- SH (ServerHello)
+- EE (EncryptedExtensions)
+- CT (Certificate)
+- CR (CertificateRequest)
+- NST (NewSessionTicket)
+- HRR (HelloRetryRequest)
+
+如果接收到可识别的扩展，并且对应消息未指定它，必须用 "illegal_parameter" alert 来中止握手。
+
+```
+   +--------------------------------------------------+-------------+
+   | Extension                                        |     TLS 1.3 |
+   +--------------------------------------------------+-------------+
+   | server_name [RFC6066]                            |      CH, EE |
+   |                                                  |             |
+   | max_fragment_length [RFC6066]                    |      CH, EE |
+   |                                                  |             |
+   | status_request [RFC6066]                         |  CH, CR, CT |
+   |                                                  |             |
+   | supported_groups [RFC7919]                       |      CH, EE |
+   |                                                  |             |
+   | signature_algorithms (RFC 8446)                  |      CH, CR |
+   |                                                  |             |
+   | use_srtp [RFC5764]                               |      CH, EE |
+   |                                                  |             |
+   | heartbeat [RFC6520]                              |      CH, EE |
+   |                                                  |             |
+   | application_layer_protocol_negotiation [RFC7301] |      CH, EE |
+   |                                                  |             |
+   | signed_certificate_timestamp [RFC6962]           |  CH, CR, CT |
+   |                                                  |             |
+   | client_certificate_type [RFC7250]                |      CH, EE |
+   |                                                  |             |
+   | server_certificate_type [RFC7250]                |      CH, EE |
+   |                                                  |             |
+   | padding [RFC7685]                                |          CH |
+   |                                                  |             |
+   | key_share (RFC 8446)                             | CH, SH, HRR |
+   |                                                  |             |
+   | pre_shared_key (RFC 8446)                        |      CH, SH |
+   |                                                  |             |
+   | psk_key_exchange_modes (RFC 8446)                |          CH |
+   |                                                  |             |
+   | early_data (RFC 8446)                            | CH, EE, NST |
+   |                                                  |             |
+   | cookie (RFC 8446)                                |     CH, HRR |
+   |                                                  |             |
+   | supported_versions (RFC 8446)                    | CH, SH, HRR |
+   |                                                  |             |
+   | certificate_authorities (RFC 8446)               |      CH, CR |
+   |                                                  |             |
+   | oid_filters (RFC 8446)                           |          CR |
+   |                                                  |             |
+   | post_handshake_auth (RFC 8446)                   |          CH |
+   |                                                  |             |
+   | signature_algorithms_cert (RFC 8446)             |      CH, CR |
+   +--------------------------------------------------+-------------+
+```
+
+当存在不同类型的多个扩展时，扩展可以以任何顺序出现，但 "pre_shared_key"（4.2.11节）必须是 ClientHello 中的最后一个扩展（但在 ServerHello 扩展块中可以出现在任何位置）。给定扩展块中同一类型的扩展只能出现一次。
+与 TLS 1.2 不同的是，TLS 1.3 即使在 resumption-PSK 模式下，每次握手都重新协商扩展。然而，0-RTT 参数是在先前握手中协商的，不匹配可能需要拒绝 0-RTT（见4.2.7节）。
+
+在新协议中可能会出现的新特性与现有功能之间存在微妙（但也不是那么微妙）交互，这可能会导致整体安全性的显著降低。设计新扩展时，应考虑以下注意事项：
+
+- 服务器不同意扩展的一些情况是错误条件（如握手无法继续），有些则简单地拒绝支持特定功能。一般来说，前者应该使用错误警报，后者的服务器扩展响应中会有一个字段。
+- 扩展应尽可能设计为防止任何通过操纵握手信息强制使用（或不使用）特定功能的攻击。无论该功能是否会引起安全问题，都应遵循这一原则。通常，扩展字段被包含在 Finished 消息散列的输入中是足够的，但是当扩展改变在握手阶段中发送消息的含义时，需要特别小心。设计者和实现者应该意识到，在握手被验证之前，主动攻击者可以修改消息并插入，删除或替换扩展。
+
 #### 4.2.1. Supported Versions
+
+```
+      struct {
+          select (Handshake.msg_type) {
+              case client_hello:
+                   ProtocolVersion versions<2..254>;
+
+              case server_hello: /* and HelloRetryRequest */
+                   ProtocolVersion selected_version;
+          };
+      } SupportedVersions;
+```
+
+客户端使用 "supported_versions" 扩展来表明自己支持哪些版本的 TLS。该扩展包含的版本列表以偏好顺序排列，第一个是最优先的版本。这个规范的实现必须在扩展中发送包含准备协商的 TLS 所有版本（对于这个规范，这意味着最低  0x0304，但是如果支持 TLS 以前的版本，也必须包含进去）。
+
+如果 ClientHello 中没有此扩展，那么符合本规范的服务器必须按照 [RFC5246] 中的规定协商 TLS 1.2 或先前版本，就算 ClientHello.legacy_version 为 0x0304 或更高版本也是如此。Server 接收到 legacy_version 为 0x0304 的 ClientHello 可以终止握手。
+
+如果 ClientHello 中有此扩展，服务器禁止使用 ClientHello.legacy_version 值来进行版本协商，并且必须只使用 "supported_versions" 扩展来确定客户端偏好。服务器必须只选择该扩展中存在的 TLS 版本，并且必须忽略任何未知版本。注意，如果一方支持稀疏范围，这种机制可以协商出 TLS 1.2 之前的版本。选择支持 TLS 以前版本的 TLS 1.3 的实现应支持 TLS 1.2。服务器应必须准备好接收包含此扩展的 ClientHello，但不要在版本列表中包含 0x0304。
+
+协商 TLS 1.3 之前版本 TLS 的服务端必须设置 ServerHello.version，且不能发送 "supported_versions" 扩展。 协商 TLS 1.3 的服务器必须以包含选定版本值（0x0304）的 "supported_versions" 扩展回应。必须将 ServerHello.legacy_version 字段设置为 0x0303 (TLS 1.2)。客户端必须在处理其余 ServerHello 之前检查此扩展（虽然必须解析 ServerHello 来读取扩展）。如果此扩展出现，客户端必须忽略 ServerHello.legacy_version 值，且必须只使用 "supported_versions" 扩展来确定选定版本。如果 ServerHello 中的 "supported_versions" 扩展包含客户端没提供的版本或者包含 TLS 1.3 之前的版本，客户端必须以 "illegal_parameter" alert 终止握手。
 
 #### 4.2.2. Cookie
 
+```
+      struct {
+          opaque cookie<1..2^16-1>;
+      } Cookie;
+```
+
+Cookie有两个主要目的：
+
+- 允许服务器强制客户端展示其网络地址可达性（从而提供 DoS 保护）。这主要用于非面向连接的传输（见[RFC6347]）。
+- 允许服务器向客户端卸载状态，从而可以发送 HelloRetryRequest 而不存储任何状态。服务器通过将 ClientHello 的哈希存储在 HelloRetryRequest cookie 中（用一些合适的完整性算法保护）来实现。
+
+当发送 HelloRetryRequest 时，服务器可以向客户端提供 "cookie" 扩展（这是通常规则的一个例外，即只能发送出现在 ClientHello 中的扩展）。 当发送新的 ClientHello 时，客户端必须将 HelloRetryRequest 中收到的 cookie 复制到新 ClientHello 中的 "cookie" 扩展中。客户端不得在后续连接 initial ClientHello 中使用 Cookie。
+
+无状态服务器可能在第一个和第二个 ClientHello 之间接收到一个 change_cipher_spec 类型的未加密数据（见第5章）。因为服务器不存储任何状态，看起来就像接收到的第一个消息。无状态服务器必须忽略这些数据。
+
 #### 4.2.3. Signature Algorithms
+
+TLS 1.3 提供了两个扩展来表示数字签名里会用哪种签名算法。"signature_algorithms_cert" 扩展提供证书中的签名，"signature_algorithms" 扩展是从 TLS 1.2 出现的，提供CertificateVerify消息中的签名。证书中的秘钥也必须是所使用的签名算法的适当类型。这是RSA密钥和PSS签名的一个特殊问题，如下所述。如果没有"signature_algorithms_cert"扩展，"signature_algorithms"扩展也提供证书中的出现的签名。客户端如果期望服务器通过证书证明其身份，必须发送"signature_algorithms"扩展。如果服务器通过证书证明了其身份，且客户端没有发送"signature_algorithms"扩展，那么服务器必须以"missing_extension" alert终止握手（见9.2）.
+
+"signature_algorithms_cert"扩展允许支持证书的不同算法集的实现明确表达自己的能力。TLS 1.2实现应该也处理这些扩展。两种情况里具有相同策略的实现都可以使用signature_algorithms_cert"扩展。
+
+ClientHello 扩展中的"extension_data"字段包含SignatureSchemeList值：
+
+```
+      enum {
+          /* RSASSA-PKCS1-v1_5 algorithms */
+          rsa_pkcs1_sha256(0x0401),
+          rsa_pkcs1_sha384(0x0501),
+          rsa_pkcs1_sha512(0x0601),
+
+          /* ECDSA algorithms */
+          ecdsa_secp256r1_sha256(0x0403),
+          ecdsa_secp384r1_sha384(0x0503),
+          ecdsa_secp521r1_sha512(0x0603),
+
+          /* RSASSA-PSS algorithms with public key OID rsaEncryption */
+          rsa_pss_rsae_sha256(0x0804),
+          rsa_pss_rsae_sha384(0x0805),
+          rsa_pss_rsae_sha512(0x0806),
+
+          /* EdDSA algorithms */
+          ed25519(0x0807),
+          ed448(0x0808),
+
+          /* RSASSA-PSS algorithms with public key OID RSASSA-PSS */
+          rsa_pss_pss_sha256(0x0809),
+          rsa_pss_pss_sha384(0x080a),
+          rsa_pss_pss_sha512(0x080b),
+
+          /* Legacy algorithms */
+          rsa_pkcs1_sha1(0x0201),
+          ecdsa_sha1(0x0203),
+
+          /* Reserved Code Points */
+          private_use(0xFE00..0xFFFF),
+          (0xFFFF)
+      } SignatureScheme;
+
+      struct {
+          SignatureScheme supported_signature_algorithms<2..2^16-2>;
+      } SignatureSchemeList;
+```
 
 #### 4.2.4. Certificate Authorities
 
