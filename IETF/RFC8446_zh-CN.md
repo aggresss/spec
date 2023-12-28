@@ -564,7 +564,7 @@ PSK 可以与 (EC)DHE 密钥交换算法一同使用以便使共享密钥具备�
       } ClientHello;
 ```
 
-- **legacy_version**：在以前版本的 TLS 里，这个字段用于版本协商和表示 client 支持的最高版本号。经验表明很多 server 没有适当地实现版本协商，导致 “版本容忍”，会使 server 拒绝本来可接受的版本号高于支持的ClientHello。在 TLS 1.3 中，client 在 "supported_versions" 扩展(4.2.1节)中表明版本偏好，且 legacy_version 字段必须设置为 TLS 1.2 的版本号 0x0303。TLS 1.3 ClientHello 的 legacy_version 为 0x0303，supported_versions 扩展值为最高版本 0x0304（关于后向兼容的细节见附录 D）
+- **legacy_version**：在以前版本的 TLS 里，这个字段用于版本协商和表示 client 支持的最高版本号。经验表明很多 server 没有适当地实现版本协商，导致 "版本容忍"，会使 server 拒绝本来可接受的版本号高于支持的ClientHello。在 TLS 1.3 中，client 在 "supported_versions" 扩展(4.2.1节)中表明版本偏好，且 legacy_version 字段必须设置为 TLS 1.2 的版本号 0x0303。TLS 1.3 ClientHello 的 legacy_version 为 0x0303，supported_versions 扩展值为最高版本 0x0304（关于后向兼容的细节见附录 D）
 - **random**： 由一个安全随机数生成器产生的 32 字节随机数，更多信息见附录 C。
 - **legacy_session_id**： 之前的 TLS 版本支持 "会话恢复" 特性，在 TLS 1.3 中此特性与预共享密钥合并了(见 2.2 节)。client 需要将此字段设置为 TLS 1.3 之前版本的 server 缓存的 session ID。在兼容模式下(见附录 D.4)此字段必须非空，所以一个不能提供 TLS 1.3 之前版本会话的 client 必须产生一个 32 字节的新值。这个值不必是随机的但应该是不可预测的以避免实现上固定为一个具体的值(也被称为僵化)。否则，它必须被设置为一个 0 长度向量(例如，一个 0 字节长度字段)。
 - **cipher_suites**： client 支持的对称密码族选项列表，具体有记录保护算法（包括密钥长度）和与 HKDF 一起使用的 hash 算法，这些算法以 client 偏好降序排列。值定义在附录 B.4。如果列表中包含 server 不认识，不支持，或不想使用的密码族，server 必须忽略这些密码族并且正常处理其余的密码族。如果 client 试图确定一个 PSK，应该通告至少一个密码族以表明 PSK 关联 hash 算法。
@@ -579,7 +579,78 @@ client 发送 ClientHello 消息后，等待 ServerHello 或 HelloRetryRequest �
 
 #### 4.1.3. Server Hello
 
+当可以根据 ClientHello 协商出一组可接受的握手参数时，server 将发送此消息响应 ClientHello 消息以继续握手流程。
+
+此消息的结构：
+
+```
+      struct {
+          ProtocolVersion legacy_version = 0x0303;    /* TLS v1.2 */
+          Random random;
+          opaque legacy_session_id_echo<0..32>;
+          CipherSuite cipher_suite;
+          uint8 legacy_compression_method = 0;
+          Extension extensions<6..2^16-1>;
+      } ServerHello;
+```
+
+- **legacy_version**：在此前的 TLS 版本中，此字段用来版本协商和承载连接的选定版本号。不幸的是，当存在新值时，一些中间件会处理失败。在 TLS1.3 中，TLS sever 使用 "supported_versions" 扩展来表明它的版本（4.2.1节），legacy_version 字段必须设置为 TLS1.2 的版本号 0x0303。（前向兼容具体见附录 D）
+- **random**：由安全随机数生成器生成的 32 字节，其他信息见附录 C。如果协商 TLS 1.2 或 TLS 1.1，最后 8 个字节必须被重写，如下所述。该结构由 server 生成，必须与 ClientHello.random 分别生成。
+- **legacy_session_id_echo**：client 的 legacy_session_id 字段内容。请注意，即使客户端的值与服务器选择不恢复的缓存的 TLS 1.3 之前会话相对应，也会回复此字段。如果客户端接收到与发送内容不匹配的legacy_session_id_echo 字段，则必须使用 "illegal_parameter" alert 中止握手。
+- **cipher_suite**：服务器从 ClientHello.cipher_suites 列表中选择的单个密码套件。客户端接收到自己没有提供的密码套件必须中止握手。
+- **legacy_compression_method**: 一个字节，值必须是 0。
+- **extensions**：扩展列表。 ServerHello 必须只包含确定加密上下文和协商版本号所需的扩展。所有当前的 TLS 1.3 ServerHello 消息必须包含 "supported_versions" 扩展。目前 ServerHello 消息额外包含 "pre_shared_key" 扩展和 "key_share" 扩展之一，或者两者都包含（当使用 PSK 和 (EC)DHE 秘钥建立）。其他扩展（见4.2节）单独在 EncryptedExtensions 消息里发送。
+
+由于中间件的后向兼容性原因（见附录D.4），HelloRetryRequest 消息与 ServerHello 使用相同的结构体，但带有设置为特殊值（ "HelloRetryRequest" 的 SHA-256）的随机值：
+
+```
+     CF 21 AD 74 E5 9A 61 11 BE 1D 8C 02 1E 65 B8 91
+     C2 A2 11 16 7A BB 8C 5E 07 9E 09 E2 C8 A8 33 9C
+```
+
+在接收到类型为 server_hello 的消息时，必须首先检查随机值，如果该值与此匹配，则按照 4.1.4 节所述进行处理。
+
+TLS 1.3 使用服务器的随机值实现降级保护机制。 TLS 1.3 服务器以 TLS 1.2 或更低版本响应 ClientHello 必须专门设置随机值的最后 8 个字节。
+
+如果协商 TLS 1.2，TLS 1.3 服务器必须将随机值的最后 8 个字节设置为：
+
+```
+     44 4F 57 4E 47 52 44 01
+```
+
+如果协商 TLS 1.1 或更低版本，TLS 1.3 服务器和 TLS 1.2 服务器应该将随机值的最后 8 个字节设置为：
+
+```
+     44 4F 57 4E 47 52 44 00
+```
+
+TLS 1.3 客户端接收到 TLS 1.2 或更低版本的 ServerHello 必须检查最后八个字节不等于这些值。如果 ServerHello 指示 TLS 1.1 或更低版本，TLS 1.2 客户端还应该检查最低 8 字节不等于第二个值。 客户端如果找到匹配值则必须用 "illegal_parameter" alert 中止握手。这种机制提供了有限的保护，以防止降级攻击超出 Finished 交换提供内容：因为 TLS1.2 及以下版本的 ServerKeyExchange 消息包含两个随机值的签名，只要使用临时密码，攻击者就不可能探测修改随机值。当使用静态 RSA 时就不提供降级保护。
+
+注意：这是从 [RFC5246] 开始修改的，所以实际上许多 TLS 1.2 客户端和服务器可能不会像上面说的那样。
+
+旧的 TLS 客户端使用 TLS 1.2 或之前的版本执行重协商，重协商期间如果接收到 TLS 1.3 的 ServerHello，必须使用 "protocol_version" alert 终止握手。需要注意的是，如果 TLS 1.3 已经协商好了就不会重协商了。
+
 #### 4.1.4. Hello Retry Request
+
+如果可以找到可接受的一组参数，但 ClientHello 中没有足够的信息继续处理握手流程，服务器就将这个消息作为 ClientHello 的回应。如 4.1.3 节所说，HelloRetryRequest 跟 ServerHello 格式一样，并且 legacy_version、legacy_session_id_echo、cipher_suite 和 legacy_compression_method 字段的含义也一样。然而，为方便起见，本文中把 "HelloRetryRequest" 当做不同的消息讨论。
+
+服务器扩展必须包含 "supported_versions"。另外，应该包含客户端产生正确 ClientHello 对的必须扩展最小集。像 ServerHello 一样，HelloRetryRequest 一定不能包含客户端 ClientHello 中未提供的扩展，可选 "cookie" 扩展除外（4.2.2节）。
+
+Client 接收到 HelloRetryRequest 必须如 4.1.3 所说的检查 egacy_version、legacy_session_id_echo、cipher_suite 和 legacy_compression_method，然后处理扩展，先用 "supported_versions" 确定版本号。如果 HelloRetryRequest 不会对 ClientHello 造成任何改变，Client 必须以 "illegal_parameter" alert 终止握手。如果 client 在同一个链接中收到第二个 HelloRetryRequest（如即以 ClientHello 本身响应 HelloRetryRequest），必须以 "unexpected_message" alert 终止连接。
+
+否则， 客户端必须处理 HelloRetryRequest 中的所有扩展，并发送第二个更新的 ClientHello。本规范中定义的 HelloRetryRequest 扩展包括：
+
+-  supported_versions (见4.2.1节)
+-  cookie (见4.2.2节)
+-  key_share (见4.2.8节)
+
+Client 接收到一个没有提供过的密码套件必须终止握手。Server 接收到合法更新的 ClientHello 时，必须确保协商相同密码套件（如果 server 选择了协商过程中第一步的密码套件，这就会自动发生）。client 接收到 ServerHello 后，必须检查其中的密码套件是否与 HelloRetryRequest 中的相同，否则以 "illegal_parameter" alert 终止握手。
+
+此外，在更新的 ClientHello 中，客户端不应提供与所选密码套件以外的哈希相关联的任何预共享密钥。 这允许客户端避免在第二个 ClientHello 中计算多个哈希的部分哈希转录。
+
+接收未提供的密码套件的客户端必须中止握手。 服务器必须确保在接收到一致的更新 ClientHello 时协商相同的密码套件（如果服务器选择密码套件作为协商的第一步，则会自动发生）。客户端收到 ServerHello 后必须检查 ServerHello 中提供的密码套件是否与 HelloRetryRequest 中的密码套件相同，否则将以 "illegal_parameter" 警报中止握手。
+
+HelloRetryRequest 中的 "supported_versions" 扩展的 selected_version 值必须在 ServerHello 中保留，如果值变化了，client 必须以 "illegal_parameter" alert 终止握手。
 
 ### 4.2. Extensions
 
