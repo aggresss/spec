@@ -1257,31 +1257,364 @@ EncryptedExtensions 消息包含可以被保护的扩展，即不需要建立加
 
 ### 4.4. Authentication Messages
 
+如第 2 章所述，TLS 通常使用一组消息来进行身份验证，密钥确认和握手完整性：Certificate，CertificateVerify 和 Finished。（PSK binder 也以类似的方式执行密钥确认。） 这三个消息总是在握手中的最后发送。Certificate 和 CertificateVerify 消息仅在某些情况下发送，如下所定义。Finished 的消息总是作为 Authentication Block 的一部分发送。这些消息使用 [sender]_handshake_traffic_secret 派生的密钥加密。
+
+认证消息的计算统一采用以下输入：
+
+- 要使用的证书和签名密钥。
+- 一个握手上下文，由要包含在 transcript 哈希中的一组消息组成。
+- 用于计算 MAC 密钥的基本密钥。
+
+基于这些输入，消息包含：
+
+- Certificate：用于认证的证书和链中的任何支持证书。请注意，基于证书的客户端身份验证在 PSK 握手流中不可用（包括0-RTT）。
+- CertificateVerify：Transcript-Hash 值的签名（握手上下文+证书）。
+- Finished：Transcript-Hash 值的 MAC（握手上下文+证书+证书验证），使用 Base Key 派生的 MAC 秘钥。
+
+下表定义了每个场景的握手上下文和 MAC 基本密钥：
+
+```
+   +-----------+-------------------------+-----------------------------+
+   | Mode      | Handshake Context       | Base Key                    |
+   +-----------+-------------------------+-----------------------------+
+   | Server    | ClientHello ... later   | server_handshake_traffic_   |
+   |           | of EncryptedExtensions/ | secret                      |
+   |           | CertificateRequest      |                             |
+   |           |                         |                             |
+   | Client    | ClientHello ... later   | client_handshake_traffic_   |
+   |           | of server               | secret                      |
+   |           | Finished/EndOfEarlyData |                             |
+   |           |                         |                             |
+   | Post-     | ClientHello ... client  | client_application_traffic_ |
+   | Handshake | Finished +              | secret_N                    |
+   |           | CertificateRequest      |                             |
+   +-----------+-------------------------+-----------------------------+
+```
+
 #### 4.4.1. The Transcript Hash
+
+TLS 的很多加密算法使用 transcript hash。这个值是通过对每个包含的握手消息进行哈希串联计算出来的，包括携带握手消息类型和长度字段的握手消息头，但不包括记录层头。 即：
+
+```
+    Transcript-Hash(M1, M2, ... Mn) = Hash(M1 || M2 || ... || Mn)
+```
+
+作为这个一般规则的例外，当服务器用 HelloRetryRequest 响应一个 ClientHello 时，ClientHello1 的值会被一个特殊的合成握手消息代替，握手类型为 "message_hash"，包含 Hash(ClientHello1)。 即：
+
+```
+  Transcript-Hash(ClientHello1, HelloRetryRequest, ... Mn) =
+      Hash(message_hash ||        /* Handshake type */
+           00 00 Hash.length  ||  /* Handshake message length (bytes) */
+           Hash(ClientHello1) ||  /* Hash of ClientHello1 */
+           HelloRetryRequest  || ... || Mn)
+```
+
+这种结构的原因是允许服务器只在 cookie 中存储 ClientHello1 的哈希值，而不用导出整个中间哈希状态，从而进行无状态的 HelloRetryRequest（见 4.2.2 节）。
+
+为了具体化，transcript hash 总是取自以下握手消息序列，从第一个 ClientHello 开始，只包括那些被发送的消息：
+
+- ClientHello
+- HelloRetryRequest
+- ClientHello
+- ServerHello
+- EncryptedExtensions
+- server CertificateRequest
+- server Certificate
+- server CertificateVerify
+- server Finished
+- EndOfEarlyData
+- client Certificate
+- client CertificateVerify
+- client Finished
+
+一般来说，实现者可以根据协商好的哈希值保持一个运行中的 transcript hash 值来实现 transcript。 但请注意，后续的 post-handshake 认证不包括，只包含到主握手结束的消息。
 
 #### 4.4.2. Certificate
 
+该消息将端点的证书链传递给对端。
+
+每当约定的密钥交换方法使用证书进行认证时，服务器必须发送一条Certificate消息（这包括本文中定义的所有密钥交换方法，PSK 除外）。
+
+只有服务器通过 CertificateRequest 消息请求客户端认证时，客户端才必须发送 Certificate 消息（4.3.2节）。 如果服务器请求客户端认证，但客户端没有合适的证书，则必须发送一个不包含证书的 Certificate 消息（即 "certificate_list" 字段长度为 0）。 无论证书消息是否为空，都必须发送一个 Finished 消息。
+
+```
+      enum {
+          X509(0),
+          RawPublicKey(2),
+          (255)
+      } CertificateType;
+
+      struct {
+          select (certificate_type) {
+              case RawPublicKey:
+                /* From RFC 7250 ASN.1_subjectPublicKeyInfo */
+                opaque ASN1_subjectPublicKeyInfo<1..2^24-1>;
+
+              case X509:
+                opaque cert_data<1..2^24-1>;
+          };
+          Extension extensions<0..2^16-1>;
+      } CertificateEntry;
+
+      struct {
+          opaque certificate_request_context<0..2^8-1>;
+          CertificateEntry certificate_list<0..2^24-1>;
+      } Certificate;
+```
+
+- certificate_request_context：如果该消息是对 CertificateRequest 的回应，则为该消息中的 certificate_request_context 的值。 否则（在服务器认证的情况下），该字段长度为零。
+- certificate_list：CertificateEntry 结构的序列(链)，每个结构包含一个证书和一组扩展。
+- extensions：CertificateEntry 的一组扩展值。扩展格式在 4.2 节中定义。目前服务器证书的有效扩展包括 OCSP Status 扩展 [RFC6066] 和 SignedCertificateTimestamp 扩展 [RFC6962]；未来也可以为该消息定义扩展。服务器的 Certificate 消息中的扩展必须与 ClientHello 消息的扩展相对应。 客户端的 Certificate 消息中的扩展必须与服务器的 CertificateRequest 消息中的扩展相对应。 如果一个扩展用于整个链，它应该包含在第一个 CertificateEntry 中。
+
+如果对应的证书类型扩展（server_certificate_type 或 client_certificate_type）没有在 EncryptedExtensions 中协商，或者协商为 X.509 证书类型，那么每个 CertificateEntry 都包含一个 DER 编码的 X.509 证书。发送者的证书必须在列表中的第一个 CertificateEntry 中。 后面的每个证书都应该直接认证紧邻它前面的证书。因为证书验证要求 trust anchors 是独立分发的，所以指定 trust anchors 的证书可以从链中省略，前提是支持的对端已知拥有任何省略的证书。
+
+注意：在 TLS 1.3 之前，certificate_list 的排序要求每个证书都要对紧接在它前面的证书进行认证；但是，一些实现允许一些灵活性。服务器有时会为了过渡目的同时发送一个当前的和过时的中间文件，还有一些只是配置不正确，但这些情况还是可以被正确验证。为了实现最大的兼容性，所有的实现都应该准备好处理任何 TLS 版本中潜在的无关证书和任意的顺序，但最终实体证书必须放在第一位。
+
+如果协商为 RawPublicKey 证书类型，那么 certificate_list 必须不超过一个 CertificateEntry，其中包含 [RFC7250] 第 3 节中定义的 ASN1_subjectPublicKeyInfo 值。
+
+OpenPGP 证书类型 [RFC6091] 不得用于 TLS 1.3。
+
+服务器的 certificate_list 必须是非空的。如果客户端没有合适的证书来响应服务器的认证请求，客户端将发送一个空的证书列表。
+
 ##### 4.4.2.1. OCSP Status and SCT Extensions
+
+[RFC6066] 和 [RFC6961] 提供了扩展来协商服务器向客户端发送 OCSP 响应。 在 TLS 1.2 及之前版本中，服务器用一个空的扩展来表示协商这个扩展，OCSP 信息携带在 CertificateStatus 消息中。 在 TLS 1.3 中，服务器的 OCSP 信息在包含相关证书的 CertificateEntry 中的扩展中。具体来说，服务器的 "status_request" 扩展的主体必须是 [RFC6066] 中定义的 CertificateStatus 结构，其解释在 [RFC6960] 中定义。
+
+注意：status_request_v2 扩展 [RFC6961] 已经废弃。TLS 1.3 服务器在处理 ClientHello 消息时，不能根据 status_request_v2 的存在或其中的信息采取行动，尤其是不能在 EncryptedExtensions、CertificateRequest 或 Certificate 消息中发送此扩展。TLS 1.3 服务器必须能够处理包含 status_request_v2 的 ClientHello 消息，因为使用早期协议版本的客户端发送可能想要使用。
+
+服务器可以通过在 CertificateRequest 消息中发送一个空的 "status_request" 扩展，要求客户机提供 OCSP 响应和它的证书。如果客户端选择发送 OCSP 响应，其 "status_request" 扩展的主体必须是 [RFC6066] 中定义的 CertificateStatus 结构。
+同样，[RFC6962] 提供了一种机制，在 TLS 1.2 及以下版本中，服务器可以将签名证书时间戳（SCT，Signed Certificate Timestamp）作为 ServerHello 中的扩展发送。 在 TLS 1.3 中，服务器的 SCT 信息在 CertificateEntry 的扩展中。
 
 ##### 4.4.2.2. Server Certificate Selection
 
+服务器发送的证书遵循以下规则：
+
+- 证书类型必须是X.509v3[RFC5280]，除非另有显式协商（如[RFC7250]）。
+- 服务器的终端实体证书的公钥（和相关的限制）必须与客户的 "signature_algorithms" 扩展（目前是 RSA、ECDSA 或 EdDSA）中选择的认证算法兼容。
+- 证书必须允许使用秘钥进行签名（即如果有 Key Usage 扩展，digitalSignature 位必须被设置），签名方案在客户端的 signature_algorithms 或 signature_algorithms_cert 扩展中指明（见4.2.3节）。
+- server_name [RFC6066] 和 certificate_authorities 扩展用来指导证书的选择。由于服务器可能需要 server_name 扩展，客户端应该可用情况下发送此扩展。
+
+服务器提供的所有证书必须由客户端提供的签名算法签名（如果客户端能够提供这样的链，见 4.2.3 节）。自签证书或预期为 trust anchors 的证书不作为链的一部分进行验证，因此可以用任何算法进行签名。
+
+如果服务器不能产生一个只通过指定的支持算法进行签名的证书链，那么它应该向客户端发送一个自己选择的包含不知道客户端是否支持的算法证书链来继续握手。这个 fallback 链一般不应使用已淘汰的 SHA-1 散列算法，但如果客户端通告允许的话可以使用，否则不得使用。
+
+如果客户端不能使用提供的证书构建一个可接受的链，并决定放弃握手，那么它必须用一个适当的 certificate-related 警报（默认情况下为 unsupported_certificate；更多信息见 6.2 节）来放弃握手。
+如果服务器有多个证书，它就会根据上述标准（除此之外还有其他标准，如传输层端点、本地配置和偏好）选择其中一个。
+
 ##### 4.4.2.3. Client Certificate Selection
+
+客户端发送的证书遵循以下规则：
+
+- 证书类型必须是 X.509 v3 [RFC5280]，除非另有明确协商(如 [RFC7250])。
+- 如果 CertificateRequest 消息中存在 certificate_authorities 扩展，那么证书链中至少有一个证书应该是由所列的 CA 签发的。
+- 证书必须使用可接受的签名算法来签署，如 4.3.2 所述。需要注意的是，这放宽了以前版本的 TLS 中对证书签名算法的限制。
+- 如果 CertificateRequest 消息包含一个非空的 oid_filters 扩展，那么终端实体证书必须与客户端识别的扩展名 OID 匹配，如 4.2.5 节所述。
 
 ##### 4.4.2.4. Receiving a Certificate Message
 
+一般来说，详细的证书验证程序不在 TLS 的范围内（见 [RFC5280]）。本节提供了特定于 TLS 的要求。
+
+如果服务器提供了空的 Certificate 消息，客户端必须用 decode_error alert 中止握手。
+
+如果客户端没有发送任何证书(比如发送一个空的 Certificate 消息)，服务器可以自行决定是在没有客户端认证的情况下继续握手，还是用 certificate_required 警告中止握手。 另外，如果证书链的某些方面是不能接受的(例如，不是由已知的、受信任的 CA 签发的)，服务器可以自行决定继续握手（考虑到客户端未被认证）或中止握手。
+
+任何端点收到任何需要使用 MD5 哈希签名算法来验证的证书，都必须以 bad_certificate alert 来中止握手。SHA-1 已废弃，建议任何端点收到任何需要使用 SHA-1 散列签名算法来验证的证书时，应当以 bad_certificate 警告中止握手。为明确起见，这意味着端点可以接受这些算法，用于自签或 trust anchors 的证书。
+
+建议所有端点尽快过渡到 SHA-256 或更高版本，以保持与目前正在逐步取消 SHA-1 支持的实施方案的互操作性。
+
+请注意，包含一种签名算法密钥的证书可以使用不同的签名算法进行签名（例如，用 ECDSA 密钥签名的 RSA 密钥）。
+
 #### 4.4.3. Certificate Verify
+
+该消息用于明确证明一个端点拥有与其证书相对应的私钥。CertificateVerify 消息也为截至当前的握手提供完整性。服务器在通过证书进行验证时必须发送此消息，客户端在通过证书进行验证时必须发送此消息。客户端在通过证书进行验证时必须发送此消息（如 Certificate 消息非空时）。该消息必须紧接在 Certificate 消息之后发送，并在 Finished 消息之前出现。
+
+消息结构如下：
+
+```
+      struct {
+          SignatureScheme algorithm;
+          opaque signature<0..2^16-1>;
+      } CertificateVerify;
+```
+
+算法字段指定所使用的签字算法（该类型的定义见 4.2.3 节）。签名是使用该算法的数字签名。签名的内容是 4.4.1 节所述的哈希输出，即：
+
+```
+     Transcript-Hash(Handshake Context, Certificate)
+```
+
+然后，数字签名的计算是在下列各项的连接上进行的：
+
+- 由 32（0x20）重复 64 次组成的字符串
+- context 字符串
+- 一个 0 字节，作为分隔符。
+- 需要签署的内容
+
+这个结构的目的是为了防止对以前版本的 TLS 的攻击，在这种情况下，ServerKeyExchange 格式意味着攻击者可以获得一个带有 32 字节前缀（ClientHello.random）的消息签名。 初始的 64 字节填充会清除这个前缀和服务器控制的ServerHello.random。
+
+服务器签名的 context 字符串是 "TLS 1.3, server CertificateVerify"。 客户端签名的 context 字符串是 "TLS 1.3, client CertificateVerify"。 它用来区分不同环境下的签名，有助于防止潜在的跨协议攻击。
+
+例如，如果 transcript 哈希是 32 字节的 01（这个长度对于 SHA-256 来说是有意义的），那么服务器 CertificateVerify 的数字签名所覆盖的内容就是：
+
+```
+      2020202020202020202020202020202020202020202020202020202020202020
+      2020202020202020202020202020202020202020202020202020202020202020
+      544c5320312e332c207365727665722043657274696669636174655665726966
+      79
+      00
+      0101010101010101010101010101010101010101010101010101010101010101
+```
+
+在发送方，计算 CertificateVerify 消息的签名字段的输入为：
+
+- 数字签名所涵盖的内容
+- 之前信息中发送的证书所对应的私人签名密钥。
+
+如果 CertificateVerify 消息是由服务器发送的，签名算法必须是客户端 signature_algorithms 扩展中提供的算法，除非没有不支持的算法就不能产生有效的证书链（见 4.2.3 节）。
+
+如果是客户端发送的，签名中使用的签名算法必须是 CertificateRequest 消息中 signature_algorithms 扩展中 supported_signature_algorithms 字段中的算法之一。
+
+此外，签名算法必须与发送者的终端实体证书中的秘钥兼容。RSA 签名必须使用 RSASSA-PSS 算法，不管 RSASSA-PKCS1-v1_5 算法是否出现在 signature_algorithms 中。 SHA-1 算法不得用于任何 CertificateVerify 消息的签名中。
+
+本规范中的所有 SHA-1 签名算法只用于传统证书，而不适用于 CertificateVerify 签名。
+
+CertificateVerify 消息的接收方必须验证签名字段。 验证过程的输入是：
+
+- 数字签名所涵盖的内容
+- 相关 Certificate 信息中找到的终端实体证书中包含的公钥。
+- CertificateVerify 消息的签名中收到的数字签名。
+
+如果验证失败，接收方必须用 decrypt_error alert 终止握手。
 
 #### 4.4.4. Finished
 
+Finished 消息是 Authentication Block 中的最后一条消息，它对提供握手和密钥的认证至关重要。
+
+Finished 消息的接收者必须验证其内容是否正确，如果不正确必须用 decrypt_error alert 终止连接。
+
+一旦一方发送了 Finished 消息，并且收到并验证了对端的 Finished 消息，它就可以开始通过连接发送和接收应用数据。有两种设置允许它在收到对端的 Finished 之前发送数据：
+
+1. 发送 0-RTT 数据的客户端，如 4.2.10 所述。
+2. 服务器在第一次发送后可以发送数据，但由于握手还没有完成，所以既不能保证对端的身份，也不能保证它的活性（如 ClientHello 可能已经被重放）。
+
+用于计算 Finished 消息的密钥是由 4.4 节中定义的 Base Key 使用 HKDF 计算的（见7.1节）。具体来说：
+
+```
+   finished_key =
+       HKDF-Expand-Label(BaseKey, "finished", "", Hash.length)
+
+   Structure of this message:
+
+      struct {
+          opaque verify_data[Hash.length];
+      } Finished;
+
+   The verify_data value is computed as follows:
+
+      verify_data =
+          HMAC(finished_key,
+               Transcript-Hash(Handshake Context,
+                               Certificate*, CertificateVerify*))
+
+      * Only included if present.
+```
+
+HMAC [RFC2104] 采用 Hash 算法进行握手。如上所述，HMAC 的输入一般可以通过运行哈希来实现，如此时只需要握手哈希。
+
+在以前的 TLS 版本中，verify_data 总是 12 个字节长。在 TLS 1.3 中，是用于握手的 Hash 的 HMAC 输出大小。
+
+注意：警报和任何其他非握手记录类型不属于握手消息，不包括在哈希计算中。
+
+在 Finished 消息之后的任何记录必须按照 7.2 节所述的适当应用流量密钥进行加密。特别是，这包括服务器响应客户端 Certificate 和 CertificateVerify 消息而发送的任何警报。
+
 ### 4.5. End of Early Data
+
+```
+      struct {} EndOfEarlyData;
+```
+
+如果服务器在 EncryptedExtensions 中发送了 early_data 扩展，那么客户端必须在收到服务器 Finished 后发送 EndOfEarlyData 消息。如果服务器没有在 EncryptedExtensions 中发送 early_data 扩展，那么客户端不得发送 EndOfEarlyData 消息。该消息表示所有的 0-RTT 应用_数据消息（如果有的话）已经传输完毕，之后的数据由握手流量密钥保护。服务器不得发送此消息，客户端收到此消息必须以 unexpected_message alert 终止连接。这个消息是由 client_early_traffic_secret 衍生的密钥进行加密的。
 
 ### 4.6. Post-Handshake Messages
 
+TLS 还允许在主握手之后发送其他消息。这些消息使用握手内容类型，并由合适的应用流量密钥进行加密。
+
 #### 4.6.1. New Session Ticket Message
+
+在收到客户端 Finished 消息后，服务端任何时候都可以发送 NewSessionTicket 消息。 该消息在 ticket 值和从恢复主秘钥中导出的秘密 PSK 之间建立了对应关系（一一对应，见第 7 节）。
+
+客户端可以通过在 ClientHello（4.2.11 节）中的 pre_shared_key 扩展中包含 ticket 值，在未来的握手中使用这个 PSK。服务器可以在一个连接上发送多个 ticket，可以是紧接着发送，也可以是在特定事件之后（见附录 C.4）。例如，服务器可能会在 post-handshake 认证之后发送一个新的 ticket，以便封装额外的客户端认证状态。 多 tikcet 对客户端有多种用途，包括：
+
+- 打开多个并行 HTTP 连接。
+- 通过（例如）Happy Eyeballs [RFC8305] 或相关技术跨接口和地址族执行连接竞速。
+
+任何 ticket 必须只用建立原始连接时使用的 KDF 哈希算法相同的密码套件来恢复。
+
+只有当新的 SNI 值对原始会话中提交的服务器证书有效时，客户端才必须恢复；只有当 SNI 值与原始会话中使用的 SNI 值匹配时，客户端才应该恢复。后者是一种性能优化：通常情况下，没有理由期望一个证书所覆盖的不同服务器能够接受对方的 ticket；因此，在这种情况下尝试恢复会浪费一张单次使用的 ticket。 如果提供了这样的指示（外部或任何其他方式），客户端可以用不同的 SNI 值恢复。
+
+如果恢复时向应用程序传递 SNI 值，实现必须使用恢复 ClientHello 中发送的值，而不是上一个会话中发送的值。注意，如果服务器实现拒绝所有不同 SNI 值的 PSK 标识，则这两个值总是相同的。
+
+注意：虽然恢复主秘钥取决于客户端的第二次发送，但不要求客户端认证的服务器可以独立计算 transcript 的剩余部分，然后在发送 Finished 后立即发送 NewSessionTicket，而不是等待客户端 Finished。 这可能适用于这样的情况：例如，客户端预计将并行打开多个 TLS 连接，并将从减少恢复握手的开销中受益。
+
+```
+      struct {
+          uint32 ticket_lifetime;
+          uint32 ticket_age_add;
+          opaque ticket_nonce<0..255>;
+          opaque ticket<1..2^16-1>;
+          Extension extensions<0..2^16-2>;
+      } NewSessionTicket;
+```
+
+- ticket_lifetime：表示从发布 ticket 时间开始的 32 位无符号整数，以秒为单位，网络字节序。服务器不得使用任何大于 604800 秒（7天）的值。 值为零时表示 ticket 应立即丢弃。无论 ticket_lifetime 多少，客户端都不得将 ticket 缓存超过 7 天，可以根据本地政策提前删除 ticket。 服务器可以在比 ticket_lifetime 更短的时间内将票据视为有效。
+- ticket_age_add：一个安全生成的随机 32 位值，用于掩盖客户端 pre_shared_key 扩展中的 ticket 年龄。 此值加上客户端的 tikcet 年龄，mod 2^32，得到客户端传输的值。服务器必须为每次发送的 ticket 生成一个新的值。
+- ticket_nonce：每个 ticket 对应一个值，使 ticket 在这个连接上唯一。
+- Ticket：作为 PSK 标识的 ticket 值。ticket 本身是一个不透明的标签。 它可以是一个数据库查询键，也可以是一个自加密和自认证的值。
+- Extensions：ticket 的一组扩展。扩展格式在 4.2 节中定义。客户端必须忽略不认识的扩展。
+
+目前为 NewSessionTicket 定义的唯一扩展是 early_data，表示该 ticket 可用于发送 0-RTT 数据（4.2.10 节）。 包含以下值：
+
+- max_early_data_size：使用该 ticket 时，客户端允许发送的 0-RTT 数据的最大数量，单位为字节。 大小只包含应用数据有效载荷（如明文，但不包括填充或内部内容类型字节）。 服务器接收到超过 max_early_data_size 字节的 0-RTT 数据时，应该用 unexpected_message 警报终止连接。 请注意，由于缺乏加密材料而拒绝早期数据的服务器将无法区分 padding 和内容，所以客户端不要依赖能够在早期数据记录中发送大量的 padding。
+
+tikcet 关联的 PSK 计算方式为：
+
+```
+       HKDF-Expand-Label(resumption_master_secret,
+                        "resumption", ticket_nonce, Hash.length)
+```
+
+因为每个 NewSessionTicket 消息的 ticket_nonce 值是不同的，所以每个 ticket 都会衍生出不同的 PSK。
+
+请注意，原则上可以继续发行新的 ticket，它可以无限期地延长最初从 initial non-PSK 握手（很可能与对端证书绑定）中派生的密钥材料的寿命。 建议实施者对这种密钥材料的总寿命进行限制；这些限制应考虑到对端证书的寿命、干预性撤销的可能性以及对端在线 CertificateVerify 签名后的时间。
 
 #### 4.6.2. Post-Handshake Authentication
 
+当客户端发送了 post_handshake_auth 扩展（见 4.2.6 节）后，服务器可以在握手完成后的任何时候通过发送 CertificateRequest 消息来请求客户端认证。 客户端必须用适当的 Authentication 消息来响应（见 4.4 节）。 如果客户端选择认证，则必须发送 Certificate、CertificateVerify 和 Finished。 如果客户端拒绝，则必须发送一个不包含证书的 Certificate 消息，然后是 Finished。 客户端对给定响应的所有消息必须连续发送，中间不能有其他类型的消息。
+客户端如果在没有发送 post_handshake_auth 扩展的情况下接收到 CertificateRequest 消息，必须发送一个 unexpected_message 的致命警告。
+
+注意：由于客户端认证可能涉及到提示用户，服务器必须准备好一些延迟，包括在发送 CertificateRequest 和接收响应之间收到任意数量的其他消息。 此外，如果客户端连续收到多个 CertificateRequest，可能会以不同的顺序响应（certificate_request_context 值允许服务器识别响应）。
+
 #### 4.6.3. Key and Initialization Vector Update
+
+KeyUpdate 握手消息用于指示发送方正在更新其发送的加密密钥。这个消息可以由任何一端在 Finished 消息后发送。在收到 Finished 消息之前收到 KeyUpdate 消息必须用 unexpected_message alert 来终止连接。在发送 KeyUpdate 消息后，发送方必须使用下一代密钥发送所有流量，这些密钥按照 7.2 节的描述计算。在收到 KeyUpdate 消息后，接收方必须更新接收密钥。
+
+```
+      enum {
+          update_not_requested(0), update_requested(1), (255)
+      } KeyUpdateRequest;
+
+      struct {
+          KeyUpdateRequest request_update;
+      } KeyUpdate;
+```
+
+- request_update：表示 KeyUpdate 的接收者是否应该用自己的 KeyUpdate 来响应。如果接收到任何其他的值，必须用 illegal_parameter alert 来终止连接。
+
+如果 request_update 字段被设置为 update_requested，那么接收方必须在发送下一个应用数据之前，发送一个自己的 KeyUpdate，并将 request_update 设置为 update_not_requested。这个机制允许任何一方强制更新整个连接，但是会导致接收多个 KeyUpdates 的实现在沉默的时候用一个更新来响应。 请注意，在发送 request_update 设置为 update_requested 的 KeyUpdate 和接收对端的 KeyUpdate 之间，可能会收到任意数量的消息，因为这些消息可能已经在路上。 然而，由于发送和接收密钥来自于独立的流量秘钥，因此保留接收流量秘钥并不会威胁到发送者更改密钥之前发送的数据的前向保密性。
+
+如果实现独立发送 request_update 设置为 update_requested 的 KeyUpdate，并且它们在传输中交叉，那么每一方也会发送一个响应，结果就是每一方递增两代。
+
+发送方和接收方都必须用旧密钥加密他们的 KeyUpdate 消息。此外，双方都必须强制要求在接受任何用新密钥加密的消息之前，收到用旧密钥的 KeyUpdate。如果不这样做，可能会引发消息截断攻击。
 
 ## 5. Record Protocol
 
