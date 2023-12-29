@@ -1136,11 +1136,82 @@ TLS 实现不应自动重新发送 early data；应用程序能够更好地决�
 
 #### 4.2.11. Pre-Shared Key Extension
 
+"pre_shared_key" 扩展用于协商 PSK 密钥建立相关联握手使用的预共享密钥身份。
+
+此扩展的 "extension_data" 字段包含 "PreSharedKeyExtension" 值：
+
+```
+      struct {
+          opaque identity<1..2^16-1>;
+          uint32 obfuscated_ticket_age;
+      } PskIdentity;
+
+      opaque PskBinderEntry<32..255>;
+
+      struct {
+          PskIdentity identities<7..2^16-1>;
+          PskBinderEntry binders<33..2^16-1>;
+      } OfferedPsks;
+
+      struct {
+          select (Handshake.msg_type) {
+              case client_hello: OfferedPsks;
+              case server_hello: uint16 selected_identity;
+          };
+      } PreSharedKeyExtension;
+```
+
+- Identity：秘钥标签。例如，附录 B.3.4 中定义的 ticket，或外部配置的预共享密钥标签。
+- obfuscated_ticket_age：密钥生存时间的混淆版本。4.2.11.1 节描述了怎样通过 NewSessionTicket 消息建立的标识生成此值。对于外部配置的标识，应该使用 0 的 obfuscated_ticket_age，服务器必须忽略该值。
+- Identities：客户端想要与服务器协商的标识列表。如果与 "early_data" 扩展一起发送（见4.2.10节），第一个标识是用于 0-RTT 数据。
+- Binders：一系列 HMAC 值，每个标识值一个，并且以相同顺序排列，计算过程如下所述。
+- selected_identity：服务器选择的标识，以客户端列表中的标识表示为 (0-based) 的索引。
+
+每个 PSK 与一个哈希算法相对应。对于通过 ticket 机制建立的 PSK（4.6.1节），是建立 ticket 的连接上的 KDF Hash 算法。对于外部配置的 PSK，当 PSK 建立时，必须设置哈希算法，或者没指定算法时默认为 SHA-256。 服务器必须确保选择兼容的 PSK（如果有的话）和密码套件。
+
+TLS 1.3 之前的版本中，服务器名字标识（Server Name Identification，SNI）值需要与 session 相对应（[RFC6066] 中第 3 章），服务器需要强制 SNI 值与握手恢复中指定的匹配 session 相对应。然而，现实中使用提供的 SNI 值中的哪一个，实现并不一致，这导致客户端事实上强制执行一致性要求。在 TLS 1.3 中，SNI 值总是在恢复握手中指定，服务器没必要将 SNI 值与 ticket 关联。但客户端应该与 PSK 一起存储 SNI 来满足 4.6.1 中的要求。
+
+实现需注意：当会话恢复是 PSK 主要应用场景时，实现 PSK/密码套件匹配要求的最直接方法是先协商密码套件，然后排除任何不兼容的 PSK。任何未知的 PSK（如不在 PSK 数据库中或者以未知秘钥加密）应该忽略。如果没有可接受的 PSK，服务器可能的话应该执行 non-PSK 握手。如果前向兼容很重要，客户端的外部配置 PSK 应该决定密码套件选择。
+
+在接受 PSK 密钥建立之前，服务器务必验证相应的 binder 值（见下面的 4.2.11.2 节）。如果此值不存在或未验证，则服务器必须中止握手。服务器不应该尝试验证多个 binder，而是应该选择单个 PSK 并且仅验证对应于该 PSK 的 binder。该要求的安全原理见 8.2 节和附录 E.6。为了接受 PSK 密钥建立，服务器发送 "pre_shared_key" 扩展来指示选择的标识。
+
+客户端必须验证服务器的 selected_identity 是否在客户端提供的范围内，服务器选择了包含与 PSK 关联哈希的加密套件，并且如果 ClientHello "psk_key_exchange_modes" 扩展需要，服务器应该发送 "key_share" 扩展。如果这些值不一致，客户端必须使用 "illegal_parameter" alert 中止握手。
+
+如果服务器提供了 "early_data" 扩展，客户端必须验证服务器的 selected_identity 是否为 0。如果返回任何其他值，客户端必须使用 "illegal_parameter" alert 中止握手。
+
+"pre_shared_key" 扩展必须是 ClientHello 中的最后一个扩展（这有助于如下所述的实现）。 服务器必须检查它是最后一个扩展，否则以 "illegal_parameter" alert 握手失败。
+
 ##### 4.2.11.1. Ticket Age
+
+客户端对 ticket 生存时间的看法是收到 NewSessionTicket 消息后的时间。客户端不得尝试使用 ticket 生存时间大于 "ticket_lifetime" 值的 ticket。每个 PskIdentity 的 "obfuscated_ticket_age" 字段包含了 ticket 生存时间的混淆版本，以毫秒为单位，加上票据中包含的 "ticket_age_add" 值（见4.6.1节），mod 2^32。这个添加可以防止被动观察者关联连接，除非票据被重复使用。请注意，NewSessionTicket 消息中的 "ticket_lifetime" 字段的单位是秒，但 "obfuscated_ticket_age" 的单位是毫秒。因为票据生存期被限制在一周之内，32 位足以代表任何可信的生存期，即使是以毫秒为单位。
 
 ##### 4.2.11.2. PSK Binder
 
+PSK binder 值绑定了 PSK 和当前握手，并且绑定生成 PSK 的握手（如果通过 NewSessionTicket 消息）和当前握手。binder 列表中的每个条目被计算为直到（并包括）PreSharedKeyExtension.identities 字段的 ClientHello 部分（包括握手报头）上的 HMAC（transcript hash，见4.4.1）。也就是说，它包括所有 ClientHello，但不包括 bingder 列表本身。消息的长度字段（包括总长度，扩展块长度和 "pre_shared_key" 扩展长度）都是按照正确长度的 binder 来设置的。
+
+PskBinderEntry 以 Finished 消息（4.4.4节）相同方式计算，但是 BaseKey 是提供相应 PSK 的密钥计划表派生的 binder_key（见第 7.1 节）。
+
+如果握手包括 HelloRetryRequest，则初始 ClientHello 和 HelloRetryRequest 与新的 ClientHello 一起被包括在副本中。例如，如果客户端发送 ClientHello1，则其 binder 将如下计算：
+
+```
+      Transcript-Hash(Truncate(ClientHello1))
+```
+
+其中 Truncate() 从 ClientHello 中移除 binder 列表。
+
+如果服务器响应 HelloRetryRequest，然后客户端然后发送 ClientHello2，其 binder 将通过计算：
+
+```
+      Transcript-Hash(ClientHello1,
+                      HelloRetryRequest,
+                      Truncate(ClientHello2))
+```
+
+完整的 ClientHello1/ClientHello2 包括在所有其他握手哈希计算中。注意在第一次发送中，Truncate(ClientHello1) 是直接哈希的，但在第二次发送中 ClientHello1 先哈希，然后作以 "message_hash" 消息注入，如 4.4.1 所述。
+
 ##### 4.2.11.3. Processing Order
+
+客户端接收服务器的 Finished 之前都可以 "stream" 0-RTT 数据，然后发送 EndOfEarlyData 消息，接着是剩下的握手。为了避免死锁，当接受 "early_data" 时，服务器必须处理客户端的 ClientHello，然后立即发送消息，而不是在发送 ServerHello 前等待客户端的 EndOfEarlyData 消息。
 
 ### 4.3. Server Parameters
 
