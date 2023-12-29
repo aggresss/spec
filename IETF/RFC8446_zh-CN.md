@@ -1215,9 +1215,45 @@ PskBinderEntry 以 Finished 消息（4.4.4节）相同方式计算，但是 Base
 
 ### 4.3. Server Parameters
 
+来自服务器的接下来两条消息 EncryptedExtensions 和 CertificateRequest，包含来自决定其余握手的服务器的信息。这些消息使用从 server_handshake_traffic_secret 派生的密钥加密。
+
 #### 4.3.1. Encrypted Extensions
 
+在所有握手中，服务器必须在 ServerHello 消息之后立即发送 EncryptedExtensions 消息。这是使用 server_handshake_traffic_secret 派生密钥加密的第一条消息。
+
+EncryptedExtensions 消息包含可以被保护的扩展，即不需要建立加密上下文但不与各个证书相关联的扩展。客户端必须检查 EncryptedExtensions 是否存在任何禁止的扩展，如果发现任何此类扩展，必须用 "illegal_parameter" alert 中止握手。
+
+这个消息的结构：
+
+```
+   Structure of this message:
+
+      struct {
+          Extension extensions<0..2^16-1>;
+      } EncryptedExtensions;
+```
+
+- Extensions：扩展列表。更多信息见 4.2 节的表格。
+
 #### 4.3.2. Certificate Request
+
+使用证书进行身份验证的服务器可以选择向客户端请求证书。如果发送了这个消息，必须在 EncryptedExtensions 之后。
+
+此消息的结构：
+
+```
+      struct {
+          opaque certificate_request_context<0..2^8-1>;
+          Extension extensions<2..2^16-1>;
+      } CertificateRequest;
+```
+
+- certificate_request_context：一个不透明的字符串，用于表示证书请求，并在客户端的证书消息中回复。 certificate_request_context 在此连接的范围内必须是唯一的（从而防止客户端 CertificateVerify 消息的重放）。该字段应为零长度，除非用于 4.6.2 节中描述的 post-handshake 身份验证交互。当请求 post-handshake 认证时，服务器应该使上下文对客户端不可预测（比如随机生成），从而防止临时访问客户端私钥的攻击者预先计算出有效的 CertificateVerify 消息。
+- Extensions：描述正在请求的证书参数的扩展集。必须指定 "signature_algorithms" 扩展名，如果此消息定义了其他扩展也可以选择性包含。客户端必须忽略不认识的扩展。
+
+在 TLS 的先前版本中，CertificateRequest 消息携带服务器接受的签名算法和证书授权列表。在 TLS 1.3 中，前者通过发送 "signature_algorithms" 和可选的 "signature_algorithms_cert" 扩展来表示。后者通过发送 "certificate_authorities" 扩展来表示（见4.2.4节）。
+
+使用 PSK 认证的服务器不得在主握手中发送 CertificateRequest 消息，虽然可以在 post-handshake 认证中发送（见4.6.2），但客户端要已经发送了 "post_handshake_auth" 扩展（见 4.2.6）。
 
 ### 4.4. Authentication Messages
 
