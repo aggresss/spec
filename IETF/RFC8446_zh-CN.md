@@ -73,7 +73,7 @@ TLS是一个独立的应用协议；上层协议可以透明地运行于 TLS 之
 
 安全通道使用的密码参数由 TLS 握手协议生成。这个 TLS 的子协议在 client 和 server 第一次通信时使用。握手协议使两端协商协议版本、选择密码算法、选择性互相认证，并得到共享的密钥数据。一旦握手完成，双方就会使用得出的密钥保护应用层流量。
 
-握手失败或其它协议错误会触发连接中止，在这之前可以有选择地发送一个警报消息（第6章）。
+握手失败或其它协议错误会触发连接中止，在这之前可以有选择地发送一个 alert 消息（第6章）。
 
 TLS支持3种基本的密钥交换模式：
 - (EC)DHE (基于有限域或椭圆曲线的Diffie-Hellman)
@@ -146,7 +146,7 @@ Server 处理 ClientHello 并为连接确定合适的加密参数，然后以 Se
 
 ### 2.1. Incorrect DHE Share
 
-如果 client 没有提供足够的 "key_share" 扩展（例如，只包含 server 不接受或不支持的 DHE 或 ECDHE 组），server 会使用 HelloRetryRequest 来纠正这个不匹配问题，client 需要使用一个合适的 "key_share" 扩展来重启握手，如图 2 所示。如果没有通用的密码参数能够协商，server 必须使用一个适当的警报来中止握手。
+如果 client 没有提供足够的 "key_share" 扩展（例如，只包含 server 不接受或不支持的 DHE 或 ECDHE 组），server 会使用 HelloRetryRequest 来纠正这个不匹配问题，client 需要使用一个合适的 "key_share" 扩展来重启握手，如图 2 所示。如果没有通用的密码参数能够协商，server 必须使用一个适当的 alert 来中止握手。
 
 ```
         Client                                               Server
@@ -339,7 +339,7 @@ PSK 可以与 (EC)DHE 密钥交换算法一同使用以便使共享密钥具备�
       Datum Data[9];        /* three consecutive 3-byte vectors */
 ```
 
-变长向量的定义是通过指定一个合法长度的子范围来实现（使用符号 <floor..ceiling> ）。**当这些被编码时，在字节流中实际长度是在向量的内容之前。这个长度会以一个数字的形式出现，并使用足够多的字节以便表示向量的最大长度（ceiling）。** 一个实际长度是 0 的变长向量会被当做一个空向量。
+变长向量的定义是通过指定一个合法长度的子范围来实现（使用符号 <floor..ceiling> ）。**当变长向量被编码时，在字节流中实际长度是在向量的内容之前。这个长度会以一个数字的形式出现，并使用足够多的字节以便表示向量的最大长度（ceiling）。**一个实际长度是 0 的变长向量会被当做一个空向量。
 
 ```
       T T'<floor..ceiling>;
@@ -500,7 +500,7 @@ PSK 可以与 (EC)DHE 密钥交换算法一同使用以便使共享密钥具备�
       } Handshake;
 ```
 
-协议消息必须以 4.4.1 中定义的顺序发送，这也已经在第 2 章的图中展示了。对端如果收到了不按顺序发送的握手消息必须使用一个 "unexpected_message" 警报来中止握手。
+协议消息必须以 4.4.1 中定义的顺序发送，这也已经在第 2 章的图中展示了。对端如果收到了不按顺序发送的握手消息必须使用一个 "unexpected_message" alert 来中止握手。
 
 新的握手消息类型已经由 IANA 指定并在第 11 章中描述。
 
@@ -517,7 +517,7 @@ PSK 可以与 (EC)DHE 密钥交换算法一同使用以便使共享密钥具备�
 - 一个 "signature_algorithms" (4.2.3) 扩展，指的是 client 能接受的签名算法；可能会添加一个 "signature_algorithms_cert" 扩展（4.2.3）来指明证书指定的签名算法。
 - 一个 "pre_shared_key" (4.2.11) 扩展，包含了一个 client 知晓的对称密钥；一个 "psk_key_exchange_modes" (4.2.9) 扩展，表明与 PSK 一起使用的密钥交换模式。
 
-如果 server 没有选择PSK，则这些选项的前 3 个是完全正交的：server 独立地选择一个密码族，一个 (EC)DHE 组和用于确定密钥的密钥共享，一个签名算法或证书对用于认证自己和 client。如果接收到的 "supported_groups" 和 server 所支持的组之间没有重叠，则 server 必须用一个 "handshake_failure" 或一个 "insufficient_security" 警报中止握手。
+如果 server 没有选择PSK，则这些选项的前 3 个是完全正交的：server 独立地选择一个密码族，一个 (EC)DHE 组和用于确定密钥的密钥共享，一个签名算法或证书对用于认证自己和 client。如果接收到的 "supported_groups" 和 server 所支持的组之间没有重叠，则 server 必须用一个 "handshake_failure" 或一个 "insufficient_security" alert 中止握手。
 
 如果 server 选择了一个 PSK，则必须从 client 的 "psk_key_exchange_modes" 扩展（目前是仅 PSK 或带 (EC)DHE）所携带的集合中选择一个密钥建立模式。需要注意的是如果可以不带 (EC)DHE 就使用 PSK，则 "supported_groups" 参数不重叠不一定是致命的，就像之前讨论过的非 PSK 场景一样。
 
@@ -529,7 +529,7 @@ PSK 可以与 (EC)DHE 密钥交换算法一同使用以便使共享密钥具备�
 - 使用 (EC)DHE 时，server 也会提供 "key_share" 扩展。如果没有使用 PSK，则一直使用 (EC)DHE 和基于证书的认证。
 - 当通过证书进行验证时，server 将会发送 Certificate(4.4.2) 和 CertificateVerify(4.4.3) 消息。在本文定义的 TLS 1.3 中，会一直使用一个 PSK 或一个证书，但两者不会同时使用。将来的文档可能会定义怎样同时使用它们。
 
-如果 server 不能协商出支持的参数集合（例如，client 和 server 的参数集合没有重叠），它必须用一个 "handshake_failure" 或一个 "insufficient_security" 警报（见第6章）中止握手。
+如果 server 不能协商出支持的参数集合（例如，client 和 server 的参数集合没有重叠），它必须用一个 "handshake_failure" 或一个 "insufficient_security" alert（见第6章）中止握手。
 
 #### 4.1.2. Client Hello
 
@@ -542,7 +542,7 @@ PSK 可以与 (EC)DHE 密钥交换算法一同使用以便使共享密钥具备�
 - 选择性增加、删除或更改 "padding" 扩展 [RFC7685] 的长度。
 - 将来定义的其他 HelloRetryRequest 中扩展允许的修改。
 
-由于 TLS 1.3 禁止重协商，如果 server 已经协商完成了 TLS 1.3，在任何其它时间收到了 ClientHello，必须用 "unexpected_message" 警报中止连接。
+由于 TLS 1.3 禁止重协商，如果 server 已经协商完成了 TLS 1.3，在任何其它时间收到了 ClientHello，必须用 "unexpected_message" alert 中止连接。
 
 如果 server 用以前版本的 TLS 建立了连接并在重协商时接收了一个 TLS 1.3 的 ClientHello，它必须保持以前的协议版本，不能协商 TLS 1.3。
 
@@ -648,7 +648,7 @@ Client 接收到一个没有提供过的密码套件必须终止握手。Server 
 
 此外，在更新的 ClientHello 中，客户端不应提供与所选密码套件以外的哈希相关联的任何预共享密钥。 这允许客户端避免在第二个 ClientHello 中计算多个哈希的部分哈希转录。
 
-接收未提供的密码套件的客户端必须中止握手。 服务器必须确保在接收到一致的更新 ClientHello 时协商相同的密码套件（如果服务器选择密码套件作为协商的第一步，则会自动发生）。客户端收到 ServerHello 后必须检查 ServerHello 中提供的密码套件是否与 HelloRetryRequest 中的密码套件相同，否则将以 "illegal_parameter" 警报中止握手。
+接收未提供的密码套件的客户端必须中止握手。 服务器必须确保在接收到一致的更新 ClientHello 时协商相同的密码套件（如果服务器选择密码套件作为协商的第一步，则会自动发生）。客户端收到 ServerHello 后必须检查 ServerHello 中提供的密码套件是否与 HelloRetryRequest 中的密码套件相同，否则将以 "illegal_parameter" alert 中止握手。
 
 HelloRetryRequest 中的 "supported_versions" 扩展的 selected_version 值必须在 ServerHello 中保留，如果值变化了，client 必须以 "illegal_parameter" alert 终止握手。
 
@@ -811,11 +811,11 @@ Cookie有两个主要目的：
 
 #### 4.2.3. Signature Algorithms
 
-TLS 1.3 提供了两个扩展来表示数字签名里会用哪种签名算法。"signature_algorithms_cert" 扩展提供证书中的签名，"signature_algorithms" 扩展是从 TLS 1.2 出现的，提供CertificateVerify消息中的签名。证书中的秘钥也必须是所使用的签名算法的适当类型。这是RSA密钥和PSS签名的一个特殊问题，如下所述。如果没有"signature_algorithms_cert"扩展，"signature_algorithms"扩展也提供证书中的出现的签名。客户端如果期望服务器通过证书证明其身份，必须发送"signature_algorithms"扩展。如果服务器通过证书证明了其身份，且客户端没有发送"signature_algorithms"扩展，那么服务器必须以"missing_extension" alert终止握手（见9.2）.
+TLS 1.3 提供了两个扩展来表示数字签名里会用哪种签名算法。"signature_algorithms_cert" 扩展提供证书中的签名，"signature_algorithms" 扩展是从 TLS 1.2 出现的，提供 CertificateVerify 消息中的签名。证书中的秘钥也必须是所使用的签名算法的适当类型。这是 RSA 密钥和 PSS 签名的一个特殊问题，如下所述。如果没有 "signature_algorithms_cert" 扩展，"signature_algorithms" 扩展也提供证书中的出现的签名。客户端如果期望服务器通过证书证明其身份，必须发送 "signature_algorithms" 扩展。如果服务器通过证书证明了其身份，且客户端没有发送 "signature_algorithms" 扩展，那么服务器必须以 "missing_extension" alert 终止握手（见9.2）.
 
-"signature_algorithms_cert"扩展允许支持证书的不同算法集的实现明确表达自己的能力。TLS 1.2实现应该也处理这些扩展。两种情况里具有相同策略的实现都可以使用signature_algorithms_cert"扩展。
+"signature_algorithms_cert" 扩展允许支持证书的不同算法集的实现明确表达自己的能力。TLS 1.2 实现应该也处理这些扩展。两种情况里具有相同策略的实现都可以使用 "signature_algorithms_cert" 扩展。
 
-ClientHello 扩展中的"extension_data"字段包含SignatureSchemeList值：
+ClientHello 扩展中的 "extension_data" 字段包含 SignatureSchemeList 值：
 
 ```
       enum {
@@ -857,15 +857,177 @@ ClientHello 扩展中的"extension_data"字段包含SignatureSchemeList值：
       } SignatureSchemeList;
 ```
 
+注意：枚举名为 "SignatureScheme"，因为 TLS 1.2 中已经有一个 "SignatureAlgorithm" 类型，将被此替换。 我们在全文中使用术语 "signature algorithm"。
+
+每个 SignatureScheme 值列出客户端愿意验证的单一签名算法。这些值以优先级的降序排列。注意，签名算法输入任意长度的消息，而不是摘要。传统上作用于摘要的算法应在 TLS 中定义，首先使用指定的哈希算法对输入进行哈希，然后照常处理。上面列出的码点组具有以下含义：
+
+- RSASSA-PKCS1-v1_5 算法：表示使用 RSASSA-PKCS1-v1_5 [RFC3447] 签名算法和 [SHS] 中定义的相应哈希算法。这些值仅涉及出现在证书中的签名（见4.4.1.2），并且未定义用于签名TLS握手消息。但它们可能出现在 "signature_algorithms" 和 "signature_algorithms_cert" 以对 TLS 1.2 做前向兼容。
+- ECDSA 算法：表示使用 ECDSA [ECDSA] 签名算法，ANSI X9.62 [X962] 和 FIPS 186-4 [DSS] 中定义了相应曲线，[SHS] 中定义了相应哈希算法。签名表示为 DER-encoded [X690] 的 ECDSA-Sig-Value 结构。
+- RSASSA-PSS RSAE 算法：表示使用具有掩码生成功能 1 的 RSASSA-PSS [RFC8017] 签名算法。掩码生成函数中使用的摘要和签名的摘要都是在 [SHS] 中定义的相应哈希算法。Salt 的长度必须等于摘要输出的长度。如果在 X.509 证书中携带公钥，必须使用 rsaEncryption OID [RFC5280]。
+- EdDSA 算法：表示使用[RFC8032] 中定义的 EdDSA 签名算法或其后续算法。注意，这些对应于 "PureEdDSA" 算法，而不是 "prehash" 变体。
+- RSASSA-PSS PSS 算法：表示使用掩码生成函数 1 的 RSASSA-PSS [RFC8017] 签名算法 。掩码生成函数中使用的摘要和签名的摘要都是 [SHS] 中定义的相应哈希算法。如果 X.509 证书中携带了公钥，必须使用 RSASSA-PSS OID  [RFC5756]。当在证书签名中使用时，算法参数必须是DER编码的。如果对应的公钥参数存在，算法中的参数必须与公钥参数相同。
+- 遗留算法：表示由于具有已知缺点被弃用的算法，特别是在本文中使用的用 RASSA-PKCS1-v1_5 的 RSA 或 ECDSA。这些值仅指出现在证书中的签名（见4.4.2.2），并且未被定义用于签名TLS握手消息，虽然它们可以出现在 "signature_algorithms" 和 "signature_algorithms_cert" 中以前向兼容 TLS 1.2。端点不应该协商这些算法，但允许这样做仅仅是为了前向兼容。 提供这些值的客户端必须将其列为最低优先级（在 SignatureSchemeList 中的所有其他算法之后列出）。 TLS 1.3 服务器不得提供 SHA-1 签名证书，除非没有此证书就不能生成有效的证书链（见4.4.2.2）。
+
+自签名证书或作为信任锚的证书上的签名不会生效，因为它们开始了认证路径（见 [RFC5280] 3.2 节）。 开始认证路径的证书可以使用未在 "signature_algorithms" 扩展中通告的签名算法。
+
+注意，TLS 1.2 定义了不同扩展。愿意协商 TLS 1.2 的 TLS 1.3 实现在协商该版本时必须按照 [RFC5246] 的要求进行操作。尤其是：
+
+- TLS 1.2 ClientHello 可以删除此扩展。
+- 在 TLS 1.2 中，扩展包含 hash/signature 对。 这些对被编码为两个字节，因此已分配 SignatureScheme 值已与 TLS 1.2 的编码对齐。 一些遗留对保留未分配。 这些算法自 TLS 1.3 起已弃用，不得提供或协商。 特别是，不得使用 MD5 [SLOTH]、SHA-224 和 DSA。
+- ECDSA 签名方案与 TLS 1.2 的 ECDSA哈希/签名对一致。 然而，旧语义没有约束签名曲线。如果协商 TLS 1.2，则必须准备接受使用 "supported_groups" 扩展中通告的任何曲线的签名。
+- 支持 RSASSA-PSS（在 TLS 1.3 中是强制的）的实现必须准备接受使用该方案的签名，即使协商的是 TLS 1.2。 在 TLS 1.2 中，RSASSA-PSS 与 RSA 密码套件一起使用。
+
 #### 4.2.4. Certificate Authorities
+
+"certificate_authorities" 扩展用于指示端点支持的证书授权机构（CA），并且接收端点应该使用它来指导证书选择。
+
+"certificate_authorities" 扩展的内容由 CertificateAuthoritiesExtension 结构组成。
+
+```
+      opaque DistinguishedName<1..2^16-1>;
+
+      struct {
+          DistinguishedName authorities<3..2^16-1>;
+      } CertificateAuthoritiesExtension;
+```
+
+- authorities: 可接受证书颁发机构的名称 [X501] 列表，以 DER 编码 [X690] 格式表示。这些名称为信任锚或从属 CA 指定所需名称，因此，该消息可以用于描述已知的信任锚以及期望的授权空间。
+
+客户端可以在 ClientHello 消息中发送 "certificate_authorities" 扩展。 服务器可以在 CertificateRequest 消息中发送。
+
+"trusted_ca_keys" 扩展 [RFC6066] 目的类似，但更为复杂，TLS 1.3 中不使用，但可能出现在先前 TLS 版本客户端的 ClientHello 消息中。
 
 #### 4.2.5. OID Filters
 
+"oid_filters" 扩展允许服务器提供一组希望客户端的证书匹配的 OID/value 对。如果是服务器提供的扩展，必须只能在 CertificateRequest 消息中发送。
+
+```
+      struct {
+          opaque certificate_extension_oid<1..2^8-1>;
+          opaque certificate_extension_values<0..2^16-1>;
+      } OIDFilter;
+
+      struct {
+          OIDFilter filters<0..2^16-1>;
+      } OIDFilterExtension;
+```
+
+filters:  证书扩展 OID 列表 [RFC5280] 和允许值，以 DER-encoded [X690] 格式呈现。一些证书扩展 OID 允许多个值（如 Extended Key Usage）。如果服务器包含了一个非空 filters 列表，回应的客户端证书必须包含所有客户端认识的指定扩展 OID。对于每个客户端认识的扩展 OID，所有指定值都必须出现在客户端证书中（但证书也可以有其他值）。然而，客户端必需忽略并跳过任何不认识的扩展 OID。如果客户端忽略一些要求的证书扩展 OID，并提供一个不满足请求的证书，服务器可以自行决定是在没有客户端认证的情况下继续连接，还是以 "unsupported_certificate" alert 放弃握手。任何给定的 OID 禁止在 filters 列表中出现多次。
+
+PKIX RFCs 定义了各种各样的证书扩展 OID 和对应值。匹配证书扩展值不一定位相等，取决于类型。TLS 实现最好由它们的 PKI 库使用证书扩展 OID 执行证书选择。
+
+本文为 [RFC5280] 中的两个标准证书扩展定义了匹配规则：
+
+- 当请求中 assert 的所有 key usage 位也在 Key Usage 证书扩展中 assert，则证书中的 Key Usage 扩展与请求匹配。
+- 当请求中所有秘钥用途 OID 也在 Extended Key Usage 证书扩展中找到，则证书中的 Extended Key Usage 扩展与请求匹配。
+
+不同规范可以为其他证书扩展定义匹配规则。
+
 #### 4.2.6. Post-Handshake Client Authentication
+
+"post_handshake_auth" 扩展用于表示客户端愿意执行 post-handshake authentication（4.6.2节）。 服务器禁止向不提供此扩展的客户端发送 post-handshake CertificateRequest。 服务器不得发送此扩展。
+
+```
+      struct {} PostHandshakeAuth;
+```
+
+"post_handshake_auth" 扩展的 "extension_data" 字段为零长度。
 
 #### 4.2.7. Supported Groups
 
+当客户端发送 "supported_groups" 扩展时，表示客户端支持的用于密钥交换的命名组（named groups），顺序从最优选到最不优选。
+
+注意：在 TLS 1.3 之前的 TLS 版本中，此扩展名称为 "elliptic_curves"，并且只包含椭圆曲线组（见 [RFC4492] 和 [RFC7919]）。 此扩展也用于协商 ECDSA 曲线。签名算法现在独立协商（见4.2.3节）。
+
+此扩展的 "extension_data" 字段包含 "NamedGroupList" 值：
+
+```
+      enum {
+
+          /* Elliptic Curve Groups (ECDHE) */
+          secp256r1(0x0017), secp384r1(0x0018), secp521r1(0x0019),
+          x25519(0x001D), x448(0x001E),
+
+          /* Finite Field Groups (DHE) */
+          ffdhe2048(0x0100), ffdhe3072(0x0101), ffdhe4096(0x0102),
+          ffdhe6144(0x0103), ffdhe8192(0x0104),
+
+          /* Reserved Code Points */
+          ffdhe_private_use(0x01FC..0x01FF),
+          ecdhe_private_use(0xFE00..0xFEFF),
+          (0xFFFF)
+      } NamedGroup;
+
+      struct {
+          NamedGroup named_group_list<2..2^16-1>;
+      } NamedGroupList;
+```
+
+- Elliptic Curve Groups（ECDHE）：表示支持对应的命名曲线，在 FIPS 186-4 [DSS] 或 [RFC7748] 中定义。值 0xFE00 到 0xFEFF 保留供私用。
+- Finite Field Groups（DHE）：表示支持相应的有限域组，在 [RFC7919] 中定义。值 0x01FC 至 0x01FF 保留供私用。
+
+named_group_list 中的条目根据发送者的偏好排序（最前面是最偏好的选择）。
+
+从 TLS 1.3 开始，服务器可以向客户端发送 "supported_groups" 扩展。客户端不能在成功完成握手之前对 "supported_groups" 中的任何信息采取行动，但可以使用从成功完成的握手中获得的信息来更改后续连接中 "key_share" 扩展中使用的组。如果服务器有一个更偏向于用 "key_share" 扩展中信息的一个组，但仍然愿意接受 ClientHello，它应该发送 "supported_groups" 来更新客户端的偏好视图。此扩展应包含服务器支持的所有组，无论当前客户端是否支持。
+
 #### 4.2.8. Key Share
+
+"key_share" 扩展包含端点的加密参数。
+
+客户端可以发送空的 client_shares 向量，以一个额外的往返代价从服务器请求组选择（见4.1.4）。
+
+```
+      struct {
+          NamedGroup group;
+          opaque key_exchange<1..2^16-1>;
+      } KeyShareEntry;
+```
+
+- group：要交换的密钥的命名组。
+- key_exchange: 密钥交换信息。此字段的内容由指定组及其相应的定义确定。有限域 Diffie-Hellman [DH76] 参数在 4.2.8.1 中描述。椭圆曲线 Diffie-Hellman 参数在 4.2.8.2 中描述。
+
+在 ClientHello 消息中，这个扩展的 "extension_data" 字段包含一个 "KeyShareClientHello" 值：
+
+```
+      struct {
+          KeyShareEntry client_shares<0..2^16-1>;
+      } KeyShareClientHello;
+```
+
+- client_shares：一组提供的 KeyShareEntry 值，以客户端偏好降序排列。
+
+如果客户端请求 HelloRetryRequest，则此向量可以为空。 每个 KeyShareEntry 值必须对应于在 "supported_groups" 扩展中提供的组，并且必须以相同的顺序排列。然而，值可以是 "supported_groups" 扩展的非连续子集，并且可以省略最优选的组。如果最优选的组是新的，并且没有足够的空间更高效地预生成共享秘钥，则可能出现这种情况。
+
+客户端可以提供很多 KeyShareEntry 值，数量跟提供的支持的组一样，每个值表示一组密钥交换参数。例如，客户端可能为几个椭圆曲线或多个 FFDHE 组提供共享秘钥。每个 KeyShareEntry 的 key_exchange 值必须独立生成。 客户不得为同一组提供多个 KeyShareEntry 值。 客户端不得为 "supported_groups" 扩展中未列出的组提供 KeyShareEntry 值。服务器可能会检查违反了这些规则的行为，如果违反了则使用 "illegal_parameter" alert 来中止握手。
+
+在 HelloRetryRequest 消息中，此扩展的 "extension_data" 字段包含一个 KeyShareHelloRetryRequest 值：
+
+```
+      struct {
+          NamedGroup selected_group;
+      } KeyShareHelloRetryRequest;
+```
+
+- selected_group：服务器打算协商的都支持的组，准备为期请求重试 ClientHello/KeyShare。
+
+在 HelloRetryRequest 中接收到此扩展时，客户端必须验证：
+
+1. selected_group 字段对应于在原始 ClientHello "supported_groups" 扩展中提供的组；
+2. selected_group 字段与原始 ClientHello 中的 "key_share" 扩展中提供的组不对应。
+
+如果这些检查中的任一个失败，则客户端必须用 "illegal_parameter" alert 来中止握手。 否则，当发送新的 ClientHello 时，客户端必须用仅包含新 KeyShareEntry 的扩展替换原来的 "key_share" 扩展，新的扩展对应于触发 HelloRetryRequest 的 selected_group 字段中指示的组。
+
+在 ServerHello 中，此扩展的 "extension_data" 字段包含一个 KeyShareServerHello 值：
+
+```
+      struct {
+          KeyShareEntry server_share;
+      } KeyShareServerHello;
+```
+
+- server_share：一个跟客户端共享的在同一个组中的 KeyShareEntry 值。
+
+如果使用 (EC)DHE 密钥协商，服务器在 ServerHello 中只提供一个 KeyShareEntry。 该值必须与服务器为协商密钥交换选择的客户端提供的 KeyShareEntry 值在同一组。服务器不得为 "supported_groups" 扩展中指定的任何组发送 KeyShareEntry，并且在使用 "psk_ke" PskKeyExchangeMode 时不得发送 KeyShareEntry。如果使用 (EC)DHE 密钥协商，并且客户端收到包含 "key_share" 扩展的 HelloRetryRequest，客户端必须验证 ServerHello 中选择的 NamedGroup 与 HelloRetryRequest 中的相同，否则必须以 "illegal_parameter" alert 中止握手。
 
 ##### 4.2.8.1. Diffie-Hellman Parameters
 
