@@ -1031,11 +1031,108 @@ named_group_list 中的条目根据发送者的偏好排序（最前面是最偏
 
 ##### 4.2.8.1. Diffie-Hellman Parameters
 
+客户端和服务器的 Diffie-Hellman [DH76] 参数都编码在 KeyShare 结构中的 KeyShareEntry 的 opaque key_exchange 字段中。opaque 值包含指定组（参见 [RFC7919] 的组定义）的 Diffie-Hellman 公共值（Y=g^X mod p），编码为大端字节序整数，并用填充 0 到左侧至 p 字节。
+
+注意：对于给定的 Diffie-Hellman 组，填充使所有公钥长度相同。
+
+对端应该通过确保 `1 < Y < p-1` 来验证对方的公钥 Y。此检查确保对端在行为正常，并且不强制本地系统进入小型组。
+
 ##### 4.2.8.2. ECDHE Parameters
+
+客户端和服务器的 ECDHE 参数都编码在 KeyShare 结构中 KeyShareEntry 的 opaque key_exchange 字段中。
+
+对于 secp256r1、secp384r1、secp521r1，是以下结构体的序列化值：
+
+```
+      struct {
+          uint8 legacy_form = 4;
+          opaque X[coordinate_length];
+          opaque Y[coordinate_length];
+      } UncompressedPointRepresentation;
+```
+
+X 和 Y 分别是 X 和 Y 值的网络序二进制表示。由于没有内部长度标记，因此每个数字占用曲线参数隐含的字节数。 对于 P-256，这意味着 X 和 Y 分别使用 32 字节，如果需要，则在左侧填充零。对于 P-384，分别占用 48 字节，对于 P-521，各占用 66 字节。
+
+对于曲线 secp256r1、secp384r1、secp521r1，对端必须通过确保该点是椭圆曲线上的有效点来验证彼此的公共值 Y。相应的验证程序在 [X962] 的 4.3.7 节中定义，或者在 [KEYAGREEMENT] 的 5.6.2.6 节中定义。 该过程由三个步骤组成：
+
+1. 验证 Q 不是无穷大点 `(O)`，
+2. 验证 `Q = (x,y)` 中 x 和 y 两个整数都在正确的间隔，
+3. 确保 `(x,y)` 是椭圆曲线方程的正确解。对于这些曲线，实现者不需要验证正确子组中的成员。
+
+对于 X25519 和 X448，公共值的内容是 [RFC7748] 中定义的相应功能的字节串输入和输出：X25519 是 32 字节，X448 是 56 字节。
+
+注意：1.3 之前版本的 TLS 允许 point format 协商；TLS 1.3 删除了此功能，从而使每个曲线有一个 point format。
 
 #### 4.2.9. Pre-Shared Key Exchange Modes
 
+为了使用 PSK，客户端还必须发送一个 "psk_key_exchange_modes" 扩展。 此扩展的意思是客户端仅支持使用这些模式的 PSK，这限制了在这个 ClientHello 中提供的 PSK 的使用以及服务器通过 NewSessionTicket 提供的 PSK 的使用。
+
+如果客户端提供了一个 "pre_shared_key" 扩展，也必须提供一个 "psk_key_exchange_modes" 扩展。 如果客户端提供了 "pre_shared_key"，但没提供 "psk_key_exchange_modes"，服务器必须中止握手。服务器不得选择客户端未给出的密钥交换模式。此扩展还限制 PSK 恢复使用的模式。服务器不应发送与通告模式不兼容的 NewSessionTicket，但是如果服务器这样做，影响将只是客户端尝试恢复会失败。
+
+服务器不得发送 "psk_key_exchange_modes" 扩展。
+
+```
+      enum { psk_ke(0), psk_dhe_ke(1), (255) } PskKeyExchangeMode;
+
+      struct {
+          PskKeyExchangeMode ke_modes<1..255>;
+      } PskKeyExchangeModes;
+```
+
+- psk_ke: PSK-only 密钥建立。 在这种模式下，服务器不得提供 "key_share" 值。
+- psk_dhe_ke: 使用 (EC)DHE 密钥建立的 PSK。在这种模式下，客户端和服务器必须提供 "key_share" 值见 4.2.8 节）。
+
+任何将来分配的值必须确保传输协议消息明确识别服务器选择的模式。目前这由 ServerHello 中的 "key_share" 表示。
+
 #### 4.2.10. Early Data Indication
+
+当使用 PSK 时，客户端可以在第一个消息中发送应用数据。 如果客户端选择这样做，就必须提供 "early_data" 扩展和 "pre_shared_key" 扩展。
+
+此扩展的 "extension_data" 字段包含 "EarlyDataIndication" 值。
+
+```
+      struct {} Empty;
+
+      struct {
+          select (Handshake.msg_type) {
+              case new_session_ticket:   uint32 max_early_data_size;
+              case client_hello:         Empty;
+              case encrypted_extensions: Empty;
+          };
+      } EarlyDataIndication;
+```
+
+max_early_data_size 字段的使用见 4.6.1 节。
+
+0-RTT 参数（版本号、对称密码套件、ALPN 协议 [RFC7301] 等）是使用 PSK 的关联值。对于外部配置的 PSK，关联值与秘钥一起配置。对于通过 NewSessionTicket 消息确定的 PSK，关联值是在确定 PSK 的连接里协商的。用于加密早期数据的 PSK 必须是客户端 "pre_shared_key" 扩展中列出的第一个 PSK。
+
+对于通过 NewSessionTicket 提供的 PSK，服务器必须验证所选 PSK 身份的 ticket 生存期 (PskIdentity.obfuscated_ticket_age mod 2 ^ 32 - ticket_age_add) 在从 ticket 开始使用的小时间范围内（见第 8 章）。如果不是，服务器应该继续握手，但拒绝 0-RTT，并且不应该采取任何假定该 ClientHello 是全新的其他操作。
+
+在第一个消息中发送的 0-RTT 消息与其他消息（握手和应用程序数据）中发送的相应消息具有相同（加密）的内容类型，但受到不同密钥的保护。在收到服务器的 Finished 消息后，如果服务器已接收到早期数据，则会发送 EndOfEarlyData 消息以指示密钥更改。该消息使用 0-RTT 流量密钥加密。
+
+接收 "early_data" 扩展的服务器必须以三种方式之一进行操作：
+
+- 忽略扩展并返回常规的 1-RTT 响应。然后，服务器忽略早期数据并尝试使用握手流量秘钥解密收到的数据，忽略解密失败的数据（直到配置的 max_early_data_size ）。一旦数据成功解密，则被当做客户端第二个消息的开始，服务端当做普通 1-RTT 握手继续处理。
+- 通过响应 HelloRetryRequest 请求客户端发送另一个 ClientHello。 客户端不得在其后续 ClientHello 中包含 "early_data" 扩展。然后，服务器跳过外部内容类型 "application_data" 的所有记录（表示被加密）来忽略 early data，直到配置的 max_early_data_size 长度。
+- 在 EncryptedExtensions 中返回自己的 "early_data" 扩展，表示它打算处理 early data。 服务器不可能只接受 early data 消息的一部分。 即使服务器发送接收 early data 的消息，但是实际的 early data 本身可能已经在服务器生成此消息时发送了。
+
+为了接受 early data，服务器必须先接受了 PSK 密码套件并且选择了客户端的 "pre_shared_key" 扩展中提供的第一个密钥。此外，必须验证以下值与选择的 PSK 相关联：
+
+- TLS 版本号和加密套件。
+- 选择的密码套件
+- 选择的 ALPN 协议 [RFC7301]（如果有）。
+
+这些要求是使用相关 PSK 执行 1-RTT 握手的要求的超集。对于外部配置的 PSK，关联值与秘钥一起提供。对于通过 NewSessionTicket 消息确定的 PSK，关联值是通过连接协商的。
+
+未来的扩展必须定义它们与 0-RTT 的交互。
+
+如果任一上述检查失败，服务器不得使用扩展进行响应，并且必须使用上面前两种机制之一丢弃所有第一个报文中的数据（回退到 1-RTT 或 2-RTT）。如果客户端尝试进行 0-RTT 握手，但是服务器拒绝，则服务器通常没有 0-RTT 保护密钥，必须使用试用解密（使用 1-RTT 握手密钥或在 HelloRetryRequest 的情况下通过查找明文 ClientHello）找到第一个非 0-RTT 消息。
+
+如果服务器选择接受 "early_data" 扩展，那么在处理 early data 时，它必须遵守与所有记录相同的错误处理要求。 具体来说，如果服务器在接受的 "early_data" 扩展后无法解密任何 0-RTT 记录，则必须根据 5.2 节使用 "bad_record_mac" alert 终止连接。
+
+如果服务器拒绝 "early_data" 扩展，则客户端应用程序可以在握手完成后重新发送 early data。 请注意，early data 的自动重新传输可能导致关于连接状态不正确的假设。例如，当协商的连接选择与早期数据不同的 ALPN 协议时，应用程序可能需要构建不同的消息。 类似地，如果早期数据假定任何连接状态，则握手完成后可能发送错误。
+
+TLS 实现不应自动重新发送 early data；应用程序能够更好地决定重新传输是否合适。除非协商的连接选择相同的 ALPN 协议，否则 TLS 实现不得自动重新发送 early data。
 
 #### 4.2.11. Pre-Shared Key Extension
 
