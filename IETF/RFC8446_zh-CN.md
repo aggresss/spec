@@ -1769,25 +1769,284 @@ TLSCiphertext 的 encrypted_record 字段设置为 AEADEncrypted。
 
 ## 6. Alert Protocol
 
+TLS 提供了一个 Alert 内容类型来指示关闭信息和错误。和其他消息一样，警告消息也是根据当前连接状态进行加密的。
+
+警告消息传达了警告的描述和一个遗留字段，在以前的 TLS 版本中传达了消息的严重程度。 警告分为两类：关闭警告和错误警告。 在 TLS 1.3 中，警告的严重性是隐含在警告的类型中的，"level" 字段可以被忽略。 close_notify 警报用于指示连接的一个方向的有序关闭。当收到这样的告警时，TLS 应该向应用程序发出数据结束的提示。
+
+错误警报表示连接的中止关闭（见6.2节）。当收到错误警报时，TLS 应该向应用程序提示错误，并且不允许再在连接上发送或接收任何数据。服务器和客户端必须丢弃在失败的连接中建立的秘密值和密钥，但与会话 ticket 相关联的 PSK 除外，如果可能的话，这些 PSK 应该被丢弃。
+
+6.2 节中列出的所有告警必须以 AlertLevel=fatal 的方式发送，并且不管消息中的 AlertLevel 是什么都必须作为错误告警处理。 未知的警报类型必须作为错误警报处理。
+
+注意：TLS 定义了两个通用的警报（见第6节），消息解析失败时使用。当对端收到不能按照语法解析的消息时（例如，消息长度超出了消息边界或包含一个超出范围的长度），必须使用 decode_error alert 终止连接。如果接收到语法正确但语义无效的消息（例如，DHE share 为 p - 1，或无效的枚举），必须以 illegal_parameter alert 终止连接。
+
+```
+      enum { warning(1), fatal(2), (255) } AlertLevel;
+
+      enum {
+          close_notify(0),
+          unexpected_message(10),
+          bad_record_mac(20),
+          record_overflow(22),
+          handshake_failure(40),
+          bad_certificate(42),
+          unsupported_certificate(43),
+          certificate_revoked(44),
+          certificate_expired(45),
+          certificate_unknown(46),
+          illegal_parameter(47),
+          unknown_ca(48),
+          access_denied(49),
+          decode_error(50),
+          decrypt_error(51),
+          protocol_version(70),
+          insufficient_security(71),
+          internal_error(80),
+          inappropriate_fallback(86),
+          user_canceled(90),
+          missing_extension(109),
+          unsupported_extension(110),
+          unrecognized_name(112),
+          bad_certificate_status_response(113),
+          unknown_psk_identity(115),
+          certificate_required(116),
+          no_application_protocol(120),
+          (255)
+      } AlertDescription;
+
+      struct {
+          AlertLevel level;
+          AlertDescription description;
+      } Alert;
+```
+
 ### 6.1. Closure Alerts
+
+客户端和服务器必须共享连接结束的信息，以避免截断攻击。
+
+- close_notify：这个警报通知接收者，发送者不会再在这个连接上发送任何消息。在收到关闭警报后收到任何数据都必须被忽略。
+- user_canceled：该警报通知接受者，发送者将不再在该连接上发送任何消息。该警报通知接收者，发送者因为某些与协议失败无关的原因取消了握手。如果用户在握手完成后取消了一个操作，那么通过发送close_notify来关闭连接更为合适。这个警报后面应该有一个 close_notify。这个告警一般 AlertLevel=warning。
+
+任何一方都可以通过发送 close_notify alert 来关闭其写侧的连接。在收到关闭警报后收到的任何数据都必须忽略。如果在 close_notify 之前收到了一个传输级的关闭，那么接收者就不能知道所有发送的数据都已经收到了。
+
+每一方必须在关闭其连接的写侧之前发送 close_notify alert，除非它已经发送了一些错误警报。这对它的读端连接没有任何影响。请注意，这是 TLS 1.3 对之前 TLS 版本的一个变化，在 TLS 1.3 之前的版本中，需要对 close_notify 做出反应，丢弃等待写的数据，并立即发送 close_notify alert。之前的要求可能会导致读端截断。双方不需要等待收到 close_notify 警报后再关闭其读端连接，尽管这样做会带来截断的可能性。
+
+如果使用 TLS 的应用协议在 TLS 连接关闭后仍然有数据想要通过底层传输，TLS 实现必须收到一个 close_notify 警报再向应用层指示数据结束。这个标准的任何部分都不应该被视为规定了 TLS 的使用配置文件管理数据传输的方式，包括何时打开或关闭连接。
+
+注意：我们假设关闭连接的写端会在销毁传输之前可靠地传送待处理的数据。
 
 ### 6.2. Error Alerts
 
+TLS 中的错误处理非常简单。 当检测到错误时，检测方会向对端发送一条消息。 在发送或收到致命的警报消息后，双方必须立即关闭连接。
+
+每当遇到致命的错误条件时，应该发送一个适当的致命警告，并且必须关闭连接，不能再发送或接收任何数据。在本规范的其余部分，当使用 "终止连接"（terminate the connection）和 "中止握手"（abort the handshake）这两个短语时，如果没有特定的警报，则意味着应该发送下面描述的警报。 短语 "终止连接并发出X警报" 和 "中止握手并发出X警报" 意味着如果要发出警报必须发送警报X。 本节中定义的所有警报，以及所有未知的警报，从 TLS 1.3 开始被认为是致命的（见第6节）。实现应该提供一种方法来方便记录警报的发送和接收。
+
+定义了以下错误提示：
+
+- unexpected_message：收到了不适当的信息（例如，错误的握手信息、过早的应用数据等）。在适当的实现之间的通信中绝对不应该观察到这个警报。
+- bad_record_mac：如果收到一个不能解密的记录，就会返回这个警报。 因为AEAD算法结合了解密和验证，同时也为了避免侧信道攻击，所以这个警报用于所有的解密失败。在适当的实现之间的通信中，除非消息在网络中被破坏，否则绝不应该观察到这个警报。
+- record_overflow：收到的 TLSCiphertext 记录长度超过 2^14+256 字节，或记录解密后的 TLSPlaintext 记录长度超过 2^14 字节(或其他协商的限制)。 在适当的实现之间的通信中，除非消息在网络中被破坏，否则绝不应该观察到这个警报。
+- handshake_failure：收到 handshake_failure 的警报消息表明发送者无法在给定选项下协商出一套可接受的安全参数。
+- bad_certificate：证书损坏了，包含的签名不能通过验证等。
+- unsupported_certificate：证书的类型不受支持。
+- certificate_revoked：证书被签署者撤销。
+- certificate_expired：证书已过期。证书已过期或当前无效。
+- certificate_unknown：在处理证书的过程中出现了一些其他(未指明)问题，导致无法接受。
+- illegal_parameter：握手中的一个字段不正确或与其他字段不一致。该警报用于符合正式协议语法但其他方面不正确的错误。
+- unknown_ca：收到了有效的证书链或部分证书链，但证书没有被接受，因为无法找到 CA 证书或无法与已知的 trust anchor 匹配。
+- access_denied：收到了一个有效的证书或 PSK，但当使用了访问控制，发送者决定不继续协商。
+- decode_error：由于某些字段不在指定范围内或消息的长度不正确，消息不能被解码。 该警报用于消息不符合正式协议语法的错误。在适当的实现之间的通信中绝对不应该观察到这个警报，除非消息在网络中被破坏了。
+- decrypt_error：握手（不是记录层）解密操作失败，包括签名无法验证通过或无法验证 Finished 消息或 PSK binder。
+- protocol_version： 对端想要协商的协议版本可以识别但不支持（见附录D）。
+- insufficient_security：当协商失败时，替代 handshake_failure 返回，具体原因是服务器要求的参数比客户端支持的更安全。
+- internal_error： 内部错误。 与对端或协议的正确性无关的内部错误（如内存分配失败）使其无法继续。
+- inappropriate_fallback：由服务器响应客户端无效连接重试而发送（见 [RFC7507]）。
+- missing_extension：收到不包含必要扩展的握手消息则发送。
+- unsupported_extension：接收到包含禁止在给定握手中使用的扩展则发送，或者 ServerHello 或 Certificate 中包含任何没有在相应的 ClientHello 或 CertificateRequest 中提供的扩展。
+- unrecognized_name：当客户端通过 server_name 扩展提供的名称所标识的服务器不存在时，由服务器发送（见 [RFC6066]）。
+- bad_certificate_status_response：当服务器通过 status_request 扩展提供无效或不可接受的 OCSP 响应时，由客户端发送（见 [RFC6066]）。
+- unknown_psk_identity：当需要建立 PSK 密钥，但客户端没有提供可接受的 PSK 标识时，服务器会发送该警报。发送该警报是可选的；服务器可以选择发送 decrypt_error 警报，以表明无效的PSK标识。
+- certificate_required：当需要客户端证书，但客户没有提供证书时，由服务器发送。
+- no_application_protocol：当客户端的 application_layer_protocol_negotiation 扩展只提供了服务器不支持的协议时，由服务器发送（参见 [RFC7301]）。
+
+新的警报值由 IANA 分配，如第 11 节所述。
+
 ## 7. Cryptographic Computations
+
+TLS 的握手建立了一个或多个输入 secret，组合起来创建实际的工作密钥材料，详见下文。密钥推导过程包含了输入 secret 和握手 transcript。 需要注意的是，由于握手 transcript 包含了 Hello 消息中的随机值，因此任何一次握手都会有不同的流量 secret，即使使用了相同的输入 secret，就像在多个连接中使用相同的 PSK 一样。
 
 ### 7.1. Key Schedule
 
+密钥推导过程使用了 HKDF 定义的 HKDF-Extract 和 HKDF-Expand 函数 [RFC5869]，以及下面定义的函数：
+
+```
+       HKDF-Expand-Label(Secret, Label, Context, Length) =
+            HKDF-Expand(Secret, HkdfLabel, Length)
+
+       Where HkdfLabel is specified as:
+
+       struct {
+           uint16 length = Length;
+           opaque label<7..255> = "tls13 " + Label;
+           opaque context<0..255> = Context;
+       } HkdfLabel;
+
+       Derive-Secret(Secret, Label, Messages) =
+            HKDF-Expand-Label(Secret, Label,
+                              Transcript-Hash(Messages), Hash.length)
+```
+
+Transcript-Hash 和 HKDF 使用的 Hash 函数是密码套件的哈希算法。Hash.length 是以字节为单位的输出长度。Messages 是指握手消息，包括握手消息类型和长度字段，但不包括记录层头。请注意，在某些情况下，一个零长度的 Context（用""表示）被传递给 HKDF-Expand-Label。本文中提到的标签都是 ASCII 字符串，不包括尾部的 NUL 字节。
+
+注意：对于普通的散列函数，任何超过 12 字符的标签都需要散列函数额外迭代计算。本规范中的标签都选在这个限制范围内。
+
+密钥是使用 HKDF-Extract 和 Derive-Secret 函数从两个输入的 secret 中导出的。一般来说，添加一个新 secret 的模式是使用 HKDF-Extract，使用 Salt 作为当前的 secret 状态，输入密钥材料（IKM，Input Keying Material）作为新 secret 添加。在 TLS 1.3 这个版本中，这两个输入secret是：
+
+- PSK (外部建立的预共享密钥，或从以前连接中的 resumption_master_secret 值导出)
+- (EC)DHE 共享 secret (7.4 节)
+
+这产生了一个完整的密钥推导表，如下图所示。此图使用以下格式约定：
+
+- HKDF-Extract 从上取 Salt 参数，从左取 IKM 参数，其输出在底部，输出的名称在右侧。
+- Derive-Secret 的 Secret 参数用进位箭头表示。例如，Early Secret 是生成 client_early_traffic_secret 的 Secret。
+- "0" 表示一串 Hash.length 字节设置为 0。
+
+```
+             0
+             |
+             v
+   PSK ->  HKDF-Extract = Early Secret
+             |
+             +-----> Derive-Secret(., "ext binder" | "res binder", "")
+             |                     = binder_key
+             |
+             +-----> Derive-Secret(., "c e traffic", ClientHello)
+             |                     = client_early_traffic_secret
+             |
+             +-----> Derive-Secret(., "e exp master", ClientHello)
+             |                     = early_exporter_master_secret
+             v
+       Derive-Secret(., "derived", "")
+             |
+             v
+   (EC)DHE -> HKDF-Extract = Handshake Secret
+             |
+             +-----> Derive-Secret(., "c hs traffic",
+             |                     ClientHello...ServerHello)
+             |                     = client_handshake_traffic_secret
+             |
+             +-----> Derive-Secret(., "s hs traffic",
+             |                     ClientHello...ServerHello)
+             |                     = server_handshake_traffic_secret
+             v
+       Derive-Secret(., "derived", "")
+             |
+             v
+   0 -> HKDF-Extract = Master Secret
+             |
+             +-----> Derive-Secret(., "c ap traffic",
+             |                     ClientHello...server Finished)
+             |                     = client_application_traffic_secret_0
+             |
+             +-----> Derive-Secret(., "s ap traffic",
+             |                     ClientHello...server Finished)
+             |                     = server_application_traffic_secret_0
+             |
+             +-----> Derive-Secret(., "exp master",
+             |                     ClientHello...server Finished)
+             |                     = exporter_master_secret
+             |
+             +-----> Derive-Secret(., "res master",
+                                   ClientHello...client Finished)
+                                   = resumption_master_secret
+```
+
+这里的一般模式是，图中左边显示的 secret 只是没有上下文的原始熵，而右边显示的 secret 包括握手上下文，因此可以用来导出工作密钥，而不需要额外的上下文。请注意，对 Derive-Secret 的不同调用可能会使用不同的 Messages 参数，即使是相同的 secret。 在 0-RTT 中，Derive-Secret 被调用时有四个不同的 transcript；在仅 1-RTT 中，它被调用时有三个不同的 transcript。
+
+如果给定的 secret 不可用，则使用 Hash.length 字节的 0 值。 请注意，这并不意味着跳过一轮，所以如果没有使用 PSK，Early Secret 仍将是 HKDF-Extract(0，0)。 对于 binder_key 的计算，外部 PSK（在 TLS 之外提供的 PSK）的标签为 ext binder，恢复 PSK（作为之前握手的恢复主 secret 提供的 PSK）的标签为 res binder。 不同的标签防止了一种PSK被另一种 PSK 所替代。
+有多个潜在的 Early Secret值，取决于服务器最终选择的 PSK。 客户端需要为每个潜在的 PSK 计算一个值；如果没有选择 PSK，则需要计算对应于零 PSK 的 Early Secret。
+
+一旦计算出所有从某个 secret 中得出的值，该 secret 就应该被删除。
+
 ### 7.2. Updating Traffic Secrets
 
+一旦握手完成，任何一方都可以使用 4.6.3 节中定义的 KeyUpdate 握手消息更新其发送的流量密钥。 如本节所述，通过从 client_/server_application_traffic_secret_N 中生成 client_/server_application_traffic_secret_N+1 来计算下一代流量密钥，然后如7.3节所述重新生成流量密钥。
+
+下一代 application_traffic_secret 的计算方式为：
+
+```
+   The next-generation application_traffic_secret is computed as:
+
+       application_traffic_secret_N+1 =
+           HKDF-Expand-Label(application_traffic_secret_N,
+                             "traffic upd", "", Hash.length)
+```
+
+一旦计算出 client_/server_application_traffic_secret_N+1 及其相关的流量密钥，实现者就应该删除 client_/server_application_traffic_secret_N 及其相关的流量密钥。
+
 ### 7.3. Traffic Key Calculation
+
+流量密钥材料由以下输入值生成：
+   - 一个 secret 值
+   - 表示正在生成的具体值的 purpose 值
+   - 正在生成的密钥的长度
+
+流量密钥材料由输入的流量secret值生成，使用：
+
+- [sender]_write_key = HKDF-Expand-Label(Secret, "key", "", key_length)
+- [sender]_write_iv  = HKDF-Expand-Label(Secret, "iv", "", iv_length)
+- [sender] 表示发送方。 各记录类型的 Secret 值如下表所示：
+
+```
+       +-------------------+---------------------------------------+
+       | Record Type       | Secret                                |
+       +-------------------+---------------------------------------+
+       | 0-RTT Application | client_early_traffic_secret           |
+       |                   |                                       |
+       | Handshake         | [sender]_handshake_traffic_secret     |
+       |                   |                                       |
+       | Application Data  | [sender]_application_traffic_secret_N |
+       +-------------------+---------------------------------------+
+```
+
+每当底层 Secret 变化时，所有的流量密钥材料都会被重新计算（例如，从握手密钥变为应用数据密钥或密钥更新时）。
 
 ### 7.4. (EC)DHE Shared Secret Calculation
 
 #### 7.4.1. Finite Field Diffie-Hellman
 
+对于有限域组，进行传统的 Diffie-Hellman [DH76] 计算。 协商后的密钥（Z）以大字节序转为字节串，并以 0 左垫，直到质数的大小。 这个字节串在上面的密钥图中被用作 shared secret。
+
+请注意，这种结构与之前的TLS版本不同，后者去掉了前面的零。
+
 #### 7.4.2. Elliptic Curve Diffie-Hellman
 
+对于 secp256r1、secp384r1 和 secp521r1，ECDH 计算(包括参数和密钥生成以及 shared secret 计算)按照 [IEEE1363] 使用 ECKAS-D1H 方案进行，以 identity map 作为密钥派生函数(KDF)，因此 shared secret 是以字符串表示的 ECDH shared secret 椭圆曲线点的 x 坐标。需要注意的是，FE2OSP(Field Element to Octet String Conversion Primitive)输出的这个字符串(IEEE1363 术语中的"Z")对于任何给定字段来说都是恒定长度的；在这个八位数字串中前面的零一定不能被截断。
+   (请注意，这种身份 KDF 的使用是一个技术问题。完整的情况是，ECDH 采用了一个重要的 KDF，因为 TLS 除了计算其他 secret 外，并不直接使用这个 secret。)
+
+对于 X25519 和 X448，ECDH 的计算方法如下：
+
+- 放入 KeyShareEntry.key_exchange 结构的公钥是将 ECDH 标量乘法函数应用于适当长度的秘钥（放入标量输入）和标准的公共基点（放入 u 坐标点输入）的结果。
+- ECDH shared secret 是将 ECDH 标量乘法函数应用于秘钥（成标量输入）和对端的公钥（作为 u 坐标点输入）的结果。输出的结果是不经过任何处理直接使用的。
+
+对于这些曲线，实现者应该使用 [RFC7748] 中指定的方法来计算 Diffie-Hellman shared secret。实现者必须检查计算出的 Diffie-Hellman shared secret 是否是全零值，如果是，则按照 [RFC7748] 第 6 节的描述中止。 如果实现者使用这些椭圆曲线的替代实现，他们必须执行 [RFC7748] 第 7 节中规定的附加检查。
+
 ### 7.5. Exporters
+
+[RFC5705] 用 TLS 伪随机函数 (PRF, pseudorandom function) 定义了 TLS 的密钥材料导出器。 本文用 HKDF 替换了 PRF，因此需要一个新的结构。 输出器接口保持不变。
+
+输出器的值计算为：
+
+```
+   TLS-Exporter(label, context_value, key_length) =
+       HKDF-Expand-Label(Derive-Secret(Secret, label, ""),
+                         "exporter", Hash(context_value), key_length)
+```
+
+其中 Secret 是 early_exporter_master_secret 或 exporter_master_secret。除非应用程序明确指定，否则必须使用 exporter_master_secret。early_exporter_master_secret 定义为用于 0-RTT 数据需要 exporter 的设置。 建议为早期 exporter 定义一个单独的接口，这样可以避免 exporter 用户在需要常规 exporter 时意外地使用早期 exporter，反之亦然。
+
+如果没有提供上下文，context_value 的长度为零。因此，不提供上下文和提供空上下文的计算结果是一样的。 这与以前的 TLS 版本不同，在以前的版本中，空上下文的输出与没有上下文的输出是不同的。 从本文发布之时起，无论是否有上下文，都不使用分配的 exporter 标签。 未来的规范不得定义导出器使用空上下文和无上下文使用相同的标签。导出器的新用途应该在所有导出器计算中提供一个上下文，尽管这个值可以是空的。
+
+对导出器标签格式的要求在 [RFC5705] 第 4 节中定义。
 
 ## 8. 0-RTT and Anti-Replay
 
@@ -1804,104 +2063,3 @@ TLSCiphertext 的 encrypted_record 字段设置为 AEADEncrypted。
 ### 9.2. Mandatory-to-Implement Extensions
 
 ### 9.3. Protocol Invariants
-
-## 10. Security Considerations
-
-## 11. IANA Considerations
-
-## 12. References
-
-## Appendix A. State Machine
-
-### A.1. Client
-
-### A.2. Server
-
-## Appendix B. Protocol Data Structures and Constant Values
-
-### B.1. Record Layer
-
-### B.2. Alert Messages
-
-### B.3. Handshake Protocol
-
-#### B.3.1. Key Exchange Messages
-
-##### B.3.1.1. Version Extension
-
-##### B.3.1.2. Cookie Extension
-
-##### B.3.1.3. Signature Algorithm Extension
-
-##### B.3.1.4. Supported Groups Extension
-
-#### B.3.2. Server Parameters Messages
-
-#### B.3.3. Authentication Messages
-
-#### B.3.4. Ticket Establishment
-
-#### B.3.5. Updating Keys
-
-### B.4. Cipher Suites
-
-## Appendix C. Implementation Notes
-
-### C.1. Random Number Generation and Seeding
-
-### C.2. Certificates and Authentication
-
-### C.3. Implementation Pitfalls
-
-### C.4. Client Tracking Prevention
-
-### C.5. Unauthenticated Operation
-
-## Appendix D. Backward Compatibility
-
-### D.1. Negotiating with an Older Server
-
-### D.2. Negotiating with an Older Client
-
-### D.3. 0-RTT Backward Compatibility
-
-### D.4. Middlebox Compatibility Mode
-
-### D.5. Security Restrictions Related to Backward Compatibility
-
-## Appendix E. Overview of Security Properties
-
-### E.1. Handshake
-
-#### E.1.1. Key Derivation and HKDF
-
-#### E.1.2. Client Authentication
-
-#### E.1.3. 0-RTT
-
-#### E.1.4. Exporter Independence
-
-#### E.1.5. Post-Compromise Security
-
-#### E.1.6. External References
-
-### E.2. Record Layer
-
-#### E.2.1. External References
-
-### E.3. Traffic Analysis
-
-### E.4. Side-Channel Attacks
-
-### E.5. Replay Attacks on 0-RTT
-
-#### E.5.1. Replay and Exporters
-
-### E.6. PSK Identity Exposure
-
-### E.7. Sharing PSKs
-
-### E.8. Attacks on Static RSA
-
-
-
