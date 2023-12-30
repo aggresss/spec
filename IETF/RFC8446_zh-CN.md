@@ -1618,15 +1618,154 @@ KeyUpdate 握手消息用于指示发送方正在更新其发送的加密密钥�
 
 ## 5. Record Protocol
 
+TLS 记录协议将要传输的数据分片为可管理的块，加密后传输。接收到的数据经过验证、解密、重组，然后传递给上层协议。
+
+TLS 记录是分类型的，允许多个上层协议在同一个记录层上复用。本文档规定了四种内容类型：握手、应用数据、警报和 change_cipher_spec。 change_cipher_spec 记录仅用于兼容性目的（见附录 D.4）。
+
+可能会在发送或接收第一个 ClientHello 消息之后、接收到对端的 Finished 消息之前的任何时候接收到一个类型为 change_cipher_spec 的单字节值 0x01 的未加密记录，这种情况必须简单地丢弃而不做进一步处理。 需要注意的是，该记录可能出现在握手时的某一点上（在等待加密的记录），因此，在试图解密记录之前，有必要检测这种情况。 接收到任何其他 change_cipher_spec 值，或者接收到加密 change_cipher_spec 记录，必须以 unexpected_message 警报中止握手。如果在第一个 ClientHello 消息之前或在对端 Finished 消息之后收到 change_cipher_spec 记录，必须视为意外的记录类型（尽管无状态服务器可能无法将这些情况与允许的情况区别开）。
+
+除非经过扩展协商，否则不能发送本文中没定义的记录类型。如果收到意外的记录类型，必须用 unexpected_message alert 来终止连接。新的记录内容类型值由 IANA 在 TLS ContentType 注册表中分配，如 11 节所述。
+
 ### 5.1. Record Layer
+
+记录层将信息块分段为 TLSPlaintext 记录，每块携带的数据不多于 2^14 字节。根据底层 ContentType 的不同，信息边界的处理方式也不同。 任何未来的内容类型必须指定适当的规则。 请注意，这些规则比 TLS 1.2 中强制的规则更严格。
+
+握手信息可以合并进一条 TLSPlaintext 记录，也可以分散在几条记录中，但前提是：
+
+- 握手消息不得与其他记录类型交织在一起。也就是说，如果一个握手消息被分割成两条或更多的记录，它们之间不能有任何其他记录。
+- 握手消息不得跨越密钥变化。必须确保紧接在密钥变化之前的所有消息是否与记录边界一致；如果不一致，则必须用 unexpected_message alert 终止连接。因为 ClientHello、EndOfEarlyData、ServerHello、Finished 和 KeyUpdate 消息可以在秘钥变化之后立即发送，所以必须按照记录边界来发送这些消息。
+
+不得发送零长度的握手类型片段，即使这些片段包含填充。
+
+警报消息（第6节）绝不能分散在多个记录里，并且多个警报消息绝不能合并到一个 TLSPlaintext 记录中。换句话说，具有 Alert 类型的记录必须只包含一条消息。
+
+Application Data 消息包含对 TLS 不透明的数据。Application Data 消息总是加密的。可以发送零长度的 Application Data 片段，因为可能作为流量分析手段。Application Data 片段可以分散在多个记录中，也可以合并成一个记录。
+
+```
+      enum {
+          invalid(0),
+          change_cipher_spec(20),
+          alert(21),
+          handshake(22),
+          application_data(23),
+          (255)
+      } ContentType;
+
+      struct {
+          ContentType type;
+          ProtocolVersion legacy_record_version;
+          uint16 length;
+          opaque fragment[TLSPlaintext.length];
+      } TLSPlaintext;
+```
+
+- type: 用于处理所附片段的上层协议。
+- legacy_record_version：对于所有 TLS1.3 的实现都必须设置为 0x0303，除了初始的 ClientHello 可以出于兼容性考虑设置为 0x0301（比如在 HelloRetryRequest 之后没有生成）。这个字段已经被废弃，必须忽略。以前版本的 TLS 在某些情况下会在这个字段中使用其他的值。
+- length：下面 TLSPlaintext.fragment 的长度（以字节为单位），长度不得超过 2^14 字节。接收到超过此长度的记录必须使用 record_overflow 警报终止连接。
+- fragment：正在传输的数据。这个值视为一个独立的块透明传递给类型字段指定的上层协议处理。
+
+本文介绍了 TLS 1.3，使用的版本是 0x0304。这个版本值是历史性的，源于 TLS 1.0 的 0x0301 和 SSL 3.0 的 0x0300。为了最大限度地提高向后兼容性，包含初始 ClientHello 的记录必须有 0x0301 版本（代表 TLS 1.0），包含第二个 ClientHello 或 ServerHello 的记录必须有 0x0303 版本（代表TLS 1.2）。当协商以前版本的 TLS 时，端点遵循附录 D 中提供的程序和要求。
+
+当记录保护尚未参与时，TLSPlaintext 结构会直接发送。 记录保护开始后，TLSPlaintext 记录将受到保护，并按下一节所述发送。 请注意，Application Data 记录不得在未受保护的情况下发送（详情见第 2 节）。
 
 ### 5.2. Record Payload Protection
 
+记录保护函数将 TLSPlaintext 结构转换为 TLSCiphertext 结构。去保护函数则相反。 TLS 1.3 与之前 TLS 版本不同，所有的密码都被建模为关联数据认证加密（AEAD，Authenticated Encryption with Associated Data）[RFC5116]。 AEAD 功能提供了统一的加密和认证操作，将明文转变成经过认证的密文，然后再转回来。 每条加密记录由一个 plaintext 头组成，后面是一个加密体，加密体包含一个类型和可选填充。
+
+```
+      struct {
+          opaque content[TLSPlaintext.length];
+          ContentType type;
+          uint8 zeros[length_of_padding];
+      } TLSInnerPlaintext;
+
+      struct {
+          ContentType opaque_type = application_data; /* 23 */
+          ProtocolVersion legacy_record_version = 0x0303; /* TLS v1.2 */
+          uint16 length;
+          opaque encrypted_record[TLSCiphertext.length];
+      } TLSCiphertext;
+```
+
+- Content：TLSPlaintext.fragment 值，包含握手或警报消息的字节编码，或应用程序要发送的原始数据。
+- type：TLSPlaintext.type 值，包含记录的内容类型。
+- zeros：类型字段后的 cleartext 中可能出现任意长度的零值字节。这为发送者提供了一个机会，只要总长度不超过记录大小的限制，发送者就可以用选择的数量来填充任何 TLS 记录。 更多细节见 5.4 节。
+- opaque_type： TLSCiphertext 记录的外层 opaque_type 字段总是设置为 23(application_data)，以兼容习惯于以前版本 TLS 的中间件。 记录的实际内容类型可以在解密后的 TLSInnerPlaintext.type 中找到。
+- legacy_record_version：legacy_record_version 字段总是 0x0303。TLS 1.3 的 TLSCiphertexts 是在 TLS 1.3 协商后才生成的，所以不存在收到其他值的历史兼容性问题。 请注意，握手协议，包括 ClientHello 和 ServerHello 消息，都会对协议版本进行认证，所以这个值是冗余的。
+- length：以下 TLSCiphertext.encrypted_record 的长度(以字节为单位)，是内容长度加上填充长度，加上内部内容类型的长度，再加上 AEAD 算法添加的任何扩展。长度不得超过 2^14+256 字节。 接收到超过这个长度的记录必须用 record_overflow 警报终止连接。
+- encrypted_record：序列化 TLSInnerPlaintext 结构的 AEAD 加密格式。
+
+AEAD 算法的输入是一个密钥、一个 nonce、一个 plaintext 和 "附加数据"，这些数据将被包含在认证检查中，如 [RFC5116] 2.1 节所述。秘钥是 client_write_key 或 server_write_key，nonce 是从序列号和 client_write_iv 或 server_write_iv 中分离的(见 5.3 节)，附加数据是记录头。
+
+如：
+
+```
+      additional_data = TLSCiphertext.opaque_type ||
+                        TLSCiphertext.legacy_record_version ||
+                        TLSCiphertext.length
+```
+
+AEAD 算法的 plaintext 输入是经过编码的 TLSInnerPlaintext 结构。 流量密钥的派生在 7.3 节中定义。
+
+AEAD 输出由 AEAD 加密操作输出的密文组成。由于包含了 TLSInnerPlaintext.type 和发送者的填充，明文的长度大于相应的 TLSPlaintext.length。 AEAD 输出的长度一般会比明文大，但大小随 AEAD 算法而变化。
+
+由于密文可能包含填充，开销的数量可能会随着不同长度的明文而变化。典型地：
+
+```
+      AEADEncrypted =
+          AEAD-Encrypt(write_key, nonce, additional_data, plaintext)
+```
+
+TLSCiphertext 的 encrypted_record 字段设置为 AEADEncrypted。
+
+为了解密和验证，解密函数将密钥、nonce、附加数据和 AEADEncrypted 值作为输入。输出是明文或表示解密失败的错误。没有单独的完整性检查。符号化为：
+
+```
+      plaintext of encrypted_record =
+          AEAD-Decrypt(peer_write_key, nonce,
+                       additional_data, AEADEncrypted)
+```
+
+如果解密失败，接收方必须以bad_record_mac警告终止连接。
+
+在 TLS 1.3 中使用的 AEAD 算法不得产生大于 255 字节的扩展。如果从对端接收到 TLSCiphertext.length 大于 2^14+256 八位数的记录，必须用 record_overflow alert 终止连接。 这个限制是由最大的 TLSInnerPlaintext 长度 2^14 + 一个字节的 ContentType + 最大的 AEAD 扩展的 255 字节得出的。
+
 ### 5.3. Per-Record Nonce
+
+读取和写入记录会分别维护一个 64 位的序列号。读取或写入每条记录后，相应的序列号都会递增 1。序列号在连接开始时和改变密钥时都被设置为 0；在特定流量密钥下传输的第一条记录必须使用序列号 0。
+
+因为序列号的大小是 64 位，所以不应该 wrap。如果 TLS 实现需要对序列号进行 wrap，那么它必须 rekey（4.6.3 节）或者终止连接。
+
+每一种 AEAD 算法都会规定每记录 nonce 的长度范围，从 N_MIN 字节到 N_MAX 字节的输入 [RFC5116]。对于 AEAD 算法来说，TLS 每记录 nonce 的长度(iv_length)被设置为 8 字节和 N_MIN 中较大的一个(见 [RFC5116] 第 4 节)。 如果 N_MAX 小于 8 个字节，那么 AEAD 算法就不能用于 TLS。AEAD 结构中的每记录 nonce 的构成如下：
+
+1. 64 位记录序列号按网络序编码，并向左加零到 iv_length。
+2. 填充的序列号与静态 client_write_iv 或 server_write_iv（取决于角色）进行异或。
+
+所得到的结果（长度为iv_length）被用作每记录的 nonce。
+
+注意：这与 TLS 1.2 中的结构不同，TLS 1.2 指定了一个部分显式的 nonce。
 
 ### 5.4. Record Padding
 
+所有加密的 TLS 记录都可以被填充以增加 TLSCiphertext 的大小。 这允许发送者对观察者隐藏流量的大小。
+
+当生成 TLSCiphertext 记录时，实现者可以选择填充。一个未填充的记录只是一个填充长度为零的记录。 填充是加密前附加到 ContentType 字段的零值的字符串。在加密前，实现者必须将 padding 设置为全零。
+
+如果发送者愿意，Application Data 记录可以包含一个零长度的 TLSInnerPlaintext.content。这允许在敏感活动存在或不存在的情况下生成合理大小的覆盖流量。不能发送包含零长度 TLSInnerPlaintext.content 的握手和警报记录；如果收到这样的消息，接收者必须用 unexpected_message alert 来终止连接。
+
+发送的填充由记录保护机制自动验证；在成功解密一个 TLSCiphertext.encrypted_record 后，接收者从末尾向开头扫描该字段，直到找到一个非零字节。 这个非零字节就是消息的内容类型。之所以选择这种填充方案，是因为它允许对任何加密的 TLS 记录进行任意大小的填充（从零到 TLS 记录大小限制），而不需要引入新的内容类型。该设计还强制执行全零的 padding，这允许快速检测填充错误。
+
+实现必须将其扫描限制在 AEAD 解密返回的 cleartext 上。 如果接收者没有在 cleartext 中找到非零字节，则必须用 unexpected_message alert 来终止连接。
+
+填充的存在不会改变整个记录大小限制：完整编码的 TLSInnerPlaintext 不得超过 2^14+1 字节。 如果最大的片段长度被减小（例如，通过 [RFC8449] 的 record_size_limit 扩展），那么减小的限制适用于完整的 plaintext，包括内容类型和填充。
+
+选择一个填充策略，建议何时填充，填充多少，是一个复杂的话题，超出了本文的范围。 如果在 TLS 之上的应用层协议有自己的填充，那么在应用层中对应用数据TLS记录进行填充可能是比较好的。 不过，加密的握手或警报记录的填充仍然必须在 TLS 层处理。 以后的文档可能会定义 padding 选择算法，或者通过 TLS 扩展或其他方式定义一个 padding 策略请求机制。
+
 ### 5.5. Limits on Key Usage
+
+在一组给定的密钥下，可以安全加密的明文数量是有密码学限制的。[AEAD-LIMITS] 提供了对这些限制的分析，其假设是底层基元（AES 或 ChaCha20）没有弱点。在达到这些限制之前，实现应该按照 4.6.3 节的描述进行密钥更新。
+
+对于 AES-GCM 来说，在给定的连接上，最多可加密 2^24.5 大小的记录（约 2400 万条），同时保持约 2^-57 的安全系数，以保证验证加密（AE，Authenticated Encryption）的安全性。 对于 ChaCha20/Poly1305，记录序列号将在达到安全限值之前被 wrap。
 
 ## 6. Alert Protocol
 
