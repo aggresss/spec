@@ -2050,16 +2050,116 @@ Transcript-Hash 和 HKDF 使用的 Hash 函数是密码套件的哈希算法。H
 
 ## 8. 0-RTT and Anti-Replay
 
+如 2.3 节和附录 E.5 所述，TLS 没有为 0-RTT 数据提供内在重放保护。有两种潜在的威胁需要关注：
+
+- 攻击者通过简单复制 0-RTT 数据进行重放攻击。
+- 攻击者利用客户端重试行为，使服务器接收到一个消息的多个副本。这种威胁在一定程度上已经存在，因为重视健壮性的客户端会通过重试请求来应对网络错误。 然而，0-RTT 为任何不保持全局一致的服务器系统增加了一个额外的维度。具体来说，如果一个服务器系统有多个区， A 区的 ticket 在 B 区不被接受，那么攻击者可以将打算用于 A 区的 ClientHello 和早期数据复制到 A 区和 B 区，在 A 区，数据将以 0-RTT 的方式被接受，但在 B 区，服务器将拒绝 0-RTT 数据，强制进行完全握手。 如果攻击者阻止了 A 的 ServerHello，那么客户端将与 B 完成握手，并可能重试请求，导致整个服务器系统重复。
+
+第一类攻击可以通过共享状态来防止，以保证 0-RTT 数据最多接受一次。 服务器应该通过实施本节所述的方法或通过同等手段提供该级别的重播安全。 然而，我们知道，由于操作上的考虑，并非所有的部署都会将状态保持在该级别。 因此，在正常操作中，客户端将不知道服务器实现了这些机制中的哪一种（如果有的话），因此必须只发送他们认为可以安全重放的早期数据。
+
+除了重播的直接影响外，还有一类攻击，即使是通常被认为是幂等的操作也会被大量重放利用（定时攻击、资源限制耗尽和其他，如附录 E.5 所述）。 可以通过确保每个 0-RTT 有效载荷只能重放有限次数来缓解这些攻击。 服务器必须确保任何实例（无论是一台机器、一个线程或相关服务基础设施中的任何其他实体）最多接受一次同一 0-RTT 握手的 0-RTT；这将重播次数限制在部署的服务器实例数量上。 这样的保证可以通过本地记录最近收到的 ClientHello 的数据并拒绝重复，或者通过任何其他能够提供相同或更强保证的方法来实现。 "每个服务器实例最多一次"的保证是最低要求，服务器应该在可行的情况下进一步限制 0-RTT 重播。
+
+第二类攻击在 TLS 层无法防止，必须由应用程序来处理。 需要注意的是，任何应用程序的客户端实现任何类型的重试行为，都需要实现某种反重试防御。
+
 ### 8.1. Single-Use Tickets
+
+最简单的防重放防御方式是服务器只允许每个会话票据使用一次。 例如，服务器可以维护一个所有未使用的有效票据的数据库，在使用时从数据库中删除每个票据。 如果提供了未知的票据，服务器就会回落到完全握手。
+
+如果票据不是自带的，而是数据库密钥，相应的 PSK 在使用时被删除，那么使用 PSK 建立的连接就享有前向保密性。这样就提高了所有 0-RTT 数据和 PSK 使用的安全性，当使用 PSK 时，不使用 (EC)DHE。
+
+由于这种机制在有多个分布式服务器的环境中，需要在服务器节点之间共享会话数据库，因此与自加密票证相比，可能很难实现 PSK 0-RTT 连接的高成功率。与会话数据库不同的是，即使没有一致的存储，会话票也可以成功地进行基于 PSK 的会话建立，不过当允许 0-RTT 时，它们仍然需要一致的存储，以便对 0-RTT 数据进行反重放，详见下节。
 
 ### 8.2. Client Hello Recording
 
+反重放攻击的另一种形式是记录一个从 ClientHello 中派生出来的唯一值（一般是随机值或 PSK binder），并拒绝重复。 记录所有的 ClientHello 会导致状态无限制地增长，但服务器也可以记录给定时间窗口内的 ClientHello，并使用 obfuscated_ticket_age 来确保 ticket 在该窗口之外不会被重复使用。
+
+为了实现这一点，当接收到 ClientHello 时，服务器首先验证 PSK binder，如 4.2.11 节所述。然后，按照下一节的描述计算预期的到达时间（expected_arrival_time），如果在记录窗口之外，则拒绝 0-RTT，回退到 1-RTT 握手。
+
+如果 expected_arrival_time 在窗口内，那么服务器会检查是否记录了一个匹配的 ClientHello。 如果找到了，要么用 illegal_parameter 警告中止握手，要么接受 PSK 但拒绝 0-RTT。 如果没有找到匹配的 ClientHello，那么就接受 0-RTT，然后将 ClientHello 存储至 expected_arrival_time。 服务器也可以以 false positive 实现数据存储，例如 Bloom 过滤器，在这种情况下，必须通过拒绝 0-RTT 来响应明显的重放，但不得中止握手。
+
+服务器必须只从 ClientHello 的验证部分导出存储密钥。 如果 ClientHello 包含多个 PSK 身份，那么攻击者可以在假设服务器不会验证的情况下，使用不同的 binder 值为较不喜欢的身份创建多个 ClientHello（如4.2.11节所推荐的）。 比如，如果客户端发送 PSK A 和 B，但服务器更喜欢 A，那么攻击者可以改变 B 的 binder，而不影响 A 的 binder，如果 B 的 binder 是存储密钥的一部分，那么这个 ClientHello 不会被当作重复，这将导致 ClientHello 被接受，并可能导致重放缓存污染等副作用，尽管 0-RTT 数据无法解密，因为它将使用不同的密钥。 如果使用验证过的 binder 或 ClientHello.random 作为存储密钥，那么这种攻击是不可能的。
+
+由于这种机制不需要存储所有未完成的 ticket，因此在具有高恢复率和 0-RTT 的分布式系统中可能更容易实现，但代价是由于难以可靠地存储和检索接收到的 ClientHello 消息，因此反重放防御可能较弱。在许多这样的系统中，对所有接收到的 ClientHello 进行全局一致的存储是不切实际的。在这种情况下，最好的防重放保护方法是让一个存储区负责某一 ticket，并拒绝该 ticket 在任何其他区的 0-RTT。这种方法可以防止攻击者进行简单的重放，因为只有一个区会接受 0-RTT 数据。 一个较弱的设计是为每个区实现单独的存储，但允许任何区的 0-RTT。 这种方法将重放的次数限制在每个区一次。 当然，无论哪种设计，应用消息复制仍然是可能的。
+
+当刚启动时，只要其记录窗口的任何部分与启动时间重叠，就应该拒绝 0-RTT。 否则，它们就有可能接受最初在该期间发送的重放。
+
+注意：如果客户端的时钟运行速度比服务器快得多，那么未来可能会收到一个在窗口之外的 ClientHello，在这种情况下，它可能会被接受为 1-RTT，导致客户端重试，之后再成为 0-RTT 可接受状态。 这是第8章中描述的第二种攻击形式的另一种变体。
+
 ### 8.3. Freshness Checks
+
+因为 ClientHello 指示了客户端发送的时间，所以可以有效地判断一个 ClientHello 是否可能是最近合理发送的，对于这样的 ClientHello 只接受 0-RTT，否则回落到 1-RTT 的握手。 这对于 8.2 节描述的 ClientHello 存储机制来说是必要的，否则服务器需要存储无限的 ClientHello，对于独立的单次使用的 ticket 来说，这是一个有用的优化，因为可以高效地拒绝不能用于 0-RTT 的 ClientHello。
+
+为了实现这一机制，服务器需要存储服务器生成会话 ticket 的时间，并加上客户端和服务器之间的往返时间估计。 即：
+
+```
+       adjusted_creation_time = creation_time + estimated_RTT
+```
+
+这个值可以在 ticket 中编码，从而避免为每个未完成的 ticket 保留状态。 服务器可以通过从客户端 pre_shared_key 扩展中的 obfuscated_ticket_age 参数中减去该 ticket 的 ticket_age_add 值来确定客户端对 ticket age 的看法。服务器可以确定 ClientHello 的 expected_arrival_time 为：
+
+```
+     expected_arrival_time = adjusted_creation_time + clients_ticket_age
+```
+
+当接收到一个新的 ClientHello 时，将 expected _arrival_time 与当前服务器时钟时间进行比较，如果两者相差超过一定量，则拒绝 0-RTT，不过可以允许 1-RTT 握手完成。
+
+有几个潜在的错误来源可能会导致 expected_arrival_time 和测量时间不匹配。客户端和服务器时钟速率的不同可能是影响最小的，虽然绝对时间可能会有较大的偏差。网络传输延迟是导致经过时间的合法值不匹配的最可能原因。NewSessionTicket 和 ClientHello 消息都可能被重传，因此会有延迟，这可能会被 TCP 隐藏。对于互联网上的客户端来说，这意味着十秒左右的窗口，以考虑时钟错误和测量不同；其他部署场景可能有不同的需求。时钟偏移分布不是对称的，因此最佳的权衡可能涉及到一个不对称的允许偏差。
+
+请注意，仅靠时新性检查不足以防止重放，因为它没有在错误窗口期间检测到重放，而这一窗口 -- 取决于带宽和系统容量 -- 在现实世界中可能包括数十亿次重放。 此外，这种时新性检查只在接收 ClientHello 时进行，而不是在接收后续早期应用数据记录时进行。 在接受早期数据后，记录可能会在较长的时间内继续流向服务器。
 
 ## 9. Compliance Requirements
 
 ### 9.1. Mandatory-to-Implement Cipher Suites
 
+在没有应用配置标准规定的情况下：
+
+- 一个符合 TLS 标准的应用程序必须实现 TLS_AES_128_GCM_SHA256 [GCM] 密码套件，并且应该实现 TLS_AES_256_GCM_SHA384 [GCM] 和 TLS_CHACHA20_POLY1305_SHA256 [RFC8439] 密码套件（见附录 B.4）。
+- 一个符合 TLS 标准的应用程序必须支持使用 rsa_pkcs1_sha256 (用于证书)、rsa_pss_rsae_sha256 (用于 CertificateVerify 和证书)和 ecdsa_secp256r1_sha256 的数字签名。 一个符合 TLS 标准的应用程序必须支持与 secp256r1(NIST P-256) 的密钥交换，并且应该支持与 X25519 [RFC7748] 的密钥交换。
+
 ### 9.2. Mandatory-to-Implement Extensions
 
+在没有应用配置标准的情况下，一个符合TLS标准的应用必须实现以下TLS扩展：
+
+- 支持的版本 (supported_versions， 4.2.1 节)
+- Cookie (cookie，4.2.2 节)
+- 签名算法 (signature_algorithms，4.2.3 节)
+- 签名算法证书 (signature_algorithms_cert，4.2.3 节)
+- 协商组（supported_groups，4.2.7节）。
+- 共享秘钥（key_share，4.2.8 节）。
+- 服务器名称(server_name，[RFC6066] 第 3 节)
+
+所有的实现在提供适用功能时必须发送和使用这些扩展：
+
+- supported_versions 对于所有的 ClientHello, ServerHello, 和 HelloRetryRequest 消息是必需的。
+- signature_algorithms 对于证书认证来说是必须的。
+- supported_groups 对于使用 DHE 或 ECDHE 密钥交换的 ClientHello 消息是必须的。
+- key_share 对于使用 DHE 或 ECDHE 密钥交换的 ClientHello 消息是必须的。
+- pre_shared_key 对于 PSK 密钥协议来说是必须的。
+- psk_key_exchange_modes 是对 PSK 密钥协议的必须的。
+
+如果 ClientHello 在其正文中包含有 0x0304 的 supported_versions 扩展，则认为客户端试图使用本规范进行协商。 这样的 ClientHello 消息必须满足以下要求：
+
+- 如果不包含 pre_shared_key 扩展，则必须同时包含 signature_algorithms 扩展和 supported_groups 扩展。
+- 如果包含一个 supported_groups 扩展，则必须同时包含一个 key_share 扩展，反之亦然。允许使用空的 KeyShare.client_shares 向量。
+
+服务器接收到不符合这些要求的 ClientHello 必须用 missing_extension alert 中止握手。
+
+此外，所有的实现都必须支持 server_name 扩展，应用程序必须能够使用该扩展。服务器可以要求客户端发送一个有效的 server_name 扩展名。需要这个扩展的服务器应该对缺少 server_name 扩展的 ClientHello 响应以 missing_extension 警告，来终止连接。
+
 ### 9.3. Protocol Invariants
+
+本节描述了 TLS 端点和中间件必须遵循的 invariant。它也适用于 TLS 的早期版本。
+
+TLS 被设计为安全和可兼容的扩展。新的客户端或服务器，在与新对端通信时，应该协商最优先的通用参数。 TLS 握手提供降级保护。中间件在没有终止 TLS 的情况下，在新的客户端和新的服务器之间传递流量，应该无法影响握手（见附录 E.1）。同时，部署以不同的速度更新，所以新的客户端或服务器可能会继续支持旧的参数，这将允许它与旧的端点互操作。
+
+为了使之工作，实现必须正确处理可扩展字段：
+
+- 客户端发送的 ClientHello 必须支持其中所有的参数。否则，服务器可能会因为选择了其中的一个参数而导致互操作失败。
+- 接收 ClientHello 的服务器必须正确地忽略所有不认识的密码套件、扩展和其他参数。否则，它可能无法与新的客户端进行互操作。在 TLS 1.3 中，接收到 CertificateRequest 或 NewSessionTicket 的客户端也必须忽略所有不认识的扩展。
+- 终止 TLS 连接的中间件必须作为一个合规的 TLS 服务器（对原客户端），包括拥有客户端愿意接受的证书，同时也必须作为一个合规的 TLS 客户端（对原服务器），包括验证原服务器的证书。 特别是，它必须生成自己的 ClientHello，只包含自己理解的参数，它必须生成一个更新的 ServerHello 随机值，而不是转发端点的值。
+> 请注意，TLS 的协议要求和安全分析只适用于两个单独的连接。 安全部署 TLS 终结器需要额外的安全考虑，这超出了本文的范围。
+- 转发不理解的 ClientHello 参数的中间件不得处理该 ClientHello 以外的任何消息。它必须不加修改地转发所有后续流量。否则，可能无法与较新的客户端和服务器互通。
+
+转发的 ClientHello 可能包含中间件不支持的功能通告，因此响应可能包含中间件不识别的未来 TLS 添加物。 这些附加功能可能会任意改变 ClientHello 之外的任何消息。 特别是，ServerHello 中发送的值可能会改变，ServerHello 格式可能会改变，TLSCiphertext 格式可能会改变。
+
+TLS 1.3 的设计受到了广泛部署的不兼容的 TLS 中间件的限制（见附录 D.4）; 但是，它并没有放松 invariant。这些中间件仍然是不合规的。
