@@ -100,7 +100,7 @@ QUIC因此建议最小的拥塞窗口应该是2个包。虽然这增加了网络
 
 # 5. Estimating the Round-Trip Time
 
-在上层，终端将发包到收到确认之间的时间成为RTT样本。终端使用RTT样本和对端上报的主机延迟（peer-reported host delay）来生成网络链路RTT的统计描述。
+在上层，终端将发包到收到确认之间的时间称为RTT样本。终端使用RTT样本和对端上报的主机延迟（peer-reported host delay）来生成网络链路RTT的统计描述。
 终端计算了每条链路上的如下三个值：链路生命周期内的最小延迟（min_rtt），指数加权动态平均值（smoothed_rtt），和观察到的RTT样本的平均偏差（rttvar，下文中将称为”variation“）
 
 ## 5.1. Generating RTT samples
@@ -261,7 +261,7 @@ QUIC发送端使用了确认来检测丢包，使用了探测超时来保证确�
 * 最新的RTT采样比sRTT小，这有可能是因为ACK通过更短的链路进行了传输而引起的乱序。
 * 最新的RTT采样比sRTT大，这可能是因为真实RTT的剧增，但是sRTT却无法及时跟上。
 
-推荐（RECOMMENDED）的时间阈值（kTimeThreshold），成为RTT乘数，是9/8。
+推荐（RECOMMENDED）的时间阈值（kTimeThreshold），称为RTT乘数，是9/8。
 推荐（RECOMMENDED）的时间粒度（kGranularity）是1ms。
 
 注：TCP的RACK([RACK])规定了一个稍大的阈值，相当于5/4，以达到类似的目的。QUIC的经验表明，9/8的效果很好。
