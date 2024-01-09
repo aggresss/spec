@@ -125,7 +125,7 @@ RTT采样中的lastest_rtt是 当前被确认的最大的包发出后经过的�
 当只收到non-ack-eliciting包时，对端通常不会发送ACK帧。因此如果一个ACK帧中只包含了对non-ack-eliciting包的确认的话，它可能包含了任意大的ACK延迟数值。
 忽略这样的ACK帧可以来避免后续smoothed_rtt和rttvar计算时的困难。
 
-当一个RTT钟收到多个ACK帧，发送者可能在一个RTT中生成多个RTT采样。
+当一个RTT中收到多个ACK帧，发送者可能在一个RTT中生成多个RTT采样。
 这样做可能导致smoothed_rtt和rttvar出现历史样本不充分的情况。确保RTT评估保留足够历史记录是一个公开的研究问题。
 
 ## 5.2. Estimating min_rtt
