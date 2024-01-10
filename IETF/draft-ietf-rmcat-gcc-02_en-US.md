@@ -217,6 +217,7 @@ The variance `var_v(i) = E{v(i)^2}` is estimated using an exponential averaging 
 
      alpha = (1-chi)^(30/(1000 * f_max))
 ```
+
 where `f_max = max {1/(T(j) - T(j-1))} for j in i-K+1,...,i` is the highest rate at which the last K packet groups have been received and chi is a filter coefficient typically chosen as a number in the interval [0.1, 0.001]. Since our assumption that `v(i)` should be zero mean WGN is less accurate in some cases, we have introduced an additional outlier filter around the updates of var_v_hat. If `z(i) > 3*sqrt(var_v_hat)` the filter is updated with `3*sqrt(var_v_hat)` rather than `z(i)`. For instance `v(i)` will not be white in situations where packets are sent at a higher rate than the channel capacity, in which case they will be queued behind each other.
 
 ### 5.4. Over-use detector
@@ -244,7 +245,7 @@ On the other hand, when `m(i)` falls back into the range `[-del_var_th(i-1),del_
 
 It is RECOMMENDED to choose `K_u > K_d` so that the rate at which del_var_th is increased is higher than the rate at which it is decreased. With this setting it is possible to increase the threshold in the case of a concurrent TCP flow and prevent starvation as well as enforcing intra-protocol fairness. RECOMMENDED values for `del_var_th(0)`, overuse_time_th, K_u and K_d are respectively 12.5 ms, 10 ms, 0.01 and 0.00018.
 
-5.5. Rate control
+### 5.5. Rate control
 
 The rate control is split in two parts, one controlling the bandwidth estimate based on delay, and one controlling the bandwidth estimate based on loss. Both are designed to increase the estimate of the available bandwidth A_hat as long as there is no detected congestion and to ensure that we will eventually match the available bandwidth of the channel and detect an over-use.
 
