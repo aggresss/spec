@@ -115,7 +115,7 @@ The first version can be realized by using a per-packet feedback protocol as des
 
 The sender will map the received {sequence number, arrival time} pairs to the send-time of each packet covered by the feedback report, and feed those timestamps to the delay-based controller. It will also compute a loss ratio based on the sequence numbers in the feedback message.
 
-The second version can be realized by having a delay-based controller at the receive-side, monitoring and processing the arrival time and size of incoming packets. The sender SHOULD use the abs-send-time RTP header extension [abs-send-time] to enable the receiver to compute the inter-group delay variation. The output from the delay- based controller will be a bitrate, which will be sent back to the sender using the REMB feedback message [I-D.alvestrand-rmcat-remb]. The packet loss ratio is sent back via RTCP receiver reports. At the sender the bitrate in the REMB message and the fraction of packets lost are fed into the loss-based controller, which outputs a final target bitrate. It is RECOMMENDED to send the REMB message as soon as congestion is detected, and otherwise at least once every second.
+The second version can be realized by having a delay-based controller at the receive-side, monitoring and processing the arrival time and size of incoming packets. The sender SHOULD use the abs-send-time RTP header extension [abs-send-time] to enable the receiver to compute the inter-group delay variation. The output from the delay-based controller will be a bitrate, which will be sent back to the sender using the REMB feedback message [I-D.alvestrand-rmcat-remb]. The packet loss ratio is sent back via RTCP receiver reports. At the sender the bitrate in the REMB message and the fraction of packets lost are fed into the loss-based controller, which outputs a final target bitrate. It is RECOMMENDED to send the REMB message as soon as congestion is detected, and otherwise at least once every second.
 
 ## 4. Sending Engine
 
@@ -131,7 +131,7 @@ The delay-based control algorithm can be further decomposed into four parts: a p
 
 This section describes an adaptive filter that continuously updates estimates of network parameters based on the timing of the received groups of packets.
 
-We define the inter-arrival time, `t(i) - t(i-1)`, as the difference in arrival time of two groups of packets. Correspondingly, the inter- departure time, `T(i) - T(i-1)`, is defined as the difference in departure-time of two groups of packets. Finally, the inter-group delay variation, `d(i)`, is defined as the difference between the inter-arrival time and the inter-departure time. Or interpreted differently, as the difference between the delay of group `i` and group `i-1`.
+We define the inter-arrival time, `t(i) - t(i-1)`, as the difference in arrival time of two groups of packets. Correspondingly, the inter-departure time, `T(i) - T(i-1)`, is defined as the difference in departure-time of two groups of packets. Finally, the inter-group delay variation, `d(i)`, is defined as the difference between the inter-arrival time and the inter-departure time. Or interpreted differently, as the difference between the delay of group `i` and group `i-1`.
 
 ```
      d(i) = t(i) - t(i-1) - (T(i) - T(i-1))
@@ -139,7 +139,7 @@ We define the inter-arrival time, `t(i) - t(i-1)`, as the difference in arrival 
 
 An inter-departure time is computed between consecutive groups as `T(i) - T(i-1)`, where `T(i)` is the departure timestamp of the last packet in the current packet group being processed. Any packets received out of order are ignored by the arrival-time model.
 
-Each group is assigned a receive time `t(i)`, which corresponds to thetime at which the last packet of the group was received. A group isdelayed relative to its predecessor if `t(i) - t(i-1) > T(i) - T(i-1)`,i.e., if the inter-arrival time is larger than the inter-departuretime.
+Each group is assigned a receive time `t(i)`, which corresponds to the time at which the last packet of the group was received. A group is delayed relative to its predecessor if `t(i) - t(i-1) > T(i) - T(i-1)`,i.e., if the inter-arrival time is larger than the inter-departuretime.
 
 We can model the inter-group delay variation as:
 
@@ -147,7 +147,7 @@ We can model the inter-group delay variation as:
      d(i) = w(i)
 ```
 
-Here, `w(i)` is a sample from a stochastic process W, which is a function of the link capacity, the current cross traffic, and the current sent bitrate. We model W as a white Gaussian process. If we are over-using the channel we expect the mean of `w(i)` to increase, and if a queue on the network path is being emptied, the mean of `w(i)` will decrease; otherwise the mean of `w(i)` will be zero.
+Here, `w(i)` is a sample from a stochastic process `W`, which is a function of the link capacity, the current cross traffic, and the current sent bitrate. We model `W` as a white Gaussian process. If we are over-using the channel we expect the mean of `w(i)` to increase, and if a queue on the network path is being emptied, the mean of `w(i)` will decrease; otherwise the mean of `w(i)` will be zero.
 
 Breaking out the mean, `m(i)`, from `w(i)` to make the process zero mean, we get
 
