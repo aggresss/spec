@@ -69,7 +69,7 @@ RFC | 名称
 ### RTP Payload
 
 Codec Name | RFC
--- | --
+---|---
 PCMU | https://datatracker.ietf.org/doc/html/rfc7655
 PCMA | https://datatracker.ietf.org/doc/html/rfc7655
 G722 | https://datatracker.ietf.org/doc/html/rfc5577
@@ -82,6 +82,14 @@ VP9 | https://datatracker.ietf.org/doc/html/draft-ietf-payload-vp9-16
 HEVC | https://datatracker.ietf.org/doc/html/rfc7798
 AV1 | https://aomediacodec.github.io/av1-rtp-spec/
 
+### Transfer Encoding
+
+RFC | 名称
+-- | --
+[RFC5109](https://datatracker.ietf.org/doc/html/rfc5109) | RTP Payload Format for Generic Forward Error Correction
+[RFC5510](https://datatracker.ietf.org/doc/html/rfc5510) | Reed-Solomon Forward Error Correction (FEC) Schemes
+[RFC8627](https://datatracker.ietf.org/doc/html/rfc8627) | RTP Payload Format for Flexible Forward Error Correction (FEC)
+
 ### WebRTC
 
 RFC | 名称
@@ -90,6 +98,7 @@ RFC | 名称
 [RFC5389](https://datatracker.ietf.org/doc/html/rfc5389) | Session Traversal Utilities for NAT (STUN)
 [RFC5766](https://datatracker.ietf.org/doc/html/rfc5766) | Traversal Using Relays around NAT (TURN): Relay Extensions to Session Traversal Utilities for NAT (STUN)
 [RFC4960](https://datatracker.ietf.org/doc/html/rfc4960) | Stream Control Transmission Protocol (SCTP)
+[RFC8854](https://datatracker.ietf.org/doc/html/rfc4960) | WebRTC Forward Error Correction Requirements
 
 ### QUIC
 
@@ -128,3 +137,4 @@ RFC | 名称
 ### Web
 
 [RFC6455](https://datatracker.ietf.org/doc/html/rfc6455) | The WebSocket Protocol
+
