@@ -1021,7 +1021,7 @@ New media subtypes are subject to IANA registration. For the registration of the
 - [RTP-SDES] Roach, A., Nandakumar, S., and P. Thatcher, "RTP Stream Identifier Source Description (SDES)", Work in Progress, draft-ietf-avtext-rid-09, October 2016.
 - [SMPTE2022-1] SMPTE, "Forward Error Correction for Real-Time Video/Audio Transport over IP Networks", ST 2022-1:2007, SMPTE Standard, DOI 10.5594/SMPTE.ST2022-1.2007, May 2007.
 
-Acknowledgments
+**Acknowledgments**
 
 Some parts of this document are borrowed from [RFC5109]. Thus, the author would like to thank the editor of [RFC5109] and those who contributed to [RFC5109].
 
