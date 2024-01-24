@@ -78,14 +78,14 @@ Audio/video applications would generally benefit from the FECalgorithms specifie
 
 The following terms are used throughout this document:
 
-- Media Payload: The raw, unprotected user data that are transmittedfrom the sender. The media payload is placed inside of an RTPpacket.
-- Media Header: The RTP header for the packet containing the media payload.
-- Media Packet: The combination of a media payload and media header is called a media packet.
-- FEC Packet: The FEC algorithms at the transmitter take the media packets as an input. They output both the media packets that they are passed, and newly generated packets called FEC packets, which contain redundant media data used for error correction. The FEC packets are formatted according to the rules specified in this document.
-- FEC Header: The header information contained in an FEC packet.
-- FEC Level Header: The header information contained in an FEC packet for each level.
-- FEC Payload: The payload of an FEC packet. It may be divided into multiple levels.
-- Associated: A FEC packet is said to be "associated" with one or more media packets (or vice versa) when those media packets are used to generate the FEC packet (by use of the exclusive-or operation). It refers to only those packets used to generate the level 0 FEC payload, if not explicitly stated otherwise.
+- **Media Payload**: The raw, unprotected user data that are transmittedfrom the sender. The media payload is placed inside of an RTPpacket.
+- **Media Header**: The RTP header for the packet containing the media payload.
+- **Media Packet**: The combination of a media payload and media header is called a media packet.
+- **FEC Packet**: The FEC algorithms at the transmitter take the media packets as an input. They output both the media packets that they are passed, and newly generated packets called FEC packets, which contain redundant media data used for error correction. The FEC packets are formatted according to the rules specified in this document.
+- **FEC Header**: The header information contained in an FEC packet.
+- **FEC Level Header**: The header information contained in an FEC packet for each level.
+- **FEC Payload**: The payload of an FEC packet. It may be divided into multiple levels.
+- **Associated**: A FEC packet is said to be "associated" with one or more media packets (or vice versa) when those media packets are used to generate the FEC packet (by use of the exclusive-or operation). It refers to only those packets used to generate the level 0 FEC payload, if not explicitly stated otherwise.
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119 [2].
 
@@ -193,17 +193,11 @@ A FEC packet is constructed by placing an FEC header and one or more levels of F
 
 The RTP header for FEC packets is only used when the FEC are sent in a separate stream from the protected payload stream (as defined in Section 14). Hence, much of the discussion below applies only to that scenario. All the fields in the RTP header of FEC packets are used according to RFC 3550 [1], with some of them further clarified below.
 
-Marker: This field is not used for this payload type, and SHALL be set to 0.
-
-Synchronization Source (SSRC): The SSRC value SHALL be the same as the SSRC value of the media stream it protects.
-
-Sequence Number (SN): The sequence number has the standard definition - it MUST be one higher than the sequence number in the previously transmitted FEC packet.
-
-Timestamp (TS): The timestamp MUST be set to the value of the media RTP clock at the instant the FEC packet is transmitted. Thus, the TS value in FEC packets is always monotonically increasing.
-
-Payload type: The payload type for the FEC packets is determined through dynamic, out-of-band means. According to RFC 3550 [1], RTP participants that cannot recognize a payload type must discard it. This provides backward compatibility. The FEC mechanisms can then be
-
-used in a multicast group with mixed FEC-capable and FEC-incapable receivers, particularly when the FEC protection is sent as redundant encoding (see Section 14). In such cases, the FEC protection will have a payload type that is not recognized by the FEC-incapable receivers, and will thus be disregarded.
+- **Marker**: This field is not used for this payload type, and SHALL be set to 0.
+- **Synchronization Source (SSRC)**: The SSRC value SHALL be the same as the SSRC value of the media stream it protects.
+- **Sequence Number (SN)**: The sequence number has the standard definition - it MUST be one higher than the sequence number in the previously transmitted FEC packet.
+- **Timestamp (TS)**: The timestamp MUST be set to the value of the media RTP clock at the instant the FEC packet is transmitted. Thus, the TS value in FEC packets is always monotonically increasing.
+- **Payload type**: The payload type for the FEC packets is determined through dynamic, out-of-band means. According to RFC 3550 [1], RTP participants that cannot recognize a payload type must discard it. This provides backward compatibility. The FEC mechanisms can then be used in a multicast group with mixed FEC-capable and FEC-incapable receivers, particularly when the FEC protection is sent as redundant encoding (see Section 14). In such cases, the FEC protection will have a payload type that is not recognized by the FEC-incapable receivers, and will thus be disregarded.
 
 ### 7.3. FEC Header for FEC Packets
 
