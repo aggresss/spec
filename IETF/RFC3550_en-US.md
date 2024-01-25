@@ -1613,21 +1613,21 @@ The following checks should be applied to RTCP packets.
 - The code fragment below performs all of these checks.  The packet type is not checked for subsequent packets since unknown packet types may be present and should be ignored.
 
 ```
-    u_int32 len;        /* length of compound RTCP packet in words */
-    rtcp_t *r;          /* RTCP header */
-    rtcp_t *end;        /* end of compound RTCP packet */
+u_int32 len;        /* length of compound RTCP packet in words */
+rtcp_t *r;          /* RTCP header */
+rtcp_t *end;        /* end of compound RTCP packet */
 
-    if ((*(u_int16 *)r & RTCP_VALID_MASK) != RTCP_VALID_VALUE) {
-        /* something wrong with packet format */
-    }
-    end = (rtcp_t *)((u_int32 *)r + len);
+if ((*(u_int16 *)r & RTCP_VALID_MASK) != RTCP_VALID_VALUE) {
+    /* something wrong with packet format */
+}
+end = (rtcp_t *)((u_int32 *)r + len);
 
-    do r = (rtcp_t *)((u_int32 *)r + r->common.length + 1);
-    while (r < end && r->common.version == 2);
+do r = (rtcp_t *)((u_int32 *)r + r->common.length + 1);
+while (r < end && r->common.version == 2);
 
-    if (r != end) {
-        /* something wrong with packet format */
-    }
+if (r != end) {
+    /* something wrong with packet format */
+}
 ```
 
 ### A.3 Determining Number of Packets Expected and Lost
@@ -1666,41 +1666,41 @@ The resulting fraction is an 8-bit fixed point number with the binary point at t
 This function builds one SDES chunk into buffer b composed of argc items supplied in arrays type, value and length.  It returns a pointer to the next available location within b.
 
 ```
-   char *rtp_write_sdes(char *b, u_int32 src, int argc,
-                        rtcp_sdes_type_t type[], char *value[],
-                        int length[])
-   {
-       rtcp_sdes_t *s = (rtcp_sdes_t *)b;
-       rtcp_sdes_item_t *rsp;
-       int i;
-       int len;
-       int pad;
+char *rtp_write_sdes(char *b, u_int32 src, int argc,
+                    rtcp_sdes_type_t type[], char *value[],
+                    int length[])
+{
+    rtcp_sdes_t *s = (rtcp_sdes_t *)b;
+    rtcp_sdes_item_t *rsp;
+    int i;
+    int len;
+    int pad;
 
-       /* SSRC header */
-       s->src = src;
-       rsp = &s->item[0];
+    /* SSRC header */
+    s->src = src;
+    rsp = &s->item[0];
 
-       /* SDES items */
-       for (i = 0; i < argc; i++) {
-           rsp->type = type[i];
-           len = length[i];
-           if (len > RTP_MAX_SDES) {
-               /* invalid length, may want to take other action */
-               len = RTP_MAX_SDES;
-           }
-           rsp->length = len;
-           memcpy(rsp->data, value[i], len);
-           rsp = (rtcp_sdes_item_t *)&rsp->data[len];
-       }
+    /* SDES items */
+    for (i = 0; i < argc; i++) {
+        rsp->type = type[i];
+        len = length[i];
+        if (len > RTP_MAX_SDES) {
+            /* invalid length, may want to take other action */
+            len = RTP_MAX_SDES;
+        }
+        rsp->length = len;
+        memcpy(rsp->data, value[i], len);
+        rsp = (rtcp_sdes_item_t *)&rsp->data[len];
+    }
 
-       /* terminate with end marker and pad to next 4-octet boundary */
-       len = ((char *) rsp) - b;
-       pad = 4 - (len & 0x3);
-       b = (char *) rsp;
-       while (pad--) *b++ = RTCP_SDES_END;
+    /* terminate with end marker and pad to next 4-octet boundary */
+    len = ((char *) rsp) - b;
+    pad = 4 - (len & 0x3);
+    b = (char *) rsp;
+    while (pad--) *b++ = RTCP_SDES_END;
 
-       return b;
-   }
+    return b;
+}
 ```
 
 A.5 Parsing RTCP SDES Packets
@@ -1708,35 +1708,35 @@ A.5 Parsing RTCP SDES Packets
 This function parses an SDES packet, calling functions find_member() to find a pointer to the information for a session member given the SSRC identifier and member_sdes() to store the new SDES information for that member.  This function expects a pointer to the header of the RTCP packet.
 
 ```
-   void rtp_read_sdes(rtcp_t *r)
-   {
-       int count = r->common.count;
-       rtcp_sdes_t *sd = &r->r.sdes;
-       rtcp_sdes_item_t *rsp, *rspn;
-       rtcp_sdes_item_t *end = (rtcp_sdes_item_t *)
-                               ((u_int32 *)r + r->common.length + 1);
-       source *s;
+void rtp_read_sdes(rtcp_t *r)
+{
+    int count = r->common.count;
+    rtcp_sdes_t *sd = &r->r.sdes;
+    rtcp_sdes_item_t *rsp, *rspn;
+    rtcp_sdes_item_t *end = (rtcp_sdes_item_t *)
+                            ((u_int32 *)r + r->common.length + 1);
+    source *s;
 
-       while (--count >= 0) {
-           rsp = &sd->item[0];
-           if (rsp >= end) break;
-           s = find_member(sd->src);
+    while (--count >= 0) {
+        rsp = &sd->item[0];
+        if (rsp >= end) break;
+        s = find_member(sd->src);
 
-           for (; rsp->type; rsp = rspn ) {
-               rspn = (rtcp_sdes_item_t *)((char*)rsp+rsp->length+2);
-               if (rspn >= end) {
-                   rsp = rspn;
-                   break;
-               }
-               member_sdes(s, rsp->type, rsp->data, rsp->length);
-           }
-           sd = (rtcp_sdes_t *)
-                ((u_int32 *)sd + (((char *)rsp - (char *)sd) >> 2)+1);
-       }
-       if (count >= 0) {
-           /* invalid packet format */
-       }
-   }
+        for (; rsp->type; rsp = rspn ) {
+            rspn = (rtcp_sdes_item_t *)((char*)rsp+rsp->length+2);
+            if (rspn >= end) {
+                rsp = rspn;
+                break;
+            }
+            member_sdes(s, rsp->type, rsp->data, rsp->length);
+        }
+        sd = (rtcp_sdes_t *)
+            ((u_int32 *)sd + (((char *)rsp - (char *)sd) >> 2)+1);
+    }
+    if (count >= 0) {
+        /* invalid packet format */
+    }
+}
 ```
 
 ### A.6 Generating a Random 32-bit Identifier
@@ -1752,73 +1752,73 @@ The following subroutine generates a random 32-bit identifier using the MD5 rout
 Use of this or a similar routine is recommended to generate the initial seed for the random number generator producing the RTCP period (as shown in Appendix A.7), to generate the initial values for the sequence number and timestamp, and to generate SSRC values. Since this routine is likely to be CPU-intensive, its direct use to generate RTCP periods is inappropriate because predictability is not an issue.  Note that this routine produces the same result on repeated calls until the value of the system clock changes unless different values are supplied for the type argument.
 
 ```
-   /*
-    * Generate a random 32-bit quantity.
-    */
-   #include <sys/types.h>   /* u_long */
-   #include <sys/time.h>    /* gettimeofday() */
-   #include <unistd.h>      /* get..() */
-   #include <stdio.h>       /* printf() */
-   #include <time.h>        /* clock() */
-   #include <sys/utsname.h> /* uname() */
-   #include "global.h"      /* from RFC 1321 */
-   #include "md5.h"         /* from RFC 1321 */
+/*
+* Generate a random 32-bit quantity.
+*/
+#include <sys/types.h>   /* u_long */
+#include <sys/time.h>    /* gettimeofday() */
+#include <unistd.h>      /* get..() */
+#include <stdio.h>       /* printf() */
+#include <time.h>        /* clock() */
+#include <sys/utsname.h> /* uname() */
+#include "global.h"      /* from RFC 1321 */
+#include "md5.h"         /* from RFC 1321 */
 
-   #define MD_CTX MD5_CTX
-   #define MDInit MD5Init
-   #define MDUpdate MD5Update
-   #define MDFinal MD5Final
+#define MD_CTX MD5_CTX
+#define MDInit MD5Init
+#define MDUpdate MD5Update
+#define MDFinal MD5Final
 
-   static u_long md_32(char *string, int length)
-   {
-       MD_CTX context;
-       union {
-           char   c[16];
-           u_long x[4];
-       } digest;
-       u_long r;
-       int i;
+static u_long md_32(char *string, int length)
+{
+    MD_CTX context;
+    union {
+        char   c[16];
+        u_long x[4];
+    } digest;
+    u_long r;
+    int i;
 
-       MDInit (&context);
+    MDInit (&context);
 
-       MDUpdate (&context, string, length);
-       MDFinal ((unsigned char *)&digest, &context);
-       r = 0;
-       for (i = 0; i < 3; i++) {
-           r ^= digest.x[i];
-       }
-       return r;
-   }                               /* md_32 */
+    MDUpdate (&context, string, length);
+    MDFinal ((unsigned char *)&digest, &context);
+    r = 0;
+    for (i = 0; i < 3; i++) {
+        r ^= digest.x[i];
+    }
+    return r;
+}                               /* md_32 */
 
-   /*
-    * Return random unsigned 32-bit quantity.  Use 'type' argument if
-    * you need to generate several different values in close succession.
-    */
-   u_int32 random32(int type)
-   {
-       struct {
-           int     type;
-           struct  timeval tv;
-           clock_t cpu;
-           pid_t   pid;
-           u_long  hid;
-           uid_t   uid;
-           gid_t   gid;
-           struct  utsname name;
-       } s;
+/*
+* Return random unsigned 32-bit quantity.  Use 'type' argument if
+* you need to generate several different values in close succession.
+*/
+u_int32 random32(int type)
+{
+    struct {
+        int     type;
+        struct  timeval tv;
+        clock_t cpu;
+        pid_t   pid;
+        u_long  hid;
+        uid_t   uid;
+        gid_t   gid;
+        struct  utsname name;
+    } s;
 
-       gettimeofday(&s.tv, 0);
-       uname(&s.name);
-       s.type = type;
-       s.cpu  = clock();
-       s.pid  = getpid();
-       s.hid  = gethostid();
-       s.uid  = getuid();
-       s.gid  = getgid();
-       /* also: system uptime */
+    gettimeofday(&s.tv, 0);
+    uname(&s.name);
+    s.type = type;
+    s.cpu  = clock();
+    s.pid  = getpid();
+    s.hid  = gethostid();
+    s.uid  = getuid();
+    s.gid  = getgid();
+    /* also: system uptime */
 
-       return md_32((char *)&s, sizeof(s));
-   }                               /* random32 */
+    return md_32((char *)&s, sizeof(s));
+}                               /* random32 */
 ```
 
 ### A.7 Computing the RTCP Transmission Interval
@@ -1845,227 +1845,227 @@ Both OnExpire() and OnReceive() have event e as an argument.  This is the next s
 These functions would have to be extended for an implementation that allows the RTCP bandwidth fractions for senders and non-senders to be specified as explicit parameters rather than fixed values of 25% and 75%.  The extended implementation of rtcp_interval() would need to avoid division by zero if one of the parameters was zero.
 
 ```
-   double rtcp_interval(int members,
-                        int senders,
-                        double rtcp_bw,
-                        int we_sent,
-                        double avg_rtcp_size,
-                        int initial)
-   {
-       /*
-        * Minimum average time between RTCP packets from this site (in
-        * seconds).  This time prevents the reports from `clumping' when
-        * sessions are small and the law of large numbers isn't helping
-        * to smooth out the traffic.  It also keeps the report interval
-        * from becoming ridiculously small during transient outages like
-        * a network partition.
-        */
-       double const RTCP_MIN_TIME = 5.;
-       /*
-        * Fraction of the RTCP bandwidth to be shared among active
-        * senders.  (This fraction was chosen so that in a typical
-        * session with one or two active senders, the computed report
-        * time would be roughly equal to the minimum report time so that
-        * we don't unnecessarily slow down receiver reports.)  The
-        * receiver fraction must be 1 - the sender fraction.
-        */
-       double const RTCP_SENDER_BW_FRACTION = 0.25;
-       double const RTCP_RCVR_BW_FRACTION = (1-RTCP_SENDER_BW_FRACTION);
-       /*
-       /* To compensate for "timer reconsideration" converging to a
-        * value below the intended average.
-        */
-       double const COMPENSATION = 2.71828 - 1.5;
+double rtcp_interval(int members,
+                    int senders,
+                    double rtcp_bw,
+                    int we_sent,
+                    double avg_rtcp_size,
+                    int initial)
+{
+    /*
+    * Minimum average time between RTCP packets from this site (in
+    * seconds).  This time prevents the reports from `clumping' when
+    * sessions are small and the law of large numbers isn't helping
+    * to smooth out the traffic.  It also keeps the report interval
+    * from becoming ridiculously small during transient outages like
+    * a network partition.
+    */
+    double const RTCP_MIN_TIME = 5.;
+    /*
+    * Fraction of the RTCP bandwidth to be shared among active
+    * senders.  (This fraction was chosen so that in a typical
+    * session with one or two active senders, the computed report
+    * time would be roughly equal to the minimum report time so that
+    * we don't unnecessarily slow down receiver reports.)  The
+    * receiver fraction must be 1 - the sender fraction.
+    */
+    double const RTCP_SENDER_BW_FRACTION = 0.25;
+    double const RTCP_RCVR_BW_FRACTION = (1-RTCP_SENDER_BW_FRACTION);
+    /*
+    /* To compensate for "timer reconsideration" converging to a
+    * value below the intended average.
+    */
+    double const COMPENSATION = 2.71828 - 1.5;
 
-       double t;                   /* interval */
-       double rtcp_min_time = RTCP_MIN_TIME;
-       int n;                      /* no. of members for computation */
+    double t;                   /* interval */
+    double rtcp_min_time = RTCP_MIN_TIME;
+    int n;                      /* no. of members for computation */
 
-       /*
-        * Very first call at application start-up uses half the min
-        * delay for quicker notification while still allowing some time
-        * before reporting for randomization and to learn about other
-        * sources so the report interval will converge to the correct
-        * interval more quickly.
-        */
-       if (initial) {
-           rtcp_min_time /= 2;
-       }
-       /*
-        * Dedicate a fraction of the RTCP bandwidth to senders unless
-        * the number of senders is large enough that their share is
-        * more than that fraction.
-        */
-       n = members;
-       if (senders <= members * RTCP_SENDER_BW_FRACTION) {
-           if (we_sent) {
-               rtcp_bw *= RTCP_SENDER_BW_FRACTION;
-               n = senders;
-           } else {
-               rtcp_bw *= RTCP_RCVR_BW_FRACTION;
-               n -= senders;
-           }
-       }
+    /*
+    * Very first call at application start-up uses half the min
+    * delay for quicker notification while still allowing some time
+    * before reporting for randomization and to learn about other
+    * sources so the report interval will converge to the correct
+    * interval more quickly.
+    */
+    if (initial) {
+        rtcp_min_time /= 2;
+    }
+    /*
+    * Dedicate a fraction of the RTCP bandwidth to senders unless
+    * the number of senders is large enough that their share is
+    * more than that fraction.
+    */
+    n = members;
+    if (senders <= members * RTCP_SENDER_BW_FRACTION) {
+        if (we_sent) {
+            rtcp_bw *= RTCP_SENDER_BW_FRACTION;
+            n = senders;
+        } else {
+            rtcp_bw *= RTCP_RCVR_BW_FRACTION;
+            n -= senders;
+        }
+    }
 
-       /*
-        * The effective number of sites times the average packet size is
-        * the total number of octets sent when each site sends a report.
-        * Dividing this by the effective bandwidth gives the time
-        * interval over which those packets must be sent in order to
-        * meet the bandwidth target, with a minimum enforced.  In that
-        * time interval we send one report so this time is also our
-        * average time between reports.
-        */
-       t = avg_rtcp_size * n / rtcp_bw;
-       if (t < rtcp_min_time) t = rtcp_min_time;
+    /*
+    * The effective number of sites times the average packet size is
+    * the total number of octets sent when each site sends a report.
+    * Dividing this by the effective bandwidth gives the time
+    * interval over which those packets must be sent in order to
+    * meet the bandwidth target, with a minimum enforced.  In that
+    * time interval we send one report so this time is also our
+    * average time between reports.
+    */
+    t = avg_rtcp_size * n / rtcp_bw;
+    if (t < rtcp_min_time) t = rtcp_min_time;
 
-       /*
-        * To avoid traffic bursts from unintended synchronization with
-        * other sites, we then pick our actual next report interval as a
-        * random number uniformly distributed between 0.5*t and 1.5*t.
-        */
-       t = t * (drand48() + 0.5);
-       t = t / COMPENSATION;
-       return t;
-   }
+    /*
+    * To avoid traffic bursts from unintended synchronization with
+    * other sites, we then pick our actual next report interval as a
+    * random number uniformly distributed between 0.5*t and 1.5*t.
+    */
+    t = t * (drand48() + 0.5);
+    t = t / COMPENSATION;
+    return t;
+}
 
-   void OnExpire(event e,
-                 int    members,
-                 int    senders,
-                 double rtcp_bw,
-                 int    we_sent,
-                 double *avg_rtcp_size,
-                 int    *initial,
-                 time_tp   tc,
-                 time_tp   *tp,
-                 int    *pmembers)
-   {
-       /* This function is responsible for deciding whether to send an
-        * RTCP report or BYE packet now, or to reschedule transmission.
-        * It is also responsible for updating the pmembers, initial, tp,
-        * and avg_rtcp_size state variables.  This function should be
-        * called upon expiration of the event timer used by Schedule().
-        */
+void OnExpire(event e,
+                int    members,
+                int    senders,
+                double rtcp_bw,
+                int    we_sent,
+                double *avg_rtcp_size,
+                int    *initial,
+                time_tp   tc,
+                time_tp   *tp,
+                int    *pmembers)
+{
+    /* This function is responsible for deciding whether to send an
+    * RTCP report or BYE packet now, or to reschedule transmission.
+    * It is also responsible for updating the pmembers, initial, tp,
+    * and avg_rtcp_size state variables.  This function should be
+    * called upon expiration of the event timer used by Schedule().
+    */
 
-       double t;     /* Interval */
-       double tn;    /* Next transmit time */
+    double t;     /* Interval */
+    double tn;    /* Next transmit time */
 
-       /* In the case of a BYE, we use "timer reconsideration" to
-        * reschedule the transmission of the BYE if necessary */
+    /* In the case of a BYE, we use "timer reconsideration" to
+    * reschedule the transmission of the BYE if necessary */
 
-       if (TypeOfEvent(e) == EVENT_BYE) {
-           t = rtcp_interval(members,
-                             senders,
-                             rtcp_bw,
-                             we_sent,
-                             *avg_rtcp_size,
-                             *initial);
-           tn = *tp + t;
-           if (tn <= tc) {
-               SendBYEPacket(e);
-               exit(1);
-           } else {
-               Schedule(tn, e);
-           }
+    if (TypeOfEvent(e) == EVENT_BYE) {
+        t = rtcp_interval(members,
+                            senders,
+                            rtcp_bw,
+                            we_sent,
+                            *avg_rtcp_size,
+                            *initial);
+        tn = *tp + t;
+        if (tn <= tc) {
+            SendBYEPacket(e);
+            exit(1);
+        } else {
+            Schedule(tn, e);
+        }
 
-       } else if (TypeOfEvent(e) == EVENT_REPORT) {
-           t = rtcp_interval(members,
-                             senders,
-                             rtcp_bw,
-                             we_sent,
-                             *avg_rtcp_size,
-                             *initial);
-           tn = *tp + t;
-           if (tn <= tc) {
-               SendRTCPReport(e);
-               *avg_rtcp_size = (1./16.)*SentPacketSize(e) +
-                   (15./16.)*(*avg_rtcp_size);
-               *tp = tc;
+    } else if (TypeOfEvent(e) == EVENT_REPORT) {
+        t = rtcp_interval(members,
+                            senders,
+                            rtcp_bw,
+                            we_sent,
+                            *avg_rtcp_size,
+                            *initial);
+        tn = *tp + t;
+        if (tn <= tc) {
+            SendRTCPReport(e);
+            *avg_rtcp_size = (1./16.)*SentPacketSize(e) +
+                (15./16.)*(*avg_rtcp_size);
+            *tp = tc;
 
-               /* We must redraw the interval.  Don't reuse the
-                  one computed above, since its not actually
-                  distributed the same, as we are conditioned
-                  on it being small enough to cause a packet to
-                  be sent */
+            /* We must redraw the interval.  Don't reuse the
+                one computed above, since its not actually
+                distributed the same, as we are conditioned
+                on it being small enough to cause a packet to
+                be sent */
 
-               t = rtcp_interval(members,
-                                 senders,
-                                 rtcp_bw,
-                                 we_sent,
-                                 *avg_rtcp_size,
-                                 *initial);
+            t = rtcp_interval(members,
+                                senders,
+                                rtcp_bw,
+                                we_sent,
+                                *avg_rtcp_size,
+                                *initial);
 
-               Schedule(t+tc,e);
-               *initial = 0;
-           } else {
-               Schedule(tn, e);
-           }
-           *pmembers = members;
-       }
-   }
+            Schedule(t+tc,e);
+            *initial = 0;
+        } else {
+            Schedule(tn, e);
+        }
+        *pmembers = members;
+    }
+}
 
-   void OnReceive(packet p,
-                  event e,
-                  int *members,
-                  int *pmembers,
-                  int *senders,
-                  double *avg_rtcp_size,
-                  double *tp,
-                  double tc,
-                  double tn)
-   {
-       /* What we do depends on whether we have left the group, and are
-        * waiting to send a BYE (TypeOfEvent(e) == EVENT_BYE) or an RTCP
-        * report.  p represents the packet that was just received.  */
+void OnReceive(packet p,
+                event e,
+                int *members,
+                int *pmembers,
+                int *senders,
+                double *avg_rtcp_size,
+                double *tp,
+                double tc,
+                double tn)
+{
+    /* What we do depends on whether we have left the group, and are
+    * waiting to send a BYE (TypeOfEvent(e) == EVENT_BYE) or an RTCP
+    * report.  p represents the packet that was just received.  */
 
-       if (PacketType(p) == PACKET_RTCP_REPORT) {
-           if (NewMember(p) && (TypeOfEvent(e) == EVENT_REPORT)) {
-               AddMember(p);
-               *members += 1;
-           }
-           *avg_rtcp_size = (1./16.)*ReceivedPacketSize(p) +
-               (15./16.)*(*avg_rtcp_size);
-       } else if (PacketType(p) == PACKET_RTP) {
-           if (NewMember(p) && (TypeOfEvent(e) == EVENT_REPORT)) {
-               AddMember(p);
-               *members += 1;
-           }
-           if (NewSender(p) && (TypeOfEvent(e) == EVENT_REPORT)) {
-               AddSender(p);
-               *senders += 1;
-           }
-       } else if (PacketType(p) == PACKET_BYE) {
-           *avg_rtcp_size = (1./16.)*ReceivedPacketSize(p) +
-               (15./16.)*(*avg_rtcp_size);
+    if (PacketType(p) == PACKET_RTCP_REPORT) {
+        if (NewMember(p) && (TypeOfEvent(e) == EVENT_REPORT)) {
+            AddMember(p);
+            *members += 1;
+        }
+        *avg_rtcp_size = (1./16.)*ReceivedPacketSize(p) +
+            (15./16.)*(*avg_rtcp_size);
+    } else if (PacketType(p) == PACKET_RTP) {
+        if (NewMember(p) && (TypeOfEvent(e) == EVENT_REPORT)) {
+            AddMember(p);
+            *members += 1;
+        }
+        if (NewSender(p) && (TypeOfEvent(e) == EVENT_REPORT)) {
+            AddSender(p);
+            *senders += 1;
+        }
+    } else if (PacketType(p) == PACKET_BYE) {
+        *avg_rtcp_size = (1./16.)*ReceivedPacketSize(p) +
+            (15./16.)*(*avg_rtcp_size);
 
-           if (TypeOfEvent(e) == EVENT_REPORT) {
-               if (NewSender(p) == FALSE) {
-                   RemoveSender(p);
-                   *senders -= 1;
-               }
+        if (TypeOfEvent(e) == EVENT_REPORT) {
+            if (NewSender(p) == FALSE) {
+                RemoveSender(p);
+                *senders -= 1;
+            }
 
-               if (NewMember(p) == FALSE) {
-                   RemoveMember(p);
-                   *members -= 1;
-               }
+            if (NewMember(p) == FALSE) {
+                RemoveMember(p);
+                *members -= 1;
+            }
 
-               if (*members < *pmembers) {
-                   tn = tc +
-                       (((double) *members)/(*pmembers))*(tn - tc);
-                   *tp = tc -
-                       (((double) *members)/(*pmembers))*(tc - *tp);
+            if (*members < *pmembers) {
+                tn = tc +
+                    (((double) *members)/(*pmembers))*(tn - tc);
+                *tp = tc -
+                    (((double) *members)/(*pmembers))*(tc - *tp);
 
-                   /* Reschedule the next report for time tn */
+                /* Reschedule the next report for time tn */
 
-                   Reschedule(tn, e);
-                   *pmembers = *members;
-               }
+                Reschedule(tn, e);
+                *pmembers = *members;
+            }
 
-           } else if (TypeOfEvent(e) == EVENT_BYE) {
-               *members += 1;
-           }
-       }
-   }
+        } else if (TypeOfEvent(e) == EVENT_BYE) {
+            *members += 1;
+        }
+    }
+}
 ```
 
 ### A.8 Estimating the Interarrival Jitter
