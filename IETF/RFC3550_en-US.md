@@ -1055,3 +1055,280 @@ Since a mixer generates a new data stream of its own, it does not pass through S
 
 An RTP session may involve a collection of mixers and translators as shown in Fig. 3.  If two mixers are cascaded, such as M2 and M3 in the figure, packets received by a mixer may already have been mixed and may include a CSRC list with multiple identifiers.  The second mixer SHOULD build the CSRC list for the outgoing packet using the CSRC identifiers from already-mixed input packets and the SSRC identifiers from unmixed input packets.  This is shown in the output arc from mixer M3 labeled M3:89(64,45) in the figure.  As in the case of mixers that are not cascaded, if the resulting CSRC list has more than 15 identifiers, the remainder cannot be included.
 
+## 8.  SSRC Identifier Allocation and Use
+
+The SSRC identifier carried in the RTP header and in various fields of RTCP packets is a random 32-bit number that is required to be globally unique within an RTP session.  It is crucial that the number be chosen with care in order that participants on the same network or starting at the same time are not likely to choose the same number.
+
+It is not sufficient to use the local network address (such as an IPv4 address) for the identifier because the address may not be unique.  Since RTP translators and mixers enable interoperation among multiple networks with different address spaces, the allocation patterns for addresses within two spaces might result in a much higher rate of collision than would occur with random allocation.
+
+Multiple sources running on one host would also conflict.
+
+It is also not sufficient to obtain an SSRC identifier simply by calling random() without carefully initializing the state.  An example of how to generate a random identifier is presented in Appendix A.6.
+
+### 8.1 Probability of Collision
+
+Since the identifiers are chosen randomly, it is possible that two or more sources will choose the same number.  Collision occurs with the highest probability when all sources are started simultaneously, for example when triggered automatically by some session management event.  If N is the number of sources and L the length of the identifier (here, 32 bits), the probability that two sources independently pick the same value can be approximated for large N [26] as `1 - exp(-N**2 / 2**(L+1))`.  For N=1000, the probability is roughly `10**-4`.
+
+The typical collision probability is much lower than the worst-case above.  When one new source joins an RTP session in which all the other sources already have unique identifiers, the probability of collision is just the fraction of numbers used out of the space. Again, if N is the number of sources and L the length of the identifier, the probability of collision is `N / 2**L`.  For N=1000, the probability is roughly `2*10**-7`.
+
+The probability of collision is further reduced by the opportunity for a new source to receive packets from other participants before sending its first packet (either data or control).  If the new source keeps track of the other participants (by SSRC identifier), then before transmitting its first packet the new source can verify that its identifier does not conflict with any that have been received, or else choose again.
+
+### 8.2 Collision Resolution and Loop Detection
+
+Although the probability of SSRC identifier collision is low, all RTP implementations MUST be prepared to detect collisions and take the appropriate actions to resolve them.  If a source discovers at any time that another source is using the same SSRC identifier as its own, it MUST send an RTCP BYE packet for the old identifier and choose another random one.  (As explained below, this step is taken only once in case of a loop.)  If a receiver discovers that two other sources are colliding, it MAY keep the packets from one and discard the packets from the other when this can be detected by different source transport addresses or CNAMEs.  The two sources are expected to resolve the collision so that the situation doesn't last.
+
+Because the random SSRC identifiers are kept globally unique for each RTP session, they can also be used to detect loops that may be introduced by mixers or translators.  A loop causes duplication of data and control information, either unmodified or possibly mixed, as in the following examples:
+
+- A translator may incorrectly forward a packet to the same multicast group from which it has received the packet, either directly or through a chain of translators.  In that case, the same packet appears several times, originating from different network sources.
+- Two translators incorrectly set up in parallel, i.e., with the same multicast groups on both sides, would both forward packets from one multicast group to the other.  Unidirectional translators would produce two copies; bidirectional translators would form a loop.
+- A mixer can close a loop by sending to the same transport destination upon which it receives packets, either directly or through another mixer or translator.  In this case a source might show up both as an SSRC on a data packet and a CSRC in a mixed data packet.
+
+A source may discover that its own packets are being looped, or that packets from another source are being looped (a third-party loop). Both loops and collisions in the random selection of a source identifier result in packets arriving with the same SSRC identifier but a different source transport address, which may be that of the end system originating the packet or an intermediate system.
+
+Therefore, if a source changes its source transport address, it MAY also choose a new SSRC identifier to avoid being interpreted as a looped source.  (This is not MUST because in some applications of RTP sources may be expected to change addresses during a session.)  Note that if a translator restarts and consequently changes the source transport address (e.g., changes the UDP source port number) on which it forwards packets, then all those packets will appear to receivers to be looped because the SSRC identifiers are applied by the original source and will not change.  This problem can be avoided by keeping the source transport address fixed across restarts, but in any case will be resolved after a timeout at the receivers.
+
+Loops or collisions occurring on the far side of a translator or mixer cannot be detected using the source transport address if all copies of the packets go through the translator or mixer, however, collisions may still be detected when chunks from two RTCP SDES packets contain the same SSRC identifier but different CNAMEs.
+
+To detect and resolve these conflicts, an RTP implementation MUST include an algorithm similar to the one described below, though the implementation MAY choose a different policy for which packets from colliding third-party sources are kept.  The algorithm described below ignores packets from a new source or loop that collide with an established source.  It resolves collisions with the participant's own SSRC identifier by sending an RTCP BYE for the old identifier and choosing a new one.  However, when the collision was induced by a loop of the participant's own packets, the algorithm will choose a new identifier only once and thereafter ignore packets from the looping source transport address.  This is required to avoid a flood of BYE packets.
+
+This algorithm requires keeping a table indexed by the source identifier and containing the source transport addresses from the first RTP packet and first RTCP packet received with that identifier, along with other state for that source.  Two source transport addresses are required since, for example, the UDP source port numbers may be different on RTP and RTCP packets.  However, it may be assumed that the network address is the same in both source transport addresses.
+
+Each SSRC or CSRC identifier received in an RTP or RTCP packet is looked up in the source identifier table in order to process that data or control information.  The source transport address from the packet is compared to the corresponding source transport address in the table to detect a loop or collision if they don't match.  For control packets, each element with its own SSRC identifier, for example an SDES chunk, requires a separate lookup.  (The SSRC identifier in a reception report block is an exception because it identifies a source heard by the reporter, and that SSRC identifier is unrelated to the source transport address of the RTCP packet sent by the reporter.)  If the SSRC or CSRC is not found, a new entry is created.  These table entries are removed when an RTCP BYE packet is received with the corresponding SSRC identifier and validated by a matching source transport address, or after no packets have arrived for a relatively long time (see Section 6.2.1).
+
+Note that if two sources on the same host are transmitting with the same source identifier at the time a receiver begins operation, it would be possible that the first RTP packet received came from one of the sources while the first RTCP packet received came from the other. This would cause the wrong RTCP information to be associated with the RTP data, but this situation should be sufficiently rare and harmless that it may be disregarded.
+
+In order to track loops of the participant's own data packets, the implementation MUST also keep a separate list of source transport addresses (not identifiers) that have been found to be conflicting. As in the source identifier table, two source transport addresses MUST be kept to separately track conflicting RTP and RTCP packets. Note that the conflicting address list should be short, usually empty.  Each element in this list stores the source addresses plus the time when the most recent conflicting packet was received.  An element MAY be removed from the list when no conflicting packet has arrived from that source for a time on the order of 10 RTCP report intervals (see Section 6.2).
+
+For the algorithm as shown, it is assumed that the participant's own source identifier and state are included in the source identifier table.  The algorithm could be restructured to first make a separate comparison against the participant's own source identifier.
+
+```
+    if (SSRC or CSRC identifier is not found in the source
+        identifier table) {
+        create a new entry storing the data or control source
+            transport address, the SSRC or CSRC and other state;
+    }
+
+    /* Identifier is found in the table */
+
+    else if (table entry was created on receipt of a control packet
+            and this is the first data packet or vice versa) {
+        store the source transport address from this packet;
+    }
+    else if (source transport address from the packet does not match
+            the one saved in the table entry for this identifier) {
+
+        /* An identifier collision or a loop is indicated */
+
+        if (source identifier is not the participant's own) {
+            /* OPTIONAL error counter step */
+            if (source identifier is from an RTCP SDES chunk
+                containing a CNAME item that differs from the CNAME
+                in the table entry) {
+                count a third-party collision;
+            } else {
+                count a third-party loop;
+            }
+            abort processing of data packet or control element;
+            /* MAY choose a different policy to keep new source */
+        }
+
+        /* A collision or loop of the participant's own packets */
+
+        else if (source transport address is found in the list of
+                conflicting data or control source transport
+                addresses) {
+            /* OPTIONAL error counter step */
+            if (source identifier is not from an RTCP SDES chunk
+                containing a CNAME item or CNAME is the
+                participant's own) {
+                count occurrence of own traffic looped;
+            }
+            mark current time in conflicting address list entry;
+            abort processing of data packet or control element;
+        }
+
+        /* New collision, change SSRC identifier */
+
+        else {
+            log occurrence of a collision;
+            create a new entry in the conflicting data or control
+                source transport address list and mark current time;
+            send an RTCP BYE packet with the old SSRC identifier;
+            choose a new SSRC identifier;
+            create a new entry in the source identifier table with
+                the old SSRC plus the source transport address from
+                the data or control packet being processed;
+        }
+    }
+```
+
+In this algorithm, packets from a newly conflicting source address will be ignored and packets from the original source address will be kept.  If no packets arrive from the original source for an extended period, the table entry will be timed out and the new source will be able to take over.  This might occur if the original source detects the collision and moves to a new source identifier, but in the usual case an RTCP BYE packet will be received from the original source to delete the state without having to wait for a timeout.
+
+If the original source address was received through a mixer (i.e., learned as a CSRC) and later the same source is received directly, the receiver may be well advised to switch to the new source address unless other sources in the mix would be lost.  Furthermore, for applications such as telephony in which some sources such as mobile entities may change addresses during the course of an RTP session, the RTP implementation SHOULD modify the collision detection algorithm to accept packets from the new source transport address. To guard against flip-flopping between addresses if a genuine collision does occur, the algorithm SHOULD include some means to detect this case and avoid switching.
+
+When a new SSRC identifier is chosen due to a collision, the candidate identifier SHOULD first be looked up in the source identifier table to see if it was already in use by some other source.  If so, another candidate MUST be generated and the process repeated.
+
+A loop of data packets to a multicast destination can cause severe network flooding.  All mixers and translators MUST implement a loop detection algorithm like the one here so that they can break loops. This should limit the excess traffic to no more than one duplicate copy of the original traffic, which may allow the session to continue so that the cause of the loop can be found and fixed.  However, in extreme cases where a mixer or translator does not properly break the loop and high traffic levels result, it may be necessary for end systems to cease transmitting data or control packets entirely.  This decision may depend upon the application.  An error condition SHOULD be indicated as appropriate.  Transmission MAY be attempted again periodically after a long, random time (on the order of minutes).
+
+### 8.3 Use with Layered Encodings
+
+For layered encodings transmitted on separate RTP sessions (see Section 2.4), a single SSRC identifier space SHOULD be used across the sessions of all layers and the core (base) layer SHOULD be used for SSRC identifier allocation and collision resolution.  When a source discovers that it has collided, it transmits an RTCP BYE packet on only the base layer but changes the SSRC identifier to the new value in all layers.
+
+
+## 9. Security
+
+Lower layer protocols may eventually provide all the security services that may be desired for applications of RTP, including authentication, integrity, and confidentiality.  These services have been specified for IP in [27].  Since the initial audio and video applications using RTP needed a confidentiality service before such services were available for the IP layer, the confidentiality service described in the next section was defined for use with RTP and RTCP. That description is included here to codify existing practice.  New applications of RTP MAY implement this RTP-specific confidentiality service for backward compatibility, and/or they MAY implement alternative security services.  The overhead on the RTP protocol for this confidentiality service is low, so the penalty will be minimal if this service is obsoleted by other services in the future.
+
+Alternatively, other services, other implementations of services and other algorithms may be defined for RTP in the future.  In particular, an RTP profile called Secure Real-time Transport Protocol (SRTP) [28] is being developed to provide confidentiality of the RTP payload while leaving the RTP header in the clear so that link-level header compression algorithms can still operate.  It is expected that SRTP will be the correct choice for many applications.  SRTP is based on the Advanced Encryption Standard (AES) and provides stronger security than the service described here.  No claim is made that the methods presented here are appropriate for a particular security need.  A profile may specify which services and algorithms should be offered by applications, and may provide guidance as to their appropriate use.
+
+Key distribution and certificates are outside the scope of this document.
+
+### 9.1 Confidentiality
+
+Confidentiality means that only the intended receiver(s) can decode the received packets; for others, the packet contains no useful information.  Confidentiality of the content is achieved by encryption.
+
+When it is desired to encrypt RTP or RTCP according to the method specified in this section, all the octets that will be encapsulated for transmission in a single lower-layer packet are encrypted as a unit.  For RTCP, a 32-bit random number redrawn for each unit MUST be prepended to the unit before encryption.  For RTP, no prefix is prepended; instead, the sequence number and timestamp fields are initialized with random offsets.  This is considered to be a weak initialization vector (IV) because of poor randomness properties.  In addition, if the subsequent field, the SSRC, can be manipulated by an enemy, there is further weakness of the encryption method.
+
+For RTCP, an implementation MAY segregate the individual RTCP packets in a compound RTCP packet into two separate compound RTCP packets, one to be encrypted and one to be sent in the clear.  For example, SDES information might be encrypted while reception reports were sent in the clear to accommodate third-party monitors that are not privy to the encryption key.  In this example, depicted in Fig. 4, the SDES information MUST be appended to an RR packet with no reports (and the random number) to satisfy the requirement that all compound RTCP packets begin with an SR or RR packet.  The SDES CNAME item is required in either the encrypted or unencrypted packet, but not both. The same SDES information SHOULD NOT be carried in both packets as this may compromise the encryption.
+
+```
+             UDP packet                     UDP packet
+   -----------------------------  ------------------------------
+   [random][RR][SDES #CNAME ...]  [SR #senderinfo #site1 #site2]
+   -----------------------------  ------------------------------
+             encrypted                     not encrypted
+
+   #: SSRC identifier
+
+       Figure 4: Encrypted and non-encrypted RTCP packets
+```
+
+The presence of encryption and the use of the correct key are confirmed by the receiver through header or payload validity checks. Examples of such validity checks for RTP and RTCP headers are given in Appendices A.1 and A.2.
+
+To be consistent with existing implementations of the initial specification of RTP in RFC 1889, the default encryption algorithm is the Data Encryption Standard (DES) algorithm in cipher block chaining (CBC) mode, as described in Section 1.1 of RFC 1423 [29], except that padding to a multiple of 8 octets is indicated as described for the P bit in Section 5.1.  The initialization vector is zero because random values are supplied in the RTP header or by the random prefix for compound RTCP packets.  For details on the use of CBC initialization vectors, see [30].
+
+Implementations that support the encryption method specified here SHOULD always support the DES algorithm in CBC mode as the default cipher for this method to maximize interoperability.  This method was chosen because it has been demonstrated to be easy and practical to use in experimental audio and video tools in operation on the Internet.  However, DES has since been found to be too easily broken.
+
+It is RECOMMENDED that stronger encryption algorithms such as Triple-DES be used in place of the default algorithm.  Furthermore, secure CBC mode requires that the first block of each packet be XORed with a random, independent IV of the same size as the cipher's block size.  For RTCP, this is (partially) achieved by prepending each packet with a 32-bit random number, independently chosen for each packet.  For RTP, the timestamp and sequence number start from random values, but consecutive packets will not be independently randomized. It should be noted that the randomness in both cases (RTP and RTCP) is limited.  High-security applications SHOULD consider other, more conventional, protection means.  Other encryption algorithms MAY be specified dynamically for a session by non-RTP means.  In particular, the SRTP profile [28] based on AES is being developed to take into account known plaintext and CBC plaintext manipulation concerns, and will be the correct choice in the future.
+
+As an alternative to encryption at the IP level or at the RTP level as described above, profiles MAY define additional payload types for encrypted encodings.  Those encodings MUST specify how padding and other aspects of the encryption are to be handled.  This method allows encrypting only the data while leaving the headers in the clear for applications where that is desired.  It may be particularly useful for hardware devices that will handle both decryption and decoding.  It is also valuable for applications where link-level compression of RTP and lower-layer headers is desired and confidentiality of the payload (but not addresses) is sufficient since encryption of the headers precludes compression.
+
+### 9.2 Authentication and Message Integrity
+
+Authentication and message integrity services are not defined at the RTP level since these services would not be directly feasible without a key management infrastructure.  It is expected that authentication and integrity services will be provided by lower layer protocols.
+
+## 10. Congestion Control
+
+All transport protocols used on the Internet need to address congestion control in some way [31].  RTP is not an exception, but because the data transported over RTP is often inelastic (generated at a fixed or controlled rate), the means to control congestion in RTP may be quite different from those for other transport protocols such as TCP.  In one sense, inelasticity reduces the risk of congestion because the RTP stream will not expand to consume all available bandwidth as a TCP stream can.  However, inelasticity also means that the RTP stream cannot arbitrarily reduce its load on the network to eliminate congestion when it occurs.
+
+Since RTP may be used for a wide variety of applications in many different contexts, there is no single congestion control mechanism that will work for all.  Therefore, congestion control SHOULD be defined in each RTP profile as appropriate.  For some profiles, it may be sufficient to include an applicability statement restricting the use of that profile to environments where congestion is avoided by engineering.  For other profiles, specific methods such as data rate adaptation based on RTCP feedback may be required.
+
+## 11. RTP over Network and Transport Protocols
+
+This section describes issues specific to carrying RTP packets within particular network and transport protocols.  The following rules apply unless superseded by protocol-specific definitions outside this specification.
+
+RTP relies on the underlying protocol(s) to provide demultiplexing of RTP data and RTCP control streams.  For UDP and similar protocols, RTP SHOULD use an even destination port number and the corresponding RTCP stream SHOULD use the next higher (odd) destination port number. For applications that take a single port number as a parameter and derive the RTP and RTCP port pair from that number, if an odd number is supplied then the application SHOULD replace that number with the next lower (even) number to use as the base of the port pair.  For applications in which the RTP and RTCP destination port numbers are specified via explicit, separate parameters (using a signaling protocol or other means), the application MAY disregard the restrictions that the port numbers be even/odd and consecutive although the use of an even/odd port pair is still encouraged.  The RTP and RTCP port numbers MUST NOT be the same since RTP relies on the port numbers to demultiplex the RTP data and RTCP control streams.
+
+In a unicast session, both participants need to identify a port pair for receiving RTP and RTCP packets.  Both participants MAY use the same port pair.  A participant MUST NOT assume that the source port of the incoming RTP or RTCP packet can be used as the destination port for outgoing RTP or RTCP packets.  When RTP data packets are being sent in both directions, each participant's RTCP SR packets MUST be sent to the port that the other participant has specified for reception of RTCP.  The RTCP SR packets combine sender information for the outgoing data plus reception report information for the incoming data.  If a side is not actively sending data (see Section 6.4), an RTCP RR packet is sent instead.
+
+It is RECOMMENDED that layered encoding applications (see Section 2.4) use a set of contiguous port numbers.  The port numbers MUST be distinct because of a widespread deficiency in existing operating systems that prevents use of the same port with multiple multicast addresses, and for unicast, there is only one permissible address. Thus for layer n, the data port is P + 2n, and the control port is P + 2n + 1.  When IP multicast is used, the addresses MUST also be distinct because multicast routing and group membership are managed on an address granularity.  However, allocation of contiguous IP multicast addresses cannot be assumed because some groups may require different scopes and may therefore be allocated from different address ranges.
+
+The previous paragraph conflicts with the SDP specification, RFC 2327 [15], which says that it is illegal for both multiple addresses and multiple ports to be specified in the same session description because the association of addresses with ports could be ambiguous. It is intended that this restriction will be relaxed in a revision of RFC 2327 to allow an equal number of addresses and ports to be specified with a one-to-one mapping implied.
+
+RTP data packets contain no length field or other delineation, therefore RTP relies on the underlying protocol(s) to provide a length indication.  The maximum length of RTP packets is limited only by the underlying protocols.
+
+If RTP packets are to be carried in an underlying protocol that provides the abstraction of a continuous octet stream rather than messages (packets), an encapsulation of the RTP packets MUST be defined to provide a framing mechanism.  Framing is also needed if the underlying protocol may contain padding so that the extent of the RTP payload cannot be determined.  The framing mechanism is not defined here.
+
+A profile MAY specify a framing method to be used even when RTP is carried in protocols that do provide framing in order to allow carrying several RTP packets in one lower-layer protocol data unit, such as a UDP packet.  Carrying several RTP packets in one network or transport packet reduces header overhead and may simplify synchronization between different streams.
+
+## 12. Summary of Protocol Constants
+
+This section contains a summary listing of the constants defined in this specification.
+
+The RTP payload type (PT) constants are defined in profiles rather than this document.  However, the octet of the RTP header which contains the marker bit(s) and payload type MUST avoid the reserved values 200 and 201 (decimal) to distinguish RTP packets from the RTCP SR and RR packet types for the header validation procedure described in Appendix A.1.  For the standard definition of one marker bit and a 7-bit payload type field as shown in this specification, this restriction means that payload types 72 and 73 are reserved.
+
+### 12.1 RTCP Packet Types
+
+```
+abbrev.  name                 value
+SR       sender report          200
+RR       receiver report        201
+SDES     source description     202
+BYE      goodbye                203
+APP      application-defined    204
+```
+
+These type values were chosen in the range 200-204 for improved header validity checking of RTCP packets compared to RTP packets or other unrelated packets.  When the RTCP packet type field is compared to the corresponding octet of the RTP header, this range corresponds to the marker bit being 1 (which it usually is not in data packets) and to the high bit of the standard payload type field being 1 (since the static payload types are typically defined in the low half). This range was also chosen to be some distance numerically from 0 and 255 since all-zeros and all-ones are common data patterns.
+
+Since all compound RTCP packets MUST begin with SR or RR, these codes were chosen as an even/odd pair to allow the RTCP validity check to test the maximum number of bits with mask and value.
+
+Additional RTCP packet types may be registered through IANA (see Section 15).
+
+### 12.2 SDES Types
+
+```
+abbrev.  name                            value
+END      end of SDES list                    0
+CNAME    canonical name                      1
+NAME     user name                           2
+EMAIL    user's electronic mail address      3
+PHONE    user's phone number                 4
+LOC      geographic user location            5
+TOOL     name of application or tool         6
+NOTE     notice about the source             7
+PRIV     private extensions                  8
+```
+
+Additional SDES types may be registered through IANA (see Section 15).
+
+## 13.  RTP Profiles and Payload Format Specifications
+
+A complete specification of RTP for a particular application will require one or more companion documents of two types described here: profiles, and payload format specifications.
+
+RTP may be used for a variety of applications with somewhat differing requirements.  The flexibility to adapt to those requirements is provided by allowing multiple choices in the main protocol specification, then selecting the appropriate choices or defining extensions for a particular environment and class of applications in a separate profile document.  Typically an application will operate under only one profile in a particular RTP session, so there is no explicit indication within the RTP protocol itself as to which profile is in use.  A profile for audio and video applications may be found in the companion RFC 3551.  Profiles are typically titled "RTP Profile for ...".
+
+The second type of companion document is a payload format specification, which defines how a particular kind of payload data, such as H.261 encoded video, should be carried in RTP.  These documents are typically titled "RTP Payload Format for XYZ Audio/Video Encoding".  Payload formats may be useful under multiple profiles and may therefore be defined independently of any particular profile.  The profile documents are then responsible for assigning a default mapping of that format to a payload type value if needed.
+
+Within this specification, the following items have been identified for possible definition within a profile, but this list is not meant to be exhaustive:
+
+- **RTP data header**: The octet in the RTP data header that contains the marker bit and payload type field MAY be redefined by a profile to suit different requirements, for example with more or fewer marker bits (Section 5.3, p. 18).
+- **Payload types**: Assuming that a payload type field is included, the profile will usually define a set of payload formats (e.g., media encodings) and a default static mapping of those formats to payload type values.  Some of the payload formats may be defined by reference to separate payload format specifications.  For each payload type defined, the profile MUST specify the RTP timestamp clock rate to be used (Section 5.1, p. 14).
+- **RTP data header additions**: Additional fields MAY be appended to the fixed RTP data header if some additional functionality is required across the profile's class of applications independent of payload type (Section 5.3, p. 18).
+- **RTP data header extensions**: The contents of the first 16 bits of the RTP data header extension structure MUST be defined if use of that mechanism is to be allowed under the profile for implementation-specific extensions (Section 5.3.1, p. 18).
+- **RTCP packet types**: New application-class-specific RTCP packet types MAY be defined and registered with IANA.
+- **RTCP report interval**: A profile SHOULD specify that the values suggested in Section 6.2 for the constants employed in the calculation of the RTCP report interval will be used.  Those are the RTCP fraction of session bandwidth, the minimum report interval, and the bandwidth split between senders and receivers. A profile MAY specify alternate values if they have been demonstrated to work in a scalable manner.
+- **SR/RR extension**: An extension section MAY be defined for the RTCP SR and RR packets if there is additional information that should be reported regularly about the sender or receivers (Section 6.4.3, p. 42 and 43).
+- **SDES use**: The profile MAY specify the relative priorities for RTCP SDES items to be transmitted or excluded entirely (Section 6.3.9); an alternate syntax or semantics for the CNAME item (Section 6.5.1); the format of the LOC item (Section 6.5.5); the semantics and use of the NOTE item (Section 6.5.7); or new SDES item types to be registered with IANA.
+- **Security**: A profile MAY specify which security services and algorithms should be offered by applications, and MAY provide guidance as to their appropriate use (Section 9, p. 65).
+- **String-to-key mapping**: A profile MAY specify how a user-provided password or pass phrase is mapped into an encryption key.
+- **Congestion**: A profile SHOULD specify the congestion control behavior appropriate for that profile.
+- **Underlying protocol**: Use of a particular underlying network or transport layer protocol to carry RTP packets MAY be required.
+- **Transport mapping**: A mapping of RTP and RTCP to transport-level addresses, e.g., UDP ports, other than the standard mapping defined in Section 11, p. 68 may be specified.
+- **Encapsulation**: An encapsulation of RTP packets may be defined to allow multiple RTP data packets to be carried in one lower-layer packet or to provide framing over underlying protocols that do not already do so (Section 11, p. 69).
+
+It is not expected that a new profile will be required for every application.  Within one application class, it would be better to extend an existing profile rather than make a new one in order to facilitate interoperation among the applications since each will typically run under only one profile.  Simple extensions such as the definition of additional payload type values or RTCP packet types may be accomplished by registering them through IANA and publishing their descriptions in an addendum to the profile or in a payload format specification.
+
+## 14. Security Considerations
+
+RTP suffers from the same security liabilities as the underlying protocols.  For example, an impostor can fake source or destination network addresses, or change the header or payload.  Within RTCP, the CNAME and NAME information may be used to impersonate another participant.  In addition, RTP may be sent via IP multicast, which provides no direct means for a sender to know all the receivers of the data sent and therefore no measure of privacy.  Rightly or not, users may be more sensitive to privacy concerns with audio and video communication than they have been with more traditional forms of network communication [33].  Therefore, the use of security mechanisms with RTP is important.  These mechanisms are discussed in Section 9.
+
+RTP-level translators or mixers may be used to allow RTP traffic to reach hosts behind firewalls.  Appropriate firewall security principles and practices, which are beyond the scope of this document, should be followed in the design and installation of these devices and in the admission of RTP applications for use behind the firewall.
+
+## 15. IANA Considerations
+
+Additional RTCP packet types and SDES item types may be registered through the Internet Assigned Numbers Authority (IANA).  Since these number spaces are small, allowing unconstrained registration of new values would not be prudent.  To facilitate review of requests and to promote shared use of new types among multiple applications, requests for registration of new values must be documented in an RFC or other permanent and readily available reference such as the product of another cooperative standards body (e.g., ITU-T).  Other requests may also be accepted, under the advice of a "designated expert."
+
+(Contact the IANA for the contact information of the current expert.)
+
+RTP profile specifications SHOULD register with IANA a name for the profile in the form "RTP/xxx", where xxx is a short abbreviation of the profile title.  These names are for use by higher-level control protocols, such as the Session Description Protocol (SDP), RFC 2327 [15], to refer to transport methods.
+
+16. Intellectual Property Rights Statement
+
+The IETF takes no position regarding the validity or scope of any intellectual property or other rights that might be claimed to pertain to the implementation or use of the technology described in this document or the extent to which any license under such rights might or might not be available; neither does it represent that it has made any effort to identify any such rights.  Information on the IETF's procedures with respect to rights in standards-track and standards-related documentation can be found in BCP-11.  Copies of claims of rights made available for publication and any assurances of licenses to be made available, or the result of an attempt made to obtain a general license or permission for the use of such proprietary rights by implementors or users of this specification can be obtained from the IETF Secretariat.
+
+The IETF invites any interested party to bring to its attention any copyrights, patents or patent applications, or other proprietary rights which may cover technology that may be required to practice this standard.  Please address the information to the IETF Executive Director.
+
+17.  Acknowledgments
+
+This memorandum is based on discussions within the IETF Audio/Video Transport working group chaired by Stephen Casner and Colin Perkins. The current protocol has its origins in the Network Voice Protocol and the Packet Video Protocol (Danny Cohen and Randy Cole) and the protocol implemented by the vat application (Van Jacobson and Steve McCanne).  Christian Huitema provided ideas for the random identifier generator.  Extensive analysis and simulation of the timer reconsideration algorithm was done by Jonathan Rosenberg.  The additions for layered encodings were specified by Michael Speer and Steve McCanne.
+
