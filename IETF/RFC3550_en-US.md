@@ -2138,21 +2138,21 @@ Non-functional changes:
 - The definition of "RTP session" in Section 3 was expanded to acknowledge that a single session may use multiple destination transport addresses (as was always the case for a translator or mixer) and to explain that the distinguishing feature of an RTP session is that each corresponds to a separate SSRC identifier space.  A new definition of "multimedia session" was added to reduce confusion about the word "session".
 - The meaning of "sampling instant" was explained in more detail as part of the definition of the timestamp field of the RTP header in Section 5.1.
 - Small clarifications of the text have been made in several places, some in response to questions from readers.  In particular:
-      -  In RFC 1889, the first five words of the second sentence of Section 2.2 were lost in processing the document from source to output form, but are now restored.
-      -  A definition for "RTP media type" was added in Section 3 to allow the explanation of multiplexing RTP sessions in Section 5.2 to be more clear regarding the multiplexing of multiple media.  That section also now explains that multiplexing multiple sources of the same medium based on SSRC identifiers may be appropriate and is the norm for multicast sessions.
-      -  The definition for "non-RTP means" was expanded to include examples of other protocols constituting non-RTP means.
-      -  The description of the session bandwidth parameter is expanded in Section 6.2, including a clarification that the control traffic bandwidth is in addition to the session bandwidth for the data traffic.
-      -  The effect of varying packet duration on the jitter calculation was explained in Section 6.4.4.
-      -  The method for terminating and padding a sequence of SDES items was clarified in Section 6.5.
-      -  IPv6 address examples were added in the description of SDES CNAME in Section 6.5.1, and "example.com" was used in place of other example domain names.
-      -  The Security section added a formal reference to IPSEC now that it is available, and says that the confidentiality method defined in this specification is primarily to codify existing practice.  It is RECOMMENDED that stronger encryption algorithms such as Triple-DES be used in place of the default algorithm, and noted that the SRTP profile based on AES will be the correct choice in the future.  A caution about the weakness of the RTP header as an initialization vector was added.  It was also noted that payload-only encryption is necessary to allow for header compression.
-      -  The method for partial encryption of RTCP was clarified; in particular, SDES CNAME is carried in only one part when the compound RTCP packet is split.
-      -  It is clarified that only one compound RTCP packet should be sent per reporting interval and that if there are too many active sources for the reports to fit in the MTU, then a subset of the sources should be selected round-robin over multiple intervals.
-      -  A note was added in Appendix A.1 that packets may be saved during RTP header validation and delivered upon success.
-      -  Section 7.3 now explains that a mixer aggregating SDES packets uses more RTCP bandwidth due to longer packets, and a mixer passing through RTCP naturally sends packets at higher than the single source rate, but both behaviors are valid.
-      -  Section 13 clarifies that an RTP application may use multiple profiles but typically only one in a given session.
-      -  The terms MUST, SHOULD, MAY, etc. are used as defined in RFC 2119.
-      -  The bibliography was divided into normative and informative references.
+        -  In RFC 1889, the first five words of the second sentence of Section 2.2 were lost in processing the document from source to output form, but are now restored.
+        -  A definition for "RTP media type" was added in Section 3 to allow the explanation of multiplexing RTP sessions in Section 5.2 to be more clear regarding the multiplexing of multiple media.  That section also now explains that multiplexing multiple sources of the same medium based on SSRC identifiers may be appropriate and is the norm for multicast sessions.
+        -  The definition for "non-RTP means" was expanded to include examples of other protocols constituting non-RTP means.
+        -  The description of the session bandwidth parameter is expanded in Section 6.2, including a clarification that the control traffic bandwidth is in addition to the session bandwidth for the data traffic.
+        -  The effect of varying packet duration on the jitter calculation was explained in Section 6.4.4.
+        -  The method for terminating and padding a sequence of SDES items was clarified in Section 6.5.
+        -  IPv6 address examples were added in the description of SDES CNAME in Section 6.5.1, and "example.com" was used in place of other example domain names.
+        -  The Security section added a formal reference to IPSEC now that it is available, and says that the confidentiality method defined in this specification is primarily to codify existing practice.  It is RECOMMENDED that stronger encryption algorithms such as Triple-DES be used in place of the default algorithm, and noted that the SRTP profile based on AES will be the correct choice in the future.  A caution about the weakness of the RTP header as an initialization vector was added.  It was also noted that payload-only encryption is necessary to allow for header compression.
+        -  The method for partial encryption of RTCP was clarified; in particular, SDES CNAME is carried in only one part when the compound RTCP packet is split.
+        -  It is clarified that only one compound RTCP packet should be sent per reporting interval and that if there are too many active sources for the reports to fit in the MTU, then a subset of the sources should be selected round-robin over multiple intervals.
+        -  A note was added in Appendix A.1 that packets may be saved during RTP header validation and delivered upon success.
+        -  Section 7.3 now explains that a mixer aggregating SDES packets uses more RTCP bandwidth due to longer packets, and a mixer passing through RTCP naturally sends packets at higher than the single source rate, but both behaviors are valid.
+        -  Section 13 clarifies that an RTP application may use multiple profiles but typically only one in a given session.
+        -  The terms MUST, SHOULD, MAY, etc. are used as defined in RFC 2119.
+        -  The bibliography was divided into normative and informative references.
 
 ## References
 
