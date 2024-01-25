@@ -1322,13 +1322,930 @@ Additional RTCP packet types and SDES item types may be registered through the I
 
 RTP profile specifications SHOULD register with IANA a name for the profile in the form "RTP/xxx", where xxx is a short abbreviation of the profile title.  These names are for use by higher-level control protocols, such as the Session Description Protocol (SDP), RFC 2327 [15], to refer to transport methods.
 
-16. Intellectual Property Rights Statement
+## 16. Intellectual Property Rights Statement
 
 The IETF takes no position regarding the validity or scope of any intellectual property or other rights that might be claimed to pertain to the implementation or use of the technology described in this document or the extent to which any license under such rights might or might not be available; neither does it represent that it has made any effort to identify any such rights.  Information on the IETF's procedures with respect to rights in standards-track and standards-related documentation can be found in BCP-11.  Copies of claims of rights made available for publication and any assurances of licenses to be made available, or the result of an attempt made to obtain a general license or permission for the use of such proprietary rights by implementors or users of this specification can be obtained from the IETF Secretariat.
 
 The IETF invites any interested party to bring to its attention any copyrights, patents or patent applications, or other proprietary rights which may cover technology that may be required to practice this standard.  Please address the information to the IETF Executive Director.
 
-17.  Acknowledgments
+## 17.  Acknowledgments
 
 This memorandum is based on discussions within the IETF Audio/Video Transport working group chaired by Stephen Casner and Colin Perkins. The current protocol has its origins in the Network Voice Protocol and the Packet Video Protocol (Danny Cohen and Randy Cole) and the protocol implemented by the vat application (Van Jacobson and Steve McCanne).  Christian Huitema provided ideas for the random identifier generator.  Extensive analysis and simulation of the timer reconsideration algorithm was done by Jonathan Rosenberg.  The additions for layered encodings were specified by Michael Speer and Steve McCanne.
 
+## Appendix A - Algorithms
+
+We provide examples of C code for aspects of RTP sender and receiver algorithms.  There may be other implementation methods that are faster in particular operating environments or have other advantages. These implementation notes are for informational purposes only and are meant to clarify the RTP specification.
+
+The following definitions are used for all examples; for clarity and brevity, the structure definitions are only valid for 32-bit big-endian (most significant octet first) architectures.  Bit fields are assumed to be packed tightly in big-endian bit order, with no additional padding.  Modifications would be required to construct a portable implementation.
+
+```
+/*
+* rtp.h  --  RTP header file
+*/
+#include <sys/types.h>
+
+/*
+* The type definitions below are valid for 32-bit architectures and
+* may have to be adjusted for 16- or 64-bit architectures.
+*/
+typedef unsigned char  u_int8;
+typedef unsigned short u_int16;
+typedef unsigned int   u_int32;
+typedef          short int16;
+
+/*
+* Current protocol version.
+*/
+#define RTP_VERSION    2
+
+#define RTP_SEQ_MOD (1<<16)
+#define RTP_MAX_SDES 255      /* maximum text length for SDES */
+
+typedef enum {
+    RTCP_SR   = 200,
+    RTCP_RR   = 201,
+    RTCP_SDES = 202,
+    RTCP_BYE  = 203,
+    RTCP_APP  = 204
+} rtcp_type_t;
+
+typedef enum {
+    RTCP_SDES_END   = 0,
+    RTCP_SDES_CNAME = 1,
+    RTCP_SDES_NAME  = 2,
+    RTCP_SDES_EMAIL = 3,
+    RTCP_SDES_PHONE = 4,
+    RTCP_SDES_LOC   = 5,
+    RTCP_SDES_TOOL  = 6,
+    RTCP_SDES_NOTE  = 7,
+    RTCP_SDES_PRIV  = 8
+} rtcp_sdes_type_t;
+
+/*
+* RTP data header
+*/
+typedef struct {
+    unsigned int version:2;   /* protocol version */
+    unsigned int p:1;         /* padding flag */
+    unsigned int x:1;         /* header extension flag */
+    unsigned int cc:4;        /* CSRC count */
+    unsigned int m:1;         /* marker bit */
+    unsigned int pt:7;        /* payload type */
+    unsigned int seq:16;      /* sequence number */
+    u_int32 ts;               /* timestamp */
+    u_int32 ssrc;             /* synchronization source */
+    u_int32 csrc[1];          /* optional CSRC list */
+} rtp_hdr_t;
+
+/*
+* RTCP common header word
+*/
+typedef struct {
+    unsigned int version:2;   /* protocol version */
+    unsigned int p:1;         /* padding flag */
+    unsigned int count:5;     /* varies by packet type */
+    unsigned int pt:8;        /* RTCP packet type */
+    u_int16 length;           /* pkt len in words, w/o this word */
+} rtcp_common_t;
+
+/*
+* Big-endian mask for version, padding bit and packet type pair
+*/
+#define RTCP_VALID_MASK (0xc000 | 0x2000 | 0xfe)
+#define RTCP_VALID_VALUE ((RTP_VERSION << 14) | RTCP_SR)
+
+/*
+* Reception report block
+*/
+typedef struct {
+    u_int32 ssrc;             /* data source being reported */
+    unsigned int fraction:8;  /* fraction lost since last SR/RR */
+    int lost:24;              /* cumul. no. pkts lost (signed!) */
+    u_int32 last_seq;         /* extended last seq. no. received */
+    u_int32 jitter;           /* interarrival jitter */
+    u_int32 lsr;              /* last SR packet from this source */
+    u_int32 dlsr;             /* delay since last SR packet */
+} rtcp_rr_t;
+
+/*
+* SDES item
+*/
+typedef struct {
+    u_int8 type;              /* type of item (rtcp_sdes_type_t) */
+    u_int8 length;            /* length of item (in octets) */
+    char data[1];             /* text, not null-terminated */
+} rtcp_sdes_item_t;
+
+/*
+* One RTCP packet
+*/
+typedef struct {
+    rtcp_common_t common;     /* common header */
+    union {
+        /* sender report (SR) */
+        struct {
+            u_int32 ssrc;     /* sender generating this report */
+            u_int32 ntp_sec;  /* NTP timestamp */
+            u_int32 ntp_frac;
+            u_int32 rtp_ts;   /* RTP timestamp */
+            u_int32 psent;    /* packets sent */
+            u_int32 osent;    /* octets sent */
+            rtcp_rr_t rr[1];  /* variable-length list */
+        } sr;
+
+        /* reception report (RR) */
+        struct {
+            u_int32 ssrc;     /* receiver generating this report */
+            rtcp_rr_t rr[1];  /* variable-length list */
+        } rr;
+
+        /* source description (SDES) */
+        struct rtcp_sdes {
+            u_int32 src;      /* first SSRC/CSRC */
+            rtcp_sdes_item_t item[1]; /* list of SDES items */
+        } sdes;
+
+        /* BYE */
+        struct {
+            u_int32 src[1];   /* list of sources */
+
+            /* can't express trailing text for reason */
+        } bye;
+    } r;
+} rtcp_t;
+
+typedef struct rtcp_sdes rtcp_sdes_t;
+
+/*
+* Per-source state information
+*/
+typedef struct {
+    u_int16 max_seq;        /* highest seq. number seen */
+    u_int32 cycles;         /* shifted count of seq. number cycles */
+    u_int32 base_seq;       /* base seq number */
+    u_int32 bad_seq;        /* last 'bad' seq number + 1 */
+    u_int32 probation;      /* sequ. packets till source is valid */
+    u_int32 received;       /* packets received */
+    u_int32 expected_prior; /* packet expected at last interval */
+    u_int32 received_prior; /* packet received at last interval */
+    u_int32 transit;        /* relative trans time for prev pkt */
+    u_int32 jitter;         /* estimated jitter */
+    /* ... */
+} source;
+```
+
+### A.1 RTP Data Header Validity Checks
+
+An RTP receiver should check the validity of the RTP header on incoming packets since they might be encrypted or might be from a different application that happens to be misaddressed.  Similarly, if encryption according to the method described in Section 9 is enabled, the header validity check is needed to verify that incoming packets have been correctly decrypted, although a failure of the header validity check (e.g., unknown payload type) may not necessarily indicate decryption failure.
+
+Only weak validity checks are possible on an RTP data packet from a source that has not been heard before:
+
+- RTP version field must equal 2.
+- The payload type must be known, and in particular it must not be equal to SR or RR.
+- If the P bit is set, then the last octet of the packet must contain a valid octet count, in particular, less than the total packet length minus the header size.
+- The X bit must be zero if the profile does not specify that the header extension mechanism may be used.  Otherwise, the extension length field must be less than the total packet size minus the fixed header length and padding.
+- The length of the packet must be consistent with CC and payload type (if payloads have a known length).
+
+The last three checks are somewhat complex and not always possible, leaving only the first two which total just a few bits.  If the SSRC identifier in the packet is one that has been received before, then the packet is probably valid and checking if the sequence number is in the expected range provides further validation.  If the SSRC identifier has not been seen before, then data packets carrying that identifier may be considered invalid until a small number of them arrive with consecutive sequence numbers.  Those invalid packets MAY be discarded or they MAY be stored and delivered once validation has been achieved if the resulting delay is acceptable.
+
+The routine update_seq shown below ensures that a source is declared valid only after MIN_SEQUENTIAL packets have been received in sequence.  It also validates the sequence number seq of a newly received packet and updates the sequence state for the packet's source in the structure to which s points.
+
+When a new source is heard for the first time, that is, its SSRC identifier is not in the table (see Section 8.2), and the per-source state is allocated for it, s->probation is set to the number of sequential packets required before declaring a source valid (parameter MIN_SEQUENTIAL) and other variables are initialized:
+
+```
+    init_seq(s, seq);
+    s->max_seq = seq - 1;
+    s->probation = MIN_SEQUENTIAL;
+```
+
+A non-zero s->probation marks the source as not yet valid so the state may be discarded after a short timeout rather than a long one, as discussed in Section 6.2.1.
+
+After a source is considered valid, the sequence number is considered valid if it is no more than MAX_DROPOUT ahead of s->max_seq nor more than MAX_MISORDER behind.  If the new sequence number is ahead of max_seq modulo the RTP sequence number range (16 bits), but is smaller than max_seq, it has wrapped around and the (shifted) count of sequence number cycles is incremented.  A value of one is returned to indicate a valid sequence number.
+
+Otherwise, the value zero is returned to indicate that the validation failed, and the bad sequence number plus 1 is stored.  If the next packet received carries the next higher sequence number, it is considered the valid start of a new packet sequence presumably caused by an extended dropout or a source restart.  Since multiple complete sequence number cycles may have been missed, the packet loss statistics are reset.
+
+Typical values for the parameters are shown, based on a maximum misordering time of 2 seconds at 50 packets/second and a maximum dropout of 1 minute.  The dropout parameter MAX_DROPOUT should be a small fraction of the 16-bit sequence number space to give a reasonable probability that new sequence numbers after a restart will not fall in the acceptable range for sequence numbers from before the restart.
+
+```
+void init_seq(source *s, u_int16 seq)
+{
+    s->base_seq = seq;
+    s->max_seq = seq;
+    s->bad_seq = RTP_SEQ_MOD + 1;   /* so seq == bad_seq is false */
+    s->cycles = 0;
+    s->received = 0;
+    s->received_prior = 0;
+    s->expected_prior = 0;
+    /* other initialization */
+}
+
+int update_seq(source *s, u_int16 seq)
+{
+    u_int16 udelta = seq - s->max_seq;
+    const int MAX_DROPOUT = 3000;
+    const int MAX_MISORDER = 100;
+    const int MIN_SEQUENTIAL = 2;
+
+    /*
+    * Source is not valid until MIN_SEQUENTIAL packets with
+    * sequential sequence numbers have been received.
+    */
+    if (s->probation) {
+        /* packet is in sequence */
+        if (seq == s->max_seq + 1) {
+            s->probation--;
+            s->max_seq = seq;
+            if (s->probation == 0) {
+                init_seq(s, seq);
+                s->received++;
+                return 1;
+            }
+        } else {
+            s->probation = MIN_SEQUENTIAL - 1;
+            s->max_seq = seq;
+        }
+        return 0;
+    } else if (udelta < MAX_DROPOUT) {
+        /* in order, with permissible gap */
+        if (seq < s->max_seq) {
+            /*
+            * Sequence number wrapped - count another 64K cycle.
+            */
+            s->cycles += RTP_SEQ_MOD;
+        }
+        s->max_seq = seq;
+    } else if (udelta <= RTP_SEQ_MOD - MAX_MISORDER) {
+        /* the sequence number made a very large jump */
+        if (seq == s->bad_seq) {
+            /*
+            * Two sequential packets -- assume that the other side
+            * restarted without telling us so just re-sync
+            * (i.e., pretend this was the first packet).
+            */
+            init_seq(s, seq);
+        }
+        else {
+            s->bad_seq = (seq + 1) & (RTP_SEQ_MOD-1);
+            return 0;
+        }
+    } else {
+        /* duplicate or reordered packet */
+    }
+    s->received++;
+    return 1;
+}
+```
+
+The validity check can be made stronger requiring more than two packets in sequence.  The disadvantages are that a larger number of initial packets will be discarded (or delayed in a queue) and that high packet loss rates could prevent validation.  However, because the RTCP header validation is relatively strong, if an RTCP packet is received from a source before the data packets, the count could be adjusted so that only two packets are required in sequence.  If initial data loss for a few seconds can be tolerated, an application MAY choose to discard all data packets from a source until a valid RTCP packet has been received from that source.
+
+Depending on the application and encoding, algorithms may exploit additional knowledge about the payload format for further validation. For payload types where the timestamp increment is the same for all packets, the timestamp values can be predicted from the previous packet received from the same source using the sequence number difference (assuming no change in payload type).
+
+A strong "fast-path" check is possible since with high probability the first four octets in the header of a newly received RTP data packet will be just the same as that of the previous packet from the same SSRC except that the sequence number will have increased by one. Similarly, a single-entry cache may be used for faster SSRC lookups in applications where data is typically received from one source at a time.
+
+### A.2 RTCP Header Validity Checks
+
+The following checks should be applied to RTCP packets.
+
+- RTP version field must equal 2.
+- The payload type field of the first RTCP packet in a compound packet must be equal to SR or RR.
+- The padding bit (P) should be zero for the first packet of a compound RTCP packet because padding should only be applied, if it is needed, to the last packet.
+- The length fields of the individual RTCP packets must add up to the overall length of the compound RTCP packet as received.  This is a fairly strong check.
+- The code fragment below performs all of these checks.  The packet type is not checked for subsequent packets since unknown packet types may be present and should be ignored.
+
+```
+    u_int32 len;        /* length of compound RTCP packet in words */
+    rtcp_t *r;          /* RTCP header */
+    rtcp_t *end;        /* end of compound RTCP packet */
+
+    if ((*(u_int16 *)r & RTCP_VALID_MASK) != RTCP_VALID_VALUE) {
+        /* something wrong with packet format */
+    }
+    end = (rtcp_t *)((u_int32 *)r + len);
+
+    do r = (rtcp_t *)((u_int32 *)r + r->common.length + 1);
+    while (r < end && r->common.version == 2);
+
+    if (r != end) {
+        /* something wrong with packet format */
+    }
+```
+
+### A.3 Determining Number of Packets Expected and Lost
+
+In order to compute packet loss rates, the number of RTP packets expected and actually received from each source needs to be known, using per-source state information defined in struct source referenced via pointer s in the code below.  The number of packets received is simply the count of packets as they arrive, including any late or duplicate packets.  The number of packets expected can be computed by the receiver as the difference between the highest sequence number received (s->max_seq) and the first sequence number received (s->base_seq).  Since the sequence number is only 16 bits and will wrap around, it is necessary to extend the highest sequence number with the (shifted) count of sequence number wraparounds (s->cycles).  Both the received packet count and the count of cycles are maintained the RTP header validity check routine in Appendix A.1.
+
+```
+    extended_max = s->cycles + s->max_seq;
+    expected = extended_max - s->base_seq + 1;
+```
+
+The number of packets lost is defined to be the number of packets expected less the number of packets actually received:
+
+```
+    lost = expected - s->received;
+```
+
+Since this signed number is carried in 24 bits, it should be clamped at 0x7fffff for positive loss or 0x800000 for negative loss rather than wrapping around.
+
+The fraction of packets lost during the last reporting interval (since the previous SR or RR packet was sent) is calculated from differences in the expected and received packet counts across the interval, where expected_prior and received_prior are the values saved when the previous reception report was generated:
+
+```
+    expected_interval = expected - s->expected_prior;
+    s->expected_prior = expected;
+    received_interval = s->received - s->received_prior;
+    s->received_prior = s->received;
+    lost_interval = expected_interval - received_interval;
+    if (expected_interval == 0 || lost_interval <= 0) fraction = 0;
+    else fraction = (lost_interval << 8) / expected_interval;
+```
+
+The resulting fraction is an 8-bit fixed point number with the binary point at the left edge.
+
+### A.4 Generating RTCP SDES Packets
+
+This function builds one SDES chunk into buffer b composed of argc items supplied in arrays type, value and length.  It returns a pointer to the next available location within b.
+
+```
+   char *rtp_write_sdes(char *b, u_int32 src, int argc,
+                        rtcp_sdes_type_t type[], char *value[],
+                        int length[])
+   {
+       rtcp_sdes_t *s = (rtcp_sdes_t *)b;
+       rtcp_sdes_item_t *rsp;
+       int i;
+       int len;
+       int pad;
+
+       /* SSRC header */
+       s->src = src;
+       rsp = &s->item[0];
+
+       /* SDES items */
+       for (i = 0; i < argc; i++) {
+           rsp->type = type[i];
+           len = length[i];
+           if (len > RTP_MAX_SDES) {
+               /* invalid length, may want to take other action */
+               len = RTP_MAX_SDES;
+           }
+           rsp->length = len;
+           memcpy(rsp->data, value[i], len);
+           rsp = (rtcp_sdes_item_t *)&rsp->data[len];
+       }
+
+       /* terminate with end marker and pad to next 4-octet boundary */
+       len = ((char *) rsp) - b;
+       pad = 4 - (len & 0x3);
+       b = (char *) rsp;
+       while (pad--) *b++ = RTCP_SDES_END;
+
+       return b;
+   }
+```
+
+A.5 Parsing RTCP SDES Packets
+
+This function parses an SDES packet, calling functions find_member() to find a pointer to the information for a session member given the SSRC identifier and member_sdes() to store the new SDES information for that member.  This function expects a pointer to the header of the RTCP packet.
+
+```
+   void rtp_read_sdes(rtcp_t *r)
+   {
+       int count = r->common.count;
+       rtcp_sdes_t *sd = &r->r.sdes;
+       rtcp_sdes_item_t *rsp, *rspn;
+       rtcp_sdes_item_t *end = (rtcp_sdes_item_t *)
+                               ((u_int32 *)r + r->common.length + 1);
+       source *s;
+
+       while (--count >= 0) {
+           rsp = &sd->item[0];
+           if (rsp >= end) break;
+           s = find_member(sd->src);
+
+           for (; rsp->type; rsp = rspn ) {
+               rspn = (rtcp_sdes_item_t *)((char*)rsp+rsp->length+2);
+               if (rspn >= end) {
+                   rsp = rspn;
+                   break;
+               }
+               member_sdes(s, rsp->type, rsp->data, rsp->length);
+           }
+           sd = (rtcp_sdes_t *)
+                ((u_int32 *)sd + (((char *)rsp - (char *)sd) >> 2)+1);
+       }
+       if (count >= 0) {
+           /* invalid packet format */
+       }
+   }
+```
+
+### A.6 Generating a Random 32-bit Identifier
+
+The following subroutine generates a random 32-bit identifier using the MD5 routines published in RFC 1321 [32].  The system routines may not be present on all operating systems, but they should serve as hints as to what kinds of information may be used.  Other system calls that may be appropriate include
+
+- getdomainname(),
+- getwd(), or
+- getrusage().
+
+"Live" video or audio samples are also a good source of random numbers, but care must be taken to avoid using a turned-off microphone or blinded camera as a source [17].
+
+Use of this or a similar routine is recommended to generate the initial seed for the random number generator producing the RTCP period (as shown in Appendix A.7), to generate the initial values for the sequence number and timestamp, and to generate SSRC values. Since this routine is likely to be CPU-intensive, its direct use to generate RTCP periods is inappropriate because predictability is not an issue.  Note that this routine produces the same result on repeated calls until the value of the system clock changes unless different values are supplied for the type argument.
+
+```
+   /*
+    * Generate a random 32-bit quantity.
+    */
+   #include <sys/types.h>   /* u_long */
+   #include <sys/time.h>    /* gettimeofday() */
+   #include <unistd.h>      /* get..() */
+   #include <stdio.h>       /* printf() */
+   #include <time.h>        /* clock() */
+   #include <sys/utsname.h> /* uname() */
+   #include "global.h"      /* from RFC 1321 */
+   #include "md5.h"         /* from RFC 1321 */
+
+   #define MD_CTX MD5_CTX
+   #define MDInit MD5Init
+   #define MDUpdate MD5Update
+   #define MDFinal MD5Final
+
+   static u_long md_32(char *string, int length)
+   {
+       MD_CTX context;
+       union {
+           char   c[16];
+           u_long x[4];
+       } digest;
+       u_long r;
+       int i;
+
+       MDInit (&context);
+
+       MDUpdate (&context, string, length);
+       MDFinal ((unsigned char *)&digest, &context);
+       r = 0;
+       for (i = 0; i < 3; i++) {
+           r ^= digest.x[i];
+       }
+       return r;
+   }                               /* md_32 */
+
+   /*
+    * Return random unsigned 32-bit quantity.  Use 'type' argument if
+    * you need to generate several different values in close succession.
+    */
+   u_int32 random32(int type)
+   {
+       struct {
+           int     type;
+           struct  timeval tv;
+           clock_t cpu;
+           pid_t   pid;
+           u_long  hid;
+           uid_t   uid;
+           gid_t   gid;
+           struct  utsname name;
+       } s;
+
+       gettimeofday(&s.tv, 0);
+       uname(&s.name);
+       s.type = type;
+       s.cpu  = clock();
+       s.pid  = getpid();
+       s.hid  = gethostid();
+       s.uid  = getuid();
+       s.gid  = getgid();
+       /* also: system uptime */
+
+       return md_32((char *)&s, sizeof(s));
+   }                               /* random32 */
+```
+
+### A.7 Computing the RTCP Transmission Interval
+
+The following functions implement the RTCP transmission and reception rules described in Section 6.2.  These rules are coded in several functions:
+- rtcp_interval() computes the deterministic calculated interval, measured in seconds.  The parameters are defined in Section 6.3.
+- OnExpire() is called when the RTCP transmission timer expires.
+- OnReceive() is called whenever an RTCP packet is received.
+
+Both OnExpire() and OnReceive() have event e as an argument.  This is the next scheduled event for that participant, either an RTCP report or a BYE packet.  It is assumed that the following functions are available:
+
+- Schedule(time t, event e) schedules an event e to occur at time t. When time t arrives, the function OnExpire is called with e as an argument.
+- Reschedule(time t, event e) reschedules a previously scheduled event e for time t.
+- SendRTCPReport(event e) sends an RTCP report.
+- SendBYEPacket(event e) sends a BYE packet.
+- TypeOfEvent(event e) returns EVENT_BYE if the event being processed is for a BYE packet to be sent, else it returns EVENT_REPORT.
+- PacketType(p) returns PACKET_RTCP_REPORT if packet p is an RTCP report (not BYE), PACKET_BYE if its a BYE RTCP packet, and PACKET_RTP if its a regular RTP data packet.
+- ReceivedPacketSize() and SentPacketSize() return the size of the referenced packet in octets.
+- NewMember(p) returns a 1 if the participant who sent packet p is not currently in the member list, 0 otherwise.  Note this function is not sufficient for a complete implementation because each CSRC identifier in an RTP packet and each SSRC in a BYE packet should be processed.
+- NewSender(p) returns a 1 if the participant who sent packet p is not currently in the sender sublist of the member list, 0 otherwise.
+- AddMember() and RemoveMember() to add and remove participants from the member list.
+- AddSender() and RemoveSender() to add and remove participants from the sender sublist of the member list.
+
+These functions would have to be extended for an implementation that allows the RTCP bandwidth fractions for senders and non-senders to be specified as explicit parameters rather than fixed values of 25% and 75%.  The extended implementation of rtcp_interval() would need to avoid division by zero if one of the parameters was zero.
+
+```
+   double rtcp_interval(int members,
+                        int senders,
+                        double rtcp_bw,
+                        int we_sent,
+                        double avg_rtcp_size,
+                        int initial)
+   {
+       /*
+        * Minimum average time between RTCP packets from this site (in
+        * seconds).  This time prevents the reports from `clumping' when
+        * sessions are small and the law of large numbers isn't helping
+        * to smooth out the traffic.  It also keeps the report interval
+        * from becoming ridiculously small during transient outages like
+        * a network partition.
+        */
+       double const RTCP_MIN_TIME = 5.;
+       /*
+        * Fraction of the RTCP bandwidth to be shared among active
+        * senders.  (This fraction was chosen so that in a typical
+        * session with one or two active senders, the computed report
+        * time would be roughly equal to the minimum report time so that
+        * we don't unnecessarily slow down receiver reports.)  The
+        * receiver fraction must be 1 - the sender fraction.
+        */
+       double const RTCP_SENDER_BW_FRACTION = 0.25;
+       double const RTCP_RCVR_BW_FRACTION = (1-RTCP_SENDER_BW_FRACTION);
+       /*
+       /* To compensate for "timer reconsideration" converging to a
+        * value below the intended average.
+        */
+       double const COMPENSATION = 2.71828 - 1.5;
+
+       double t;                   /* interval */
+       double rtcp_min_time = RTCP_MIN_TIME;
+       int n;                      /* no. of members for computation */
+
+       /*
+        * Very first call at application start-up uses half the min
+        * delay for quicker notification while still allowing some time
+        * before reporting for randomization and to learn about other
+        * sources so the report interval will converge to the correct
+        * interval more quickly.
+        */
+       if (initial) {
+           rtcp_min_time /= 2;
+       }
+       /*
+        * Dedicate a fraction of the RTCP bandwidth to senders unless
+        * the number of senders is large enough that their share is
+        * more than that fraction.
+        */
+       n = members;
+       if (senders <= members * RTCP_SENDER_BW_FRACTION) {
+           if (we_sent) {
+               rtcp_bw *= RTCP_SENDER_BW_FRACTION;
+               n = senders;
+           } else {
+               rtcp_bw *= RTCP_RCVR_BW_FRACTION;
+               n -= senders;
+           }
+       }
+
+       /*
+        * The effective number of sites times the average packet size is
+        * the total number of octets sent when each site sends a report.
+        * Dividing this by the effective bandwidth gives the time
+        * interval over which those packets must be sent in order to
+        * meet the bandwidth target, with a minimum enforced.  In that
+        * time interval we send one report so this time is also our
+        * average time between reports.
+        */
+       t = avg_rtcp_size * n / rtcp_bw;
+       if (t < rtcp_min_time) t = rtcp_min_time;
+
+       /*
+        * To avoid traffic bursts from unintended synchronization with
+        * other sites, we then pick our actual next report interval as a
+        * random number uniformly distributed between 0.5*t and 1.5*t.
+        */
+       t = t * (drand48() + 0.5);
+       t = t / COMPENSATION;
+       return t;
+   }
+
+   void OnExpire(event e,
+                 int    members,
+                 int    senders,
+                 double rtcp_bw,
+                 int    we_sent,
+                 double *avg_rtcp_size,
+                 int    *initial,
+                 time_tp   tc,
+                 time_tp   *tp,
+                 int    *pmembers)
+   {
+       /* This function is responsible for deciding whether to send an
+        * RTCP report or BYE packet now, or to reschedule transmission.
+        * It is also responsible for updating the pmembers, initial, tp,
+        * and avg_rtcp_size state variables.  This function should be
+        * called upon expiration of the event timer used by Schedule().
+        */
+
+       double t;     /* Interval */
+       double tn;    /* Next transmit time */
+
+       /* In the case of a BYE, we use "timer reconsideration" to
+        * reschedule the transmission of the BYE if necessary */
+
+       if (TypeOfEvent(e) == EVENT_BYE) {
+           t = rtcp_interval(members,
+                             senders,
+                             rtcp_bw,
+                             we_sent,
+                             *avg_rtcp_size,
+                             *initial);
+           tn = *tp + t;
+           if (tn <= tc) {
+               SendBYEPacket(e);
+               exit(1);
+           } else {
+               Schedule(tn, e);
+           }
+
+       } else if (TypeOfEvent(e) == EVENT_REPORT) {
+           t = rtcp_interval(members,
+                             senders,
+                             rtcp_bw,
+                             we_sent,
+                             *avg_rtcp_size,
+                             *initial);
+           tn = *tp + t;
+           if (tn <= tc) {
+               SendRTCPReport(e);
+               *avg_rtcp_size = (1./16.)*SentPacketSize(e) +
+                   (15./16.)*(*avg_rtcp_size);
+               *tp = tc;
+
+               /* We must redraw the interval.  Don't reuse the
+                  one computed above, since its not actually
+                  distributed the same, as we are conditioned
+                  on it being small enough to cause a packet to
+                  be sent */
+
+               t = rtcp_interval(members,
+                                 senders,
+                                 rtcp_bw,
+                                 we_sent,
+                                 *avg_rtcp_size,
+                                 *initial);
+
+               Schedule(t+tc,e);
+               *initial = 0;
+           } else {
+               Schedule(tn, e);
+           }
+           *pmembers = members;
+       }
+   }
+
+   void OnReceive(packet p,
+                  event e,
+                  int *members,
+                  int *pmembers,
+                  int *senders,
+                  double *avg_rtcp_size,
+                  double *tp,
+                  double tc,
+                  double tn)
+   {
+       /* What we do depends on whether we have left the group, and are
+        * waiting to send a BYE (TypeOfEvent(e) == EVENT_BYE) or an RTCP
+        * report.  p represents the packet that was just received.  */
+
+       if (PacketType(p) == PACKET_RTCP_REPORT) {
+           if (NewMember(p) && (TypeOfEvent(e) == EVENT_REPORT)) {
+               AddMember(p);
+               *members += 1;
+           }
+           *avg_rtcp_size = (1./16.)*ReceivedPacketSize(p) +
+               (15./16.)*(*avg_rtcp_size);
+       } else if (PacketType(p) == PACKET_RTP) {
+           if (NewMember(p) && (TypeOfEvent(e) == EVENT_REPORT)) {
+               AddMember(p);
+               *members += 1;
+           }
+           if (NewSender(p) && (TypeOfEvent(e) == EVENT_REPORT)) {
+               AddSender(p);
+               *senders += 1;
+           }
+       } else if (PacketType(p) == PACKET_BYE) {
+           *avg_rtcp_size = (1./16.)*ReceivedPacketSize(p) +
+               (15./16.)*(*avg_rtcp_size);
+
+           if (TypeOfEvent(e) == EVENT_REPORT) {
+               if (NewSender(p) == FALSE) {
+                   RemoveSender(p);
+                   *senders -= 1;
+               }
+
+               if (NewMember(p) == FALSE) {
+                   RemoveMember(p);
+                   *members -= 1;
+               }
+
+               if (*members < *pmembers) {
+                   tn = tc +
+                       (((double) *members)/(*pmembers))*(tn - tc);
+                   *tp = tc -
+                       (((double) *members)/(*pmembers))*(tc - *tp);
+
+                   /* Reschedule the next report for time tn */
+
+                   Reschedule(tn, e);
+                   *pmembers = *members;
+               }
+
+           } else if (TypeOfEvent(e) == EVENT_BYE) {
+               *members += 1;
+           }
+       }
+   }
+```
+
+### A.8 Estimating the Interarrival Jitter
+
+The code fragments below implement the algorithm given in Section 6.4.1 for calculating an estimate of the statistical variance of the RTP data interarrival time to be inserted in the interarrival jitter field of reception reports.  The inputs are r->ts, the timestamp from the incoming packet, and arrival, the current time in the same units. Here s points to state for the source; s->transit holds the relative transit time for the previous packet, and s->jitter holds the estimated jitter.  The jitter field of the reception report is measured in timestamp units and expressed as an unsigned integer, but the jitter estimate is kept in a floating point.  As each data packet arrives, the jitter estimate is updated:
+
+```
+    int transit = arrival - r->ts;
+    int d = transit - s->transit;
+    s->transit = transit;
+    if (d < 0) d = -d;
+    s->jitter += (1./16.) * ((double)d - s->jitter);
+```
+
+When a reception report block (to which rr points) is generated for this member, the current jitter estimate is returned:
+```
+    rr->jitter = (u_int32) s->jitter;
+```
+
+Alternatively, the jitter estimate can be kept as an integer, but scaled to reduce round-off error.  The calculation is the same except for the last line:
+
+```
+    s->jitter += d - ((s->jitter + 8) >> 4);
+```
+
+In this case, the estimate is sampled for the reception report as:
+
+```
+    rr->jitter = s->jitter >> 4;
+```
+
+## Appendix B - Changes from RFC 1889
+
+Most of this RFC is identical to RFC 1889.  There are no changes in the packet formats on the wire, only changes to the rules and algorithms governing how the protocol is used.  The biggest change is an enhancement to the scalable timer algorithm for calculating when to send RTCP packets:
+
+- The algorithm for calculating the RTCP transmission interval specified in Sections 6.2 and 6.3 and illustrated in Appendix A.7 is augmented to include "reconsideration" to minimize transmission in excess of the intended rate when many participants join a session simultaneously, and "reverse reconsideration" to reduce the incidence and duration of false participant timeouts when the number of participants drops rapidly.  Reverse reconsideration is also used to possibly shorten the delay before sending RTCP SR when transitioning from passive receiver to active sender mode.
+- Section 6.3.7 specifies new rules controlling when an RTCP BYE packet should be sent in order to avoid a flood of packets when many participants leave a session simultaneously.
+- The requirement to retain state for inactive participants for a period long enough to span typical network partitions was removed from Section 6.2.1.  In a session where many participants join for a brief time and fail to send BYE, this requirement would cause a significant overestimate of the number of participants.  The reconsideration algorithm added in this revision compensates for the large number of new participants joining simultaneously when a partition heals.
+
+It should be noted that these enhancements only have a significant effect when the number of session participants is large (thousands) and most of the participants join or leave at the same time.  This makes testing in a live network difficult.  However, the algorithm was subjected to a thorough analysis and simulation to verify its performance.  Furthermore, the enhanced algorithm was designed to interoperate with the algorithm in RFC 1889 such that the degree of reduction in excess RTCP bandwidth during a step join is proportional to the fraction of participants that implement the enhanced algorithm.  Interoperation of the two algorithms has been verified experimentally on live networks.
+
+Other functional changes were:
+
+- Section 6.2.1 specifies that implementations may store only a sampling of the participants' SSRC identifiers to allow scaling to very large sessions.  Algorithms are specified in RFC 2762 [21].
+- In Section 6.2 it is specified that RTCP sender and non-sender bandwidths may be set as separate parameters of the session rather than a strict percentage of the session bandwidth, and may be set to zero.  The requirement that RTCP was mandatory for RTP sessions using IP multicast was relaxed.  However, a clarification was also added that turning off RTCP is NOT RECOMMENDED.
+- In Sections 6.2, 6.3.1 and Appendix A.7, it is specified that the fraction of participants below which senders get dedicated RTCP bandwidth changes from the fixed 1/4 to a ratio based on the RTCP sender and non-sender bandwidth parameters when those are given. The condition that no bandwidth is dedicated to senders when there are no senders was removed since that is expected to be a transitory state.  It also keeps non-senders from using sender RTCP bandwidth when that is not intended.
+- Also in Section 6.2 it is specified that the minimum RTCP interval may be scaled to smaller values for high bandwidth sessions, and that the initial RTCP delay may be set to zero for unicast sessions.
+- Timing out a participant is to be based on inactivity for a number of RTCP report intervals calculated using the receiver RTCP bandwidth fraction even for active senders.
+- Sections 7.2 and 7.3 specify that translators and mixers should send BYE packets for the sources they are no longer forwarding.
+- Rule changes for layered encodings are defined in Sections 2.4, 6.3.9, 8.3 and 11.  In the last of these, it is noted that the address and port assignment rule conflicts with the SDP specification, RFC 2327 [15], but it is intended that this restriction will be relaxed in a revision of RFC 2327.
+- The convention for using even/odd port pairs for RTP and RTCP in Section 11 was clarified to refer to destination ports.  The requirement to use an even/odd port pair was removed if the two ports are specified explicitly.  For unicast RTP sessions, distinct port pairs may be used for the two ends (Sections 3, 7.1 and 11).
+- A new Section 10 was added to explain the requirement for congestion control in applications using RTP.
+- In Section 8.2, the requirement that a new SSRC identifier MUST be chosen whenever the source transport address is changed has been relaxed to say that a new SSRC identifier MAY be chosen. Correspondingly, it was clarified that an implementation MAY choose to keep packets from the new source address rather than the existing source address when an SSRC collision occurs between two other participants, and SHOULD do so for applications such as telephony in which some sources such as mobile entities may change addresses during the course of an RTP session.
+- An indentation bug in the RFC 1889 printing of the pseudo-code for the collision detection and resolution algorithm in Section 8.2 has been corrected by translating the syntax to pseudo C language, and the algorithm has been modified to remove the restriction that both RTP and RTCP must be sent from the same source port number.
+- The description of the padding mechanism for RTCP packets was clarified and it is specified that padding MUST only be applied to the last packet of a compound RTCP packet.
+- In Section A.1, initialization of base_seq was corrected to be seq rather than seq - 1, and the text was corrected to say the bad sequence number plus 1 is stored.  The initialization of max_seq and other variables for the algorithm was separated from the text to make clear that this initialization must be done in addition to calling the init_seq() function (and a few words lost in RFC 1889 when processing the document from source to output form were restored).
+- Clamping of number of packets lost in Section A.3 was corrected to use both positive and negative limits.
+- The specification of "relative" NTP timestamp in the RTCP SR section now defines these timestamps to be based on the most common system-specific clock, such as system uptime, rather than on session elapsed time which would not be the same for multiple applications started on the same machine at different times.
+
+Non-functional changes:
+
+- It is specified that a receiver MUST ignore packets with payload types it does not understand.
+- In Fig. 2, the floating point NTP timestamp value was corrected, some missing leading zeros were added in a hex number, and the UTC timezone was specified.
+- The inconsequence of NTP timestamps wrapping around in the year 2036 is explained.
+- The policy for registration of RTCP packet types and SDES types was clarified in a new Section 15, IANA Considerations.  The suggestion that experimenters register the numbers they need and then unregister those which prove to be unneeded has been removed in favor of using APP and PRIV.  Registration of profile names was also specified.
+- The reference for the UTF-8 character set was changed from an X/Open Preliminary Specification to be RFC 2279.
+- The reference for RFC 1597 was updated to RFC 1918 and the reference for RFC 2543 was updated to RFC 3261.
+- The last paragraph of the introduction in RFC 1889, which cautioned implementors to limit deployment in the Internet, was removed because it was deemed no longer relevant.
+- A non-normative note regarding the use of RTP with Source-Specific Multicast (SSM) was added in Section 6.
+- The definition of "RTP session" in Section 3 was expanded to acknowledge that a single session may use multiple destination transport addresses (as was always the case for a translator or mixer) and to explain that the distinguishing feature of an RTP session is that each corresponds to a separate SSRC identifier space.  A new definition of "multimedia session" was added to reduce confusion about the word "session".
+- The meaning of "sampling instant" was explained in more detail as part of the definition of the timestamp field of the RTP header in Section 5.1.
+- Small clarifications of the text have been made in several places, some in response to questions from readers.  In particular:
+      -  In RFC 1889, the first five words of the second sentence of Section 2.2 were lost in processing the document from source to output form, but are now restored.
+      -  A definition for "RTP media type" was added in Section 3 to allow the explanation of multiplexing RTP sessions in Section 5.2 to be more clear regarding the multiplexing of multiple media.  That section also now explains that multiplexing multiple sources of the same medium based on SSRC identifiers may be appropriate and is the norm for multicast sessions.
+      -  The definition for "non-RTP means" was expanded to include examples of other protocols constituting non-RTP means.
+      -  The description of the session bandwidth parameter is expanded in Section 6.2, including a clarification that the control traffic bandwidth is in addition to the session bandwidth for the data traffic.
+      -  The effect of varying packet duration on the jitter calculation was explained in Section 6.4.4.
+      -  The method for terminating and padding a sequence of SDES items was clarified in Section 6.5.
+      -  IPv6 address examples were added in the description of SDES CNAME in Section 6.5.1, and "example.com" was used in place of other example domain names.
+      -  The Security section added a formal reference to IPSEC now that it is available, and says that the confidentiality method defined in this specification is primarily to codify existing practice.  It is RECOMMENDED that stronger encryption algorithms such as Triple-DES be used in place of the default algorithm, and noted that the SRTP profile based on AES will be the correct choice in the future.  A caution about the weakness of the RTP header as an initialization vector was added.  It was also noted that payload-only encryption is necessary to allow for header compression.
+      -  The method for partial encryption of RTCP was clarified; in particular, SDES CNAME is carried in only one part when the compound RTCP packet is split.
+      -  It is clarified that only one compound RTCP packet should be sent per reporting interval and that if there are too many active sources for the reports to fit in the MTU, then a subset of the sources should be selected round-robin over multiple intervals.
+      -  A note was added in Appendix A.1 that packets may be saved during RTP header validation and delivered upon success.
+      -  Section 7.3 now explains that a mixer aggregating SDES packets uses more RTCP bandwidth due to longer packets, and a mixer passing through RTCP naturally sends packets at higher than the single source rate, but both behaviors are valid.
+      -  Section 13 clarifies that an RTP application may use multiple profiles but typically only one in a given session.
+      -  The terms MUST, SHOULD, MAY, etc. are used as defined in RFC 2119.
+      -  The bibliography was divided into normative and informative references.
+
+## References
+
+### Normative References
+
+- [1]  Schulzrinne, H. and S. Casner, "RTP Profile for Audio and Video Conferences with Minimal Control", RFC 3551, July 2003.
+- [2]  Bradner, S., "Key Words for Use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, March 1997.
+- [3]  Postel, J., "Internet Protocol", STD 5, RFC 791, September 1981.
+- [4]  Mills, D., "Network Time Protocol (Version 3) Specification, Implementation and Analysis", RFC 1305, March 1992.
+- [5]  Yergeau, F., "UTF-8, a Transformation Format of ISO 10646", RFC 2279, January 1998.
+- [6]  Mockapetris, P., "Domain Names - Concepts and Facilities", STD 13, RFC 1034, November 1987.
+- [7]  Mockapetris, P., "Domain Names - Implementation and Specification", STD 13, RFC 1035, November 1987.
+- [8]  Braden, R., "Requirements for Internet Hosts - Application and Support", STD 3, RFC 1123, October 1989.
+- [9]  Resnick, P., "Internet Message Format", RFC 2822, April 2001.
+
+### Informative References
+
+- [10] Clark, D. and D. Tennenhouse, "Architectural Considerations for a New Generation of Protocols," in SIGCOMM Symposium on Communications Architectures and Protocols , (Philadelphia, Pennsylvania), pp. 200--208, IEEE Computer Communications Review, Vol. 20(4), September 1990.
+- [11] Schulzrinne, H., "Issues in designing a transport protocol for audio and video conferences and other multiparticipant real-time applications." expired Internet Draft, October 1993.
+- [12] Comer, D., Internetworking with TCP/IP , vol. 1.  Englewood Cliffs, New Jersey: Prentice Hall, 1991.
+- [13] Rosenberg, J., Schulzrinne, H., Camarillo, G., Johnston, A., Peterson, J., Sparks, R., Handley, M. and E. Schooler, "SIP: Session Initiation Protocol", RFC 3261, June 2002.
+- [14] International Telecommunication Union, "Visual telephone systems and equipment for local area networks which provide a non- guaranteed quality of service", Recommendation H.323, Telecommunication Standardization Sector of ITU, Geneva, Switzerland, July 2003.
+- [15] Handley, M. and V. Jacobson, "SDP: Session Description Protocol", RFC 2327, April 1998.
+- [16] Schulzrinne, H., Rao, A. and R. Lanphier, "Real Time Streaming Protocol (RTSP)", RFC 2326, April 1998.
+- [17] Eastlake 3rd, D., Crocker, S. and J. Schiller, "Randomness Recommendations for Security", RFC 1750, December 1994.
+- [18] Bolot, J.-C., Turletti, T. and I. Wakeman, "Scalable Feedback Control for Multicast Video Distribution in the Internet", in SIGCOMM Symposium on Communications Architectures and Protocols, (London, England), pp. 58--67, ACM, August 1994.
+- [19] Busse, I., Deffner, B. and H. Schulzrinne, "Dynamic QoS Control of Multimedia Applications Based on RTP", Computer Communications , vol. 19, pp. 49--58, January 1996.
+- [20] Floyd, S. and V. Jacobson, "The Synchronization of Periodic Routing Messages", in SIGCOMM Symposium on Communications Architectures and Protocols (D. P. Sidhu, ed.), (San Francisco, California), pp. 33--44, ACM, September 1993.  Also in [34].
+- [21] Rosenberg, J. and H. Schulzrinne, "Sampling of the Group Membership in RTP", RFC 2762, February 2000.
+- [22] Cadzow, J., Foundations of Digital Signal Processing and Data Analysis New York, New York: Macmillan, 1987.
+- [23] Hinden, R. and S. Deering, "Internet Protocol Version 6 (IPv6) Addressing Architecture", RFC 3513, April 2003.
+- [24] Rekhter, Y., Moskowitz, B., Karrenberg, D., de Groot, G. and E. Lear, "Address Allocation for Private Internets", RFC 1918, February 1996.
+- [25] Lear, E., Fair, E., Crocker, D. and T. Kessler, "Network 10 Considered Harmful (Some Practices Shouldn't be Codified)", RFC 1627, July 1994.
+- [26] Feller, W., An Introduction to Probability Theory and its Applications, vol. 1.  New York, New York: John Wiley and Sons, third ed., 1968.
+- [27] Kent, S. and R. Atkinson, "Security Architecture for the Internet Protocol", RFC 2401, November 1998.
+- [28] Baugher, M., Blom, R., Carrara, E., McGrew, D., Naslund, M., Norrman, K. and D. Oran, "Secure Real-time Transport Protocol", Work in Progress, April 2003.
+- [29] Balenson, D., "Privacy Enhancement for Internet Electronic Mail: Part III", RFC 1423, February 1993.
+- [30] Voydock, V. and S. Kent, "Security Mechanisms in High-Level Network Protocols", ACM Computing Surveys, vol. 15, pp. 135-171, June 1983.
+- [31] Floyd, S., "Congestion Control Principles", BCP 41, RFC 2914, September 2000.
+- [32] Rivest, R., "The MD5 Message-Digest Algorithm", RFC 1321, April 1992.
+- [33] Stubblebine, S., "Security Services for Multimedia Conferencing", in 16th National Computer Security Conference, (Baltimore, Maryland), pp. 391--395, September 1993.
+- [34] Floyd, S. and V. Jacobson, "The Synchronization of Periodic Routing Messages", IEEE/ACM Transactions on Networking, vol. 2, pp. 122--136, April 1994.
+
+```
+Authors' Addresses
+
+   Henning Schulzrinne
+   Department of Computer Science
+   Columbia University
+   1214 Amsterdam Avenue
+   New York, NY 10027
+   United States
+
+   EMail: schulzrinne@cs.columbia.edu
+
+
+   Stephen L. Casner
+   Packet Design
+   3400 Hillview Avenue, Building 3
+   Palo Alto, CA 94304
+   United States
+
+   EMail: casner@acm.org
+
+
+   Ron Frederick
+   Blue Coat Systems Inc.
+   650 Almanor Avenue
+   Sunnyvale, CA 94085
+   United States
+
+   EMail: ronf@bluecoat.com
+
+
+   Van Jacobson
+   Packet Design
+   3400 Hillview Avenue, Building 3
+   Palo Alto, CA 94304
+   United States
+
+   EMail: van@packetdesign.com
+```
+
+**Full Copyright Statement**
+
+Copyright (C) The Internet Society (2003).  All Rights Reserved.
+
+This document and translations of it may be copied and furnished to others, and derivative works that comment on or otherwise explain it or assist in its implementation may be prepared, copied, published and distributed, in whole or in part, without restriction of any kind, provided that the above copyright notice and this paragraph are included on all such copies and derivative works.  However, this document itself may not be modified in any way, such as by removing the copyright notice or references to the Internet Society or other Internet organizations, except as needed for the purpose of developing Internet standards in which case the procedures for copyrights defined in the Internet Standards process must be followed, or as required to translate it into languages other than English.
+
+The limited permissions granted above are perpetual and will not be revoked by the Internet Society or its successors or assigns.
+
+This document and the information contained herein is provided on an "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+**Acknowledgement**
+
+Funding for the RFC Editor function is currently provided by the Internet Society.
