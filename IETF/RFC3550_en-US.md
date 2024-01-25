@@ -724,3 +724,334 @@ An empty RR packet (RC = 0) MUST be put at the head of a compound RTCP packet wh
 A profile SHOULD define profile-specific extensions to the sender report and receiver report if there is additional information that needs to be reported regularly about the sender or receivers.  This method SHOULD be used in preference to defining another RTCP packet type because it requires less overhead:
 
 - fewer octets in the packet (no RTCP header or SSRC field);
+- simpler and faster parsing because applications running under that profile would be programmed to always expect the extension fields in the directly accessible location after the reception reports.
+
+The extension is a fourth section in the sender- or receiver-report packet which comes at the end after the reception report blocks, if any.  If additional sender information is required, then for sender reports it would be included first in the extension section, but for receiver reports it would not be present.  If information about receivers is to be included, that data SHOULD be structured as an array of blocks parallel to the existing array of reception report blocks; that is, the number of blocks would be indicated by the RC field.
+
+#### 6.4.4 Analyzing Sender and Receiver Reports
+
+It is expected that reception quality feedback will be useful not only for the sender but also for other receivers and third-party monitors.  The sender may modify its transmissions based on the feedback; receivers can determine whether problems are local, regional or global; network managers may use profile-independent monitors that receive only the RTCP packets and not the corresponding RTP data packets to evaluate the performance of their networks for multicast distribution.
+
+Cumulative counts are used in both the sender information and receiver report blocks so that differences may be calculated between any two reports to make measurements over both short and long time periods, and to provide resilience against the loss of a report.  The difference between the last two reports received can be used to estimate the recent quality of the distribution.  The NTP timestamp is included so that rates may be calculated from these differences over the interval between two reports.  Since that timestamp is independent of the clock rate for the data encoding, it is possible to implement encoding- and profile-independent quality monitors.
+
+An example calculation is the packet loss rate over the interval between two reception reports.  The difference in the cumulative number of packets lost gives the number lost during that interval. The difference in the extended last sequence numbers received gives the number of packets expected during the interval.  The ratio of these two is the packet loss fraction over the interval.  This ratio should equal the fraction lost field if the two reports are consecutive, but otherwise it may not.  The loss rate per second can be obtained by dividing the loss fraction by the difference in NTP timestamps, expressed in seconds.  The number of packets received is the number of packets expected minus the number lost.  The number of packets expected may also be used to judge the statistical validity of any loss estimates.  For example, 1 out of 5 packets lost has a lower significance than 200 out of 1000.
+
+From the sender information, a third-party monitor can calculate the average payload data rate and the average packet rate over an interval without receiving the data.  Taking the ratio of the two gives the average payload size.  If it can be assumed that packet loss is independent of packet size, then the number of packets received by a particular receiver times the average payload size (or the corresponding packet size) gives the apparent throughput available to that receiver.
+
+In addition to the cumulative counts which allow long-term packet loss measurements using differences between reports, the fraction lost field provides a short-term measurement from a single report. This becomes more important as the size of a session scales up enough that reception state information might not be kept for all receivers or the interval between reports becomes long enough that only one report might have been received from a particular receiver.
+
+The interarrival jitter field provides a second short-term measure of network congestion.  Packet loss tracks persistent congestion while the jitter measure tracks transient congestion.  The jitter measure may indicate congestion before it leads to packet loss.  The interarrival jitter field is only a snapshot of the jitter at the time of a report and is not intended to be taken quantitatively. Rather, it is intended for comparison across a number of reports from one receiver over time or from multiple receivers, e.g., within a single network, at the same time.  To allow comparison across receivers, it is important the the jitter be calculated according to the same formula by all receivers.
+
+Because the jitter calculation is based on the RTP timestamp which represents the instant when the first data in the packet was sampled, any variation in the delay between that sampling instant and the time the packet is transmitted will affect the resulting jitter that is calculated.  Such a variation in delay would occur for audio packets of varying duration.  It will also occur for video encodings because the timestamp is the same for all the packets of one frame but those packets are not all transmitted at the same time.  The variation in delay until transmission does reduce the accuracy of the jitter calculation as a measure of the behavior of the network by itself, but it is appropriate to include considering that the receiver buffer must accommodate it.  When the jitter calculation is used as a comparative measure, the (constant) component due to variation in delay until transmission subtracts out so that a change in the network jitter component can then be observed unless it is relatively small.  If the change is small, then it is likely to be inconsequential.
+
+### 6.5 SDES: Source Description RTCP Packet
+
+```
+        0                   1                   2                   3
+        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+header |V=2|P|    SC   |  PT=SDES=202  |             length            |
+       +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+chunk  |                          SSRC/CSRC_1                          |
+  1    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                           SDES items                          |
+       |                              ...                              |
+       +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+chunk  |                          SSRC/CSRC_2                          |
+  2    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                           SDES items                          |
+       |                              ...                              |
+       +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+```
+
+The SDES packet is a three-level structure composed of a header and zero or more chunks, each of which is composed of items describing the source identified in that chunk.  The items are described individually in subsequent sections.
+
+- version (V), padding (P), length:
+
+    As described for the SR packet (see Section 6.4.1).
+- packet type (PT): 8 bits
+
+    Contains the constant 202 to identify this as an RTCP SDES packet.
+- source count (SC): 5 bits
+
+    The number of SSRC/CSRC chunks contained in this SDES packet.  A value of zero is valid but useless.
+
+Each chunk consists of an SSRC/CSRC identifier followed by a list of zero or more items, which carry information about the SSRC/CSRC. Each chunk starts on a 32-bit boundary.  Each item consists of an 8- bit type field, an 8-bit octet count describing the length of the text (thus, not including this two-octet header), and the text itself.  Note that the text can be no longer than 255 octets, but this is consistent with the need to limit RTCP bandwidth consumption.
+
+The text is encoded according to the UTF-8 encoding specified in RFC 2279 [5].  US-ASCII is a subset of this encoding and requires no additional encoding.  The presence of multi-octet encodings is indicated by setting the most significant bit of a character to a value of one.
+
+Items are contiguous, i.e., items are not individually padded to a 32-bit boundary.  Text is not null terminated because some multi- octet encodings include null octets.  The list of items in each chunk MUST be terminated by one or more null octets, the first of which is interpreted as an item type of zero to denote the end of the list. No length octet follows the null item type octet, but additional null octets MUST be included if needed to pad until the next 32-bit boundary.  Note that this padding is separate from that indicated by the P bit in the RTCP header.  A chunk with zero items (four null octets) is valid but useless.
+
+End systems send one SDES packet containing their own source identifier (the same as the SSRC in the fixed RTP header).  A mixer sends one SDES packet containing a chunk for each contributing source from which it is receiving SDES information, or multiple complete SDES packets in the format above if there are more than 31 such sources (see Section 7).
+
+The SDES items currently defined are described in the next sections. Only the CNAME item is mandatory.  Some items shown here may be useful only for particular profiles, but the item types are all assigned from one common space to promote shared use and to simplify profile-independent applications.  Additional items may be defined in a profile by registering the type numbers with IANA as described in Section 15.
+
+#### 6.5.1 CNAME: Canonical End-Point Identifier SDES Item
+
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    CNAME=1    |     length    | user and domain name        ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+The CNAME identifier has the following properties:
+
+- Because the randomly allocated SSRC identifier may change if a conflict is discovered or if a program is restarted, the CNAME item MUST be included to provide the binding from the SSRC identifier to an identifier for the source (sender or receiver) that remains constant.
+- Like the SSRC identifier, the CNAME identifier SHOULD also be unique among all participants within one RTP session.
+- To provide a binding across multiple media tools used by one participant in a set of related RTP sessions, the CNAME SHOULD be fixed for that participant.
+- To facilitate third-party monitoring, the CNAME SHOULD be suitable for either a program or a person to locate the source.
+
+Therefore, the CNAME SHOULD be derived algorithmically and not entered manually, when possible.  To meet these requirements, the following format SHOULD be used unless a profile specifies an alternate syntax or semantics.  The CNAME item SHOULD have the format "user@host", or "host" if a user name is not available as on single- user systems.  For both formats, "host" is either the fully qualified domain name of the host from which the real-time data originates, formatted according to the rules specified in RFC 1034 [6], RFC 1035 [7] and Section 2.1 of RFC 1123 [8]; or the standard ASCII representation of the host's numeric address on the interface used for the RTP communication.  For example, the standard ASCII representation of an IP Version 4 address is "dotted decimal", also known as dotted quad, and for IP Version 6, addresses are textually represented as groups of hexadecimal digits separated by colons (with variations as detailed in RFC 3513 [23]).  Other address types are expected to have ASCII representations that are mutually unique.  The fully qualified domain name is more convenient for a human observer and may avoid the need to send a NAME item in addition, but it may be difficult or impossible to obtain reliably in some operating environments.  Applications that may be run in such environments SHOULD use the ASCII representation of the address instead.
+
+Examples are "doe@sleepy.example.com", "doe@192.0.2.89" or "doe@2201:056D::112E:144A:1E24" for a multi-user system.  On a system with no user name, examples would be "sleepy.example.com", "192.0.2.89" or "2201:056D::112E:144A:1E24".
+
+The user name SHOULD be in a form that a program such as "finger" or "talk" could use, i.e., it typically is the login name rather than the personal name.  The host name is not necessarily identical to the one in the participant's electronic mail address.
+
+This syntax will not provide unique identifiers for each source if an application permits a user to generate multiple sources from one host.  Such an application would have to rely on the SSRC to further identify the source, or the profile for that application would have to specify additional syntax for the CNAME identifier.
+
+If each application creates its CNAME independently, the resulting CNAMEs may not be identical as would be required to provide a binding across multiple media tools belonging to one participant in a set of related RTP sessions.  If cross-media binding is required, it may be necessary for the CNAME of each tool to be externally configured with the same value by a coordination tool.
+
+Application writers should be aware that private network address assignments such as the Net-10 assignment proposed in RFC 1918 [24] may create network addresses that are not globally unique.  This would lead to non-unique CNAMEs if hosts with private addresses and no direct IP connectivity to the public Internet have their RTP packets forwarded to the public Internet through an RTP-level translator.  (See also RFC 1627 [25].)  To handle this case, applications MAY provide a means to configure a unique CNAME, but the burden is on the translator to translate CNAMEs from private addresses to public addresses if necessary to keep private addresses from being exposed.
+
+#### 6.5.2 NAME: User Name SDES Item
+
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     NAME=2    |     length    | common name of source       ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+This is the real name used to describe the source, e.g., "John Doe, Bit Recycler".  It may be in any form desired by the user.  For applications such as conferencing, this form of name may be the most desirable for display in participant lists, and therefore might be sent most frequently of those items other than CNAME.  Profiles MAY establish such priorities.  The NAME value is expected to remain constant at least for the duration of a session.  It SHOULD NOT be relied upon to be unique among all participants in the session.
+
+#### 6.5.3 EMAIL: Electronic Mail Address SDES Item
+
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    EMAIL=3    |     length    | email address of source     ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+The email address is formatted according to RFC 2822 [9], for example, "John.Doe@example.com".  The EMAIL value is expected to remain constant for the duration of a session.
+
+#### 6.5.4 PHONE: Phone Number SDES Item
+
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    PHONE=4    |     length    | phone number of source      ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+The phone number SHOULD be formatted with the plus sign replacing the international access code.  For example, "+1 908 555 1212" for a number in the United States.
+
+#### 6.5.5 LOC: Geographic User Location SDES Item
+
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     LOC=5     |     length    | geographic location of site ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+Depending on the application, different degrees of detail are appropriate for this item.  For conference applications, a string like "Murray Hill, New Jersey" may be sufficient, while, for an active badge system, strings like "Room 2A244, AT&T BL MH" might be appropriate.  The degree of detail is left to the implementation and/or user, but format and content MAY be prescribed by a profile. The LOC value is expected to remain constant for the duration of a session, except for mobile hosts.
+
+#### 6.5.6 TOOL: Application or Tool Name SDES Item
+
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     TOOL=6    |     length    |name/version of source appl. ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+A string giving the name and possibly version of the application generating the stream, e.g., "videotool 1.2".  This information may be useful for debugging purposes and is similar to the Mailer or Mail-System-Version SMTP headers.  The TOOL value is expected to remain constant for the duration of the session.
+
+#### 6.5.7 NOTE: Notice/Status SDES Item
+
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     NOTE=7    |     length    | note about the source       ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+The following semantics are suggested for this item, but these or other semantics MAY be explicitly defined by a profile.  The NOTE item is intended for transient messages describing the current state of the source, e.g., "on the phone, can't talk".  Or, during a seminar, this item might be used to convey the title of the talk.  It should be used only to carry exceptional information and SHOULD NOT be included routinely by all participants because this would slow down the rate at which reception reports and CNAME are sent, thus impairing the performance of the protocol.  In particular, it SHOULD NOT be included as an item in a user's configuration file nor automatically generated as in a quote-of-the-day.
+
+Since the NOTE item may be important to display while it is active, the rate at which other non-CNAME items such as NAME are transmitted might be reduced so that the NOTE item can take that part of the RTCP bandwidth.  When the transient message becomes inactive, the NOTE item SHOULD continue to be transmitted a few times at the same repetition rate but with a string of length zero to signal the receivers.  However, receivers SHOULD also consider the NOTE item inactive if it is not received for a small multiple of the repetition rate, or perhaps 20-30 RTCP intervals.
+
+#### 6.5.8 PRIV: Private Extensions SDES Item
+
+```
+     0                   1                   2                   3
+     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     PRIV=8    |     length    | prefix length |prefix string...
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    ...             |                  value string               ...
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+This item is used to define experimental or application-specific SDES extensions.  The item contains a prefix consisting of a length-string pair, followed by the value string filling the remainder of the item and carrying the desired information.  The prefix length field is 8 bits long.  The prefix string is a name chosen by the person defining the PRIV item to be unique with respect to other PRIV items this application might receive.  The application creator might choose to use the application name plus an additional subtype identification if needed.  Alternatively, it is RECOMMENDED that others choose a name based on the entity they represent, then coordinate the use of the name within that entity.
+
+Note that the prefix consumes some space within the item's total length of 255 octets, so the prefix should be kept as short as possible.  This facility and the constrained RTCP bandwidth SHOULD NOT be overloaded; it is not intended to satisfy all the control communication requirements of all applications.
+
+SDES PRIV prefixes will not be registered by IANA.  If some form of the PRIV item proves to be of general utility, it SHOULD instead be assigned a regular SDES item type registered with IANA so that no prefix is required.  This simplifies use and increases transmission efficiency.
+
+### 6.6 BYE: Goodbye RTCP Packet
+
+```
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |V=2|P|    SC   |   PT=BYE=203  |             length            |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                           SSRC/CSRC                           |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      :                              ...                              :
+      +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+(opt) |     length    |               reason for leaving            ...
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+The BYE packet indicates that one or more sources are no longer active.
+
+- **version (V), padding (P)**, length:
+
+    As described for the SR packet (see Section 6.4.1).
+- **packet type (PT)**: 8 bits
+
+    Contains the constant 203 to identify this as an RTCP BYE packet.
+
+- **source count (SC)**: 5 bits
+
+    The number of SSRC/CSRC identifiers included in this BYE packet. A count value of zero is valid, but useless.
+
+The rules for when a BYE packet should be sent are specified in Sections 6.3.7 and 8.2.
+
+If a BYE packet is received by a mixer, the mixer SHOULD forward the BYE packet with the SSRC/CSRC identifier(s) unchanged.  If a mixer shuts down, it SHOULD send a BYE packet listing all contributing sources it handles, as well as its own SSRC identifier.  Optionally, the BYE packet MAY include an 8-bit octet count followed by that many octets of text indicating the reason for leaving, e.g., "camera malfunction" or "RTP loop detected".  The string has the same encoding as that described for SDES.  If the string fills the packet to the next 32-bit boundary, the string is not null terminated.  If not, the BYE packet MUST be padded with null octets to the next 32- bit boundary.  This padding is separate from that indicated by the P bit in the RTCP header.
+
+### 6.7 APP: Application-Defined RTCP Packet
+
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |V=2|P| subtype |   PT=APP=204  |             length            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           SSRC/CSRC                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          name (ASCII)                         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                   application-dependent data                ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+The APP packet is intended for experimental use as new applications and new features are developed, without requiring packet type value registration.  APP packets with unrecognized names SHOULD be ignored. After testing and if wider use is justified, it is RECOMMENDED that each APP packet be redefined without the subtype and name fields and registered with IANA using an RTCP packet type.
+
+- **version (V), padding (P)**, length:
+
+    As described for the SR packet (see Section 6.4.1).
+- **subtype**: 5 bits
+
+    May be used as a subtype to allow a set of APP packets to be defined under one unique name, or for any application-dependent data.
+- **packet type (PT)**: 8 bits
+
+    Contains the constant 204 to identify this as an RTCP APP packet.
+- **name**: 4 octets
+
+    A name chosen by the person defining the set of APP packets to be unique with respect to other APP packets this application might receive.  The application creator might choose to use the application name, and then coordinate the allocation of subtype values to others who want to define new packet types for the application.  Alternatively, it is RECOMMENDED that others choose a name based on the entity they represent, then coordinate the use of the name within that entity.  The name is interpreted as a sequence of four ASCII characters, with uppercase and lowercase characters treated as distinct.
+- **application-dependent data**: variable length
+
+    Application-dependent data may or may not appear in an APP packet. It is interpreted by the application and not RTP itself.  It MUST be a multiple of 32 bits long.
+
+## 7. RTP Translators and Mixers
+
+In addition to end systems, RTP supports the notion of "translators" and "mixers", which could be considered as "intermediate systems" at the RTP level.  Although this support adds some complexity to the protocol, the need for these functions has been clearly established by experiments with multicast audio and video applications in the Internet.  Example uses of translators and mixers given in Section 2.3 stem from the presence of firewalls and low bandwidth connections, both of which are likely to remain.
+
+### 7.1 General Description
+
+An RTP translator/mixer connects two or more transport-level "clouds".  Typically, each cloud is defined by a common network and transport protocol (e.g., IP/UDP) plus a multicast address and transport level destination port or a pair of unicast addresses and ports.  (Network-level protocol translators, such as IP version 4 to IP version 6, may be present within a cloud invisibly to RTP.)  One system may serve as a translator or mixer for a number of RTP sessions, but each is considered a logically separate entity.
+
+In order to avoid creating a loop when a translator or mixer is installed, the following rules MUST be observed:
+
+- Each of the clouds connected by translators and mixers participating in one RTP session either MUST be distinct from all the others in at least one of these parameters (protocol, address, port), or MUST be isolated at the network level from the others.
+- A derivative of the first rule is that there MUST NOT be multiple translators or mixers connected in parallel unless by some arrangement they partition the set of sources to be forwarded.
+
+Similarly, all RTP end systems that can communicate through one or more RTP translators or mixers share the same SSRC space, that is, the SSRC identifiers MUST be unique among all these end systems. Section 8.2 describes the collision resolution algorithm by which SSRC identifiers are kept unique and loops are detected.
+
+There may be many varieties of translators and mixers designed for different purposes and applications.  Some examples are to add or remove encryption, change the encoding of the data or the underlying protocols, or replicate between a multicast address and one or more unicast addresses.  The distinction between translators and mixers is that a translator passes through the data streams from different sources separately, whereas a mixer combines them to form one new stream:
+
+- Translator: Forwards RTP packets with their SSRC identifier intact; this makes it possible for receivers to identify individual sources even though packets from all the sources pass through the same translator and carry the translator's network source address.  Some kinds of translators will pass through the data untouched, but others MAY change the encoding of the data and thus the RTP data payload type and timestamp.  If multiple data packets are re-encoded into one, or vice versa, a translator MUST assign new sequence numbers to the outgoing packets.  Losses in the incoming packet stream may induce corresponding gaps in the outgoing sequence numbers.  Receivers cannot detect the presence of a translator unless they know by some other means what payload type or transport address was used by the original source.
+- Mixer: Receives streams of RTP data packets from one or more sources, possibly changes the data format, combines the streams in some manner and then forwards the combined stream.  Since the timing among multiple input sources will not generally be synchronized, the mixer will make timing adjustments among the streams and generate its own timing for the combined stream, so it is the synchronization source.  Thus, all data packets forwarded by a mixer MUST be marked with the mixer's own SSRC identifier. In order to preserve the identity of the original sources contributing to the mixed packet, the mixer SHOULD insert their SSRC identifiers into the CSRC identifier list following the fixed RTP header of the packet.  A mixer that is also itself a contributing source for some packet SHOULD explicitly include its own SSRC identifier in the CSRC list for that packet.
+
+For some applications, it MAY be acceptable for a mixer not to identify sources in the CSRC list.  However, this introduces the danger that loops involving those sources could not be detected.
+
+The advantage of a mixer over a translator for applications like audio is that the output bandwidth is limited to that of one source even when multiple sources are active on the input side.  This may be important for low-bandwidth links.  The disadvantage is that receivers on the output side don't have any control over which sources are passed through or muted, unless some mechanism is implemented for remote control of the mixer.  The regeneration of synchronization information by mixers also means that receivers can't do inter-media synchronization of the original streams.  A multi- media mixer could do it.
+
+```
+         [E1]                                    [E6]
+          |                                       |
+    E1:17 |                                 E6:15 |
+          |                                       |   E6:15
+          V  M1:48 (1,17)         M1:48 (1,17)    V   M1:48 (1,17)
+         (M1)-------------><T1>-----------------><T2>-------------->[E7]
+          ^                 ^     E4:47           ^   E4:47
+     E2:1 |           E4:47 |                     |   M3:89 (64,45)
+          |                 |                     |
+         [E2]              [E4]     M3:89 (64,45) |
+                                                  |        legend:
+   [E3] --------->(M2)----------->(M3)------------|        [End system]
+          E3:64        M2:12 (64)  ^                       (Mixer)
+                                   | E5:45                 <Translator>
+                                   |
+                                  [E5]          source: SSRC (CSRCs)
+                                                ------------------->
+
+   Figure 3: Sample RTP network with end systems, mixers and translators
+```
+
+A collection of mixers and translators is shown in Fig. 3 to illustrate their effect on SSRC and CSRC identifiers.  In the figure, end systems are shown as rectangles (named E), translators as triangles (named T) and mixers as ovals (named M).  The notation "M1: 48(1,17)" designates a packet originating a mixer M1, identified by M1's (random) SSRC value of 48 and two CSRC identifiers, 1 and 17, copied from the SSRC identifiers of packets from E1 and E2.
+
+### 7.2 RTCP Processing in Translators
+
+In addition to forwarding data packets, perhaps modified, translators and mixers MUST also process RTCP packets.  In many cases, they will take apart the compound RTCP packets received from end systems to aggregate SDES information and to modify the SR or RR packets. Retransmission of this information may be triggered by the packet arrival or by the RTCP interval timer of the translator or mixer itself.
+
+A translator that does not modify the data packets, for example one that just replicates between a multicast address and a unicast address, MAY simply forward RTCP packets unmodified as well.  A translator that transforms the payload in some way MUST make corresponding transformations in the SR and RR information so that it still reflects the characteristics of the data and the reception quality.  These translators MUST NOT simply forward RTCP packets.  In general, a translator SHOULD NOT aggregate SR and RR packets from different sources into one packet since that would reduce the accuracy of the propagation delay measurements based on the LSR and DLSR fields.
+
+- **SR sender information**:  A translator does not generate its own sender information, but forwards the SR packets received from one cloud to the others.  The SSRC is left intact but the sender information MUST be modified if required by the translation.  If a translator changes the data encoding, it MUST change the "sender's byte count" field.  If it also combines several data packets into one output packet, it MUST change the "sender's packet count" field.  If it changes the timestamp frequency, it MUST change the "RTP timestamp" field in the SR packet.
+
+- **SR/RR reception report blocks**:  A translator forwards reception reports received from one cloud to the others.  Note that these flow in the direction opposite to the data.  The SSRC is left intact.  If a translator combines several data packets into one output packet, and therefore changes the sequence numbers, it MUST make the inverse manipulation for the packet loss fields and the "extended last sequence number" field.  This may be complex.  In the extreme case, there may be no meaningful way to translate the reception reports, so the translator MAY pass on no reception report at all or a synthetic report based on its own reception. The general rule is to do what makes sense for a particular translation.
+
+    A translator does not require an SSRC identifier of its own, but MAY choose to allocate one for the purpose of sending reports about what it has received.  These would be sent to all the connected clouds, each corresponding to the translation of the data stream as sent to that cloud, since reception reports are normally multicast to all participants.
+- **SDES**:  Translators typically forward without change the SDES information they receive from one cloud to the others, but MAY, for example, decide to filter non-CNAME SDES information if bandwidth is limited.  The CNAMEs MUST be forwarded to allow SSRC identifier collision detection to work.  A translator that generates its own RR packets MUST send SDES CNAME information about itself to the same clouds that it sends those RR packets.
+- **BYE**:  Translators forward BYE packets unchanged.  A translator that is about to cease forwarding packets SHOULD send a BYE packet to each connected cloud containing all the SSRC identifiers that were previously being forwarded to that cloud, including the translator's own SSRC identifier if it sent reports of its own.
+- **APP**:  Translators forward APP packets unchanged.
+
+### 7.3 RTCP Processing in Mixers
+
+Since a mixer generates a new data stream of its own, it does not pass through SR or RR packets at all and instead generates new information for both sides.
+
+- **SR sender information**:  A mixer does not pass through sender information from the sources it mixes because the characteristics of the source streams are lost in the mix.  As a synchronization source, the mixer SHOULD generate its own SR packets with sender information about the mixed data stream and send them in the same direction as the mixed stream.
+- **SR/RR reception report blocks**:  A mixer generates its own reception reports for sources in each cloud and sends them out only to the same cloud.  It MUST NOT send these reception reports to the other clouds and MUST NOT forward reception reports from one cloud to the others because the sources would not be SSRCs there (only CSRCs).
+- **SDES**:  Mixers typically forward without change the SDES information they receive from one cloud to the others, but MAY, for example, decide to filter non-CNAME SDES information if bandwidth is limited.  The CNAMEs MUST be forwarded to allow SSRC identifier collision detection to work.  (An identifier in a CSRC list generated by a mixer might collide with an SSRC identifier generated by an end system.)  A mixer MUST send SDES CNAME information about itself to the same clouds that it sends SR or RR packets.
+
+    Since mixers do not forward SR or RR packets, they will typically be extracting SDES packets from a compound RTCP packet.  To minimize overhead, chunks from the SDES packets MAY be aggregated into a single SDES packet which is then stacked on an SR or RR packet originating from the mixer.  A mixer which aggregates SDES packets will use more RTCP bandwidth than an individual source because the compound packets will be longer, but that is appropriate since the mixer represents multiple sources. Similarly, a mixer which passes through SDES packets as they are received will be transmitting RTCP packets at higher than the single source rate, but again that is correct since the packets come from multiple sources.  The RTCP packet rate may be different on each side of the mixer.
+
+    A mixer that does not insert CSRC identifiers MAY also refrain from forwarding SDES CNAMEs.  In this case, the SSRC identifier spaces in the two clouds are independent.  As mentioned earlier, this mode of operation creates a danger that loops can't be detected.
+- **BYE**:  Mixers MUST forward BYE packets.  A mixer that is about to cease forwarding packets SHOULD send a BYE packet to each connected cloud containing all the SSRC identifiers that were previously being forwarded to that cloud, including the mixer's own SSRC identifier if it sent reports of its own.
+- **APP**:  The treatment of APP packets by mixers is application-specific.
+
+### 7.4 Cascaded Mixers
+
+An RTP session may involve a collection of mixers and translators as shown in Fig. 3.  If two mixers are cascaded, such as M2 and M3 in the figure, packets received by a mixer may already have been mixed and may include a CSRC list with multiple identifiers.  The second mixer SHOULD build the CSRC list for the outgoing packet using the CSRC identifiers from already-mixed input packets and the SSRC identifiers from unmixed input packets.  This is shown in the output arc from mixer M3 labeled M3:89(64,45) in the figure.  As in the case of mixers that are not cascaded, if the resulting CSRC list has more than 15 identifiers, the remainder cannot be included.
+
