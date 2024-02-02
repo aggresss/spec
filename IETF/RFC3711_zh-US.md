@@ -187,385 +187,147 @@ The OPTIONAL MKI and the RECOMMENDED authentication tag are the only fields defi
 
 ### 3.2.  SRTP Cryptographic Contexts
 
-   Each SRTP stream requires the sender and receiver to maintain
-   cryptographic state information.  This information is called the
-   "cryptographic context".
+Each SRTP stream requires the sender and receiver to maintain cryptographic state information.  This information is called the "cryptographic context".
 
-   SRTP uses two types of keys: session keys and master keys.  By a
-   "session key", we mean a key which is used directly in a
-   cryptographic transform (e.g., encryption or message authentication),
-   and by a "master key", we mean a random bit string (given by the key
-   management protocol) from which session keys are derived in a
+SRTP uses two types of keys: session keys and master keys.  By a "session key", we mean a key which is used directly in a cryptographic transform (e.g., encryption or message authentication), and by a "master key", we mean a random bit string (given by the key management protocol) from which session keys are derived in a
 
-   cryptographically secure way.  The master key(s) and other parameters
-   in the cryptographic context are provided by key management
-   mechanisms external to SRTP, see Section 8.
+cryptographically secure way.  The master key(s) and other parameters in the cryptographic context are provided by key management mechanisms external to SRTP, see Section 8.
 
-3.2.1.  Transform-independent parameters
+#### 3.2.1.  Transform-independent parameters
 
-   Transform-independent parameters are present in the cryptographic
-   context independently of the particular encryption or authentication
-   transforms that are used.  The transform-independent parameters of
-   the cryptographic context for SRTP consist of:
+Transform-independent parameters are present in the cryptographic context independently of the particular encryption or authentication transforms that are used.  The transform-independent parameters of the cryptographic context for SRTP consist of:
 
-   *  a 32-bit unsigned rollover counter (ROC), which records how many
-      times the 16-bit RTP sequence number has been reset to zero after
-      passing through 65,535.  Unlike the sequence number (SEQ), which
-      SRTP extracts from the RTP packet header, the ROC is maintained by
-      SRTP as described in Section 3.3.1.
+- a 32-bit unsigned rollover counter (ROC), which records how many times the 16-bit RTP sequence number has been reset to zero after passing through 65,535.  Unlike the sequence number (SEQ), which SRTP extracts from the RTP packet header, the ROC is maintained by SRTP as described in Section 3.3.1.
 
-      We define the index of the SRTP packet corresponding to a given
-      ROC and RTP sequence number to be the 48-bit quantity
+    We define the index of the SRTP packet corresponding to a given ROC and RTP sequence number to be the 48-bit quantity
 
+    ```
             i = 2^16 * ROC + SEQ.
+    ```
+- for the receiver only, a 16-bit sequence number s_l, which can be thought of as the highest received RTP sequence number (see Section 3.3.1 for its handling), which SHOULD be authenticated since message authentication is RECOMMENDED,
+- an identifier for the encryption algorithm, i.e., the cipher and its mode of operation,
+- an identifier for the message authentication algorithm,
+- a replay list, maintained by the receiver only (when authentication and replay protection are provided), containing indices of recently received and authenticated SRTP packets,
+- an MKI indicator (0/1) as to whether an MKI is present in SRTP and SRTCP packets,
+- if the MKI indicator is set to one, the length (in octets) of the MKI field, and (for the sender) the actual value of the currently active MKI (the value of the MKI indicator and length MUST be kept fixed for the lifetime of the context),
+- the master key(s), which MUST be random and kept secret,
+- for each master key, there is a counter of the number of SRTP packets that have been processed (sent) with that master key (essential for security, see Sections 3.3.1 and 9),
+- non-negative integers n_e, and n_a, determining the length of the session keys for encryption, and message authentication.
 
-   *  for the receiver only, a 16-bit sequence number s_l, which can be
-      thought of as the highest received RTP sequence number (see
-      Section 3.3.1 for its handling), which SHOULD be authenticated
-      since message authentication is RECOMMENDED,
-
-   *  an identifier for the encryption algorithm, i.e., the cipher and
-      its mode of operation,
+In addition, for each master key, an SRTP stream MAY use the following associated values:
 
-   *  an identifier for the message authentication algorithm,
-
-   *  a replay list, maintained by the receiver only (when
-      authentication and replay protection are provided), containing
-      indices of recently received and authenticated SRTP packets,
-
-   *  an MKI indicator (0/1) as to whether an MKI is present in SRTP and
-      SRTCP packets,
-
-   *  if the MKI indicator is set to one, the length (in octets) of the
-      MKI field, and (for the sender) the actual value of the currently
-      active MKI (the value of the MKI indicator and length MUST be kept
-      fixed for the lifetime of the context),
-
-   *  the master key(s), which MUST be random and kept secret,
-
-   *  for each master key, there is a counter of the number of SRTP
-      packets that have been processed (sent) with that master key
-      (essential for security, see Sections 3.3.1 and 9),
-
-   *  non-negative integers n_e, and n_a, determining the length of the
-      session keys for encryption, and message authentication.
-
-   In addition, for each master key, an SRTP stream MAY use the
-   following associated values:
-
-   *  a master salt, to be used in the key derivation of session keys.
-      This value, when used, MUST be random, but MAY be public.  Use of
-      master salt is strongly RECOMMENDED, see Section 9.2.  A "NULL"
-      salt is treated as 00...0.
-
-   *  an integer in the set {1,2,4,...,2^24}, the "key_derivation_rate",
-      where an unspecified value is treated as zero.  The constraint to
-      be a power of 2 simplifies the session-key derivation
-      implementation, see Section 4.3.
+- a master salt, to be used in the key derivation of session keys. This value, when used, MUST be random, but MAY be public.  Use of master salt is strongly RECOMMENDED, see Section 9.2.  A "NULL" salt is treated as 00...0.
+- an integer in the set `{1,2,4,...,2^24}`, the "key_derivation_rate", where an unspecified value is treated as zero.  The constraint to be a power of 2 simplifies the session-key derivation implementation, see Section 4.3.
+- an MKI value,
+- `<From, To>` values, specifying the lifetime for a master key, expressed in terms of the two 48-bit index values inside whose range (including the range end-points) the master key is valid. For the use of `<From, To>`, see Section 8.1.1.  `<From, To>` is an alternative to the MKI and assumes that a master key is in one- to-one correspondence with the SRTP session key on which the `<From, To>` range is defined.
 
-   *  an MKI value,
-
-   *  <From, To> values, specifying the lifetime for a master key,
-      expressed in terms of the two 48-bit index values inside whose
-      range (including the range end-points) the master key is valid.
-      For the use of <From, To>, see Section 8.1.1.  <From, To> is an
-      alternative to the MKI and assumes that a master key is in one-
-      to-one correspondence with the SRTP session key on which the
-      <From, To> range is defined.
-
-   SRTCP SHALL by default share the crypto context with SRTP, except:
-
-   *  no rollover counter and s_l-value need to be maintained as the
-      RTCP index is explicitly carried in each SRTCP packet,
-
-   *  a separate replay list is maintained (when replay protection is
-      provided),
-
-   *  SRTCP maintains a separate counter for its master key (even if the
-      master key is the same as that for SRTP, see below), as a means to
-      maintain a count of the number of SRTCP packets that have been
-      processed with that key.
-
-   Note in particular that the master key(s) MAY be shared between SRTP
-   and the corresponding SRTCP, if the pre-defined transforms (including
-   the key derivation) are used but the session key(s) MUST NOT be so
-   shared.
-
-   In addition, there can be cases (see Sections 8 and 9.1) where
-   several SRTP streams within a given RTP session, identified by their
-   synchronization source (SSRCs, which is part of the RTP header),
-   share most of the crypto context parameters (including possibly
-   master and session keys).  In such cases, just as in the normal
-   SRTP/SRTCP parameter sharing above, separate replay lists and packet
-   counters for each stream (SSRC) MUST still be maintained.  Also,
-   separate SRTP indices MUST then be maintained.
-
-   A summary of parameters, pre-defined transforms, and default values
-   for the above parameters (and other SRTP parameters) can be found in
-   Sections 5 and 8.2.
-
-3.2.2.  Transform-dependent parameters
+SRTCP SHALL by default share the crypto context with SRTP, except:
 
-   All encryption, authentication/integrity, and key derivation
-   parameters are defined in the transforms section (Section 4).
-   Typical examples of such parameters are block size of ciphers,
-   session keys, data for the Initialization Vector (IV) formation, etc.
-   Future SRTP transform specifications MUST include a section to list
-   the additional cryptographic context's parameters for that transform,
-   if any.
-
-3.2.3.  Mapping SRTP Packets to Cryptographic Contexts
-
-   Recall that an RTP session for each participant is defined [RFC3550]
-   by a pair of destination transport addresses (one network address
-   plus a port pair for RTP and RTCP), and that a multimedia session is
-   defined as a collection of RTP sessions.  For example, a particular
-   multimedia session could include an audio RTP session, a video RTP
-   session, and a text RTP session.
-
-   A cryptographic context SHALL be uniquely identified by the triplet
-   context identifier:
-
-   context id = <SSRC, destination network address, destination
-   transport port number>
-
-   where the destination network address and the destination transport
-   port are the ones in the SRTP packet.  It is assumed that, when
-   presented with this information, the key management returns a context
-   with the information as described in Section 3.2.
-
-   As noted above, SRTP and SRTCP by default share the bulk of the
-   parameters in the cryptographic context.  Thus, retrieving the crypto
-   context parameters for an SRTCP stream in practice may imply a
-   binding to the correspondent SRTP crypto context.  It is up to the
-   implementation to assure such binding, since the RTCP port may not be
-
-   directly deducible from the RTP port only.  Alternatively, the key
-   management may choose to provide separate SRTP- and SRTCP- contexts,
-   duplicating the common parameters (such as master key(s)).  The
-   latter approach then also enables SRTP and SRTCP to use, e.g.,
-   distinct transforms, if so desired.  Similar considerations arise
-   when multiple SRTP streams, forming part of one single RTP session,
-   share keys and other parameters.
-
-   If no valid context can be found for a packet corresponding to a
-   certain context identifier, that packet MUST be discarded.
-
-3.3.  SRTP Packet Processing
-
-   The following applies to SRTP.  SRTCP is described in Section 3.4.
-
-   Assuming initialization of the cryptographic context(s) has taken
-   place via key management, the sender SHALL do the following to
-   construct an SRTP packet:
-
-   1. Determine which cryptographic context to use as described in
-      Section 3.2.3.
-
-   2. Determine the index of the SRTP packet using the rollover counter,
-      the highest sequence number in the cryptographic context, and the
-      sequence number in the RTP packet, as described in Section 3.3.1.
-
-   3. Determine the master key and master salt.  This is done using the
-      index determined in the previous step or the current MKI in the
-      cryptographic context, according to Section 8.1.
-
-   4. Determine the session keys and session salt (if they are used by
-      the transform) as described in Section 4.3, using master key,
-      master salt, key_derivation_rate, and session key-lengths in the
-      cryptographic context with the index, determined in Steps 2 and 3.
-
-   5. Encrypt the RTP payload to produce the Encrypted Portion of the
-      packet (see Section 4.1, for the defined ciphers).  This step uses
-      the encryption algorithm indicated in the cryptographic context,
-      the session encryption key and the session salt (if used) found in
-      Step 4 together with the index found in Step 2.
-
-   6. If the MKI indicator is set to one, append the MKI to the packet.
-
-   7. For message authentication, compute the authentication tag for the
-      Authenticated Portion of the packet, as described in Section 4.2.
-      This step uses the current rollover counter, the authentication
-
-      algorithm indicated in the cryptographic context, and the session
-      authentication key found in Step 4.  Append the authentication tag
-      to the packet.
-
-   8. If necessary, update the ROC as in Section 3.3.1, using the packet
-      index determined in Step 2.
-
-   To authenticate and decrypt an SRTP packet, the receiver SHALL do the
-   following:
-
-   1. Determine which cryptographic context to use as described in
-      Section 3.2.3.
-
-   2. Run the algorithm in Section 3.3.1 to get the index of the SRTP
-      packet.  The algorithm uses the rollover counter and highest
-      sequence number in the cryptographic context with the sequence
-      number in the SRTP packet, as described in Section 3.3.1.
-
-   3. Determine the master key and master salt.  If the MKI indicator in
-      the context is set to one, use the MKI in the SRTP packet,
-      otherwise use the index from the previous step, according to
-      Section 8.1.
-
-   4. Determine the session keys, and session salt (if used by the
-      transform) as described in Section 4.3, using master key, master
-      salt, key_derivation_rate and session key-lengths in the
-      cryptographic context with the index, determined in Steps 2 and 3.
-
-   5. For message authentication and replay protection, first check if
-      the packet has been replayed (Section 3.3.2), using the Replay
-      List and the index as determined in Step 2.  If the packet is
-      judged to be replayed, then the packet MUST be discarded, and the
-      event SHOULD be logged.
-
-      Next, perform verification of the authentication tag, using the
-      rollover counter from Step 2, the authentication algorithm
-      indicated in the cryptographic context, and the session
-      authentication key from Step 4.  If the result is "AUTHENTICATION
-      FAILURE" (see Section 4.2), the packet MUST be discarded from
-      further processing and the event SHOULD be logged.
-
-   6. Decrypt the Encrypted Portion of the packet (see Section 4.1, for
-      the defined ciphers), using the decryption algorithm indicated in
-      the cryptographic context, the session encryption key and salt (if
-      used) found in Step 4 with the index from Step 2.
-
-   7. Update the rollover counter and highest sequence number, s_l, in
-      the cryptographic context as in Section 3.3.1, using the packet
-      index estimated in Step 2.  If replay protection is provided, also
-      update the Replay List as described in Section 3.3.2.
-
-   8. When present, remove the MKI and authentication tag fields from
-      the packet.
-
-3.3.1.  Packet Index Determination, and ROC, s_l Update
-
-   SRTP implementations use an "implicit" packet index for sequencing,
-   i.e., not all of the index is explicitly carried in the SRTP packet.
-   For the pre-defined transforms, the index i is used in replay
-   protection (Section 3.3.2), encryption (Section 4.1), message
-   authentication (Section 4.2), and for the key derivation (Section
-   4.3).
-
-   When the session starts, the sender side MUST set the rollover
-   counter, ROC, to zero.  Each time the RTP sequence number, SEQ, wraps
-   modulo 2^16, the sender side MUST increment ROC by one, modulo 2^32
-   (see security aspects below).  The sender's packet index is then
-   defined as
-
-      i = 2^16 * ROC + SEQ.
-
-   Receiver-side implementations use the RTP sequence number to
-   determine the correct index of a packet, which is the location of the
-   packet in the sequence of all SRTP packets.  A robust approach for
-   the proper use of a rollover counter requires its handling and use to
-   be well defined.  In particular, out-of-order RTP packets with
-   sequence numbers close to 2^16 or zero must be properly handled.
-
-   The index estimate is based on the receiver's locally maintained ROC
-   and s_l values.  At the setup of the session, the ROC MUST be set to
-   zero.  Receivers joining an on-going session MUST be given the
-   current ROC value using out-of-band signaling such as key-management
-   signaling.  Furthermore, the receiver SHALL initialize s_l to the RTP
-   sequence number (SEQ) of the first observed SRTP packet (unless the
-   initial value is provided by out of band signaling such as key
-   management).
-
-   On consecutive SRTP packets, the receiver SHOULD estimate the index
-   as
-         i = 2^16 * v + SEQ,
-
-   where v is chosen from the set { ROC-1, ROC, ROC+1 } (modulo 2^32)
-   such that i is closest (in modulo 2^48 sense) to the value 2^16 * ROC
-   + s_l (see Appendix A for pseudocode).
-
-   After the packet has been processed and authenticated (when enabled
-   for SRTP packets for the session), the receiver MUST use v to
-   conditionally update its s_l and ROC variables as follows.  If
-   v=(ROC-1) mod 2^32, then there is no update to s_l or ROC.  If v=ROC,
-   then s_l is set to SEQ if and only if SEQ is larger than the current
-   s_l; there is no change to ROC.  If v=(ROC+1) mod 2^32, then s_l is
-   set to SEQ and ROC is set to v.
-
-   After a re-keying occurs (changing to a new master key), the rollover
-   counter always maintains its sequence of values, i.e., it MUST NOT be
-   reset to zero.
-
-   As the rollover counter is 32 bits long and the sequence number is 16
-   bits long, the maximum number of packets belonging to a given SRTP
-   stream that can be secured with the same key is 2^48 using the pre-
-   defined transforms.  After that number of SRTP packets have been sent
-   with a given (master or session) key, the sender MUST NOT send any
-   more packets with that key.  (There exists a similar limit for SRTCP,
-   which in practice may be more restrictive, see Section 9.2.)  This
-   limitation enforces a security benefit by providing an upper bound on
-   the amount of traffic that can pass before cryptographic keys are
-   changed.  Re-keying (see Section 8.1) MUST be triggered, before this
-   amount of traffic, and MAY be triggered earlier, e.g., for increased
-   security and access control to media.  Recurring key derivation by
-   means of a non-zero key_derivation_rate (see Section 4.3), also gives
-   stronger security but does not change the above absolute maximum
-   value.
-
-   On the receiver side, there is a caveat to updating s_l and ROC: if
-   message authentication is not present, neither the initialization of
-   s_l, nor the ROC update can be made completely robust.  The
-   receiver's "implicit index" approach works for the pre-defined
-   transforms as long as the reorder and loss of the packets are not too
-   great and bit-errors do not occur in unfortunate ways.  In
-   particular, 2^15 packets would need to be lost, or a packet would
-   need to be 2^15 packets out of sequence before synchronization is
-   lost.  Such drastic loss or reorder is likely to disrupt the RTP
-   application itself.
-
-   The algorithm for the index estimate and ROC update is a matter of
-   implementation, and should take into consideration the environment
-   (e.g., packet loss rate) and the cases when synchronization is likely
-   to be lost, e.g., when the initial sequence number (randomly chosen
-   by RTP) is not known in advance (not sent in the key management
-   protocol) but may be near to wrap modulo 2^16.
-
-   A more elaborate and more robust scheme than the one given above is
-   the handling of RTP's own "rollover counter", see Appendix A.1 of
-   [RFC3550].
-
-3.3.2.  Replay Protection
-
-   Secure replay protection is only possible when integrity protection
-   is present.  It is RECOMMENDED to use replay protection, both for RTP
-   and RTCP, as integrity protection alone cannot assure security
-   against replay attacks.
-
-   A packet is "replayed" when it is stored by an adversary, and then
-   re-injected into the network.  When message authentication is
-   provided, SRTP protects against such attacks through a Replay List.
-   Each SRTP receiver maintains a Replay List, which conceptually
-   contains the indices of all of the packets which have been received
-   and authenticated.  In practice, the list can use a "sliding window"
-   approach, so that a fixed amount of storage suffices for replay
-   protection.  Packet indices which lag behind the packet index in the
-   context by more than SRTP-WINDOW-SIZE can be assumed to have been
-   received, where SRTP-WINDOW-SIZE is a receiver-side, implementation-
-   dependent parameter and MUST be at least 64, but which MAY be set to
-   a higher value.
-
-   The receiver checks the index of an incoming packet against the
-   replay list and the window.  Only packets with index ahead of the
-   window, or, inside the window but not already received, SHALL be
-   accepted.
-
-   After the packet has been authenticated (if necessary the window is
-   first moved ahead), the replay list SHALL be updated with the new
-   index.
-
-   The Replay List can be efficiently implemented by using a bitmap to
-   represent which packets have been received, as described in the
-   Security Architecture for IP [RFC2401].
-
-3.4.  Secure RTCP
+- no rollover counter and s_l-value need to be maintained as the RTCP index is explicitly carried in each SRTCP packet,
+- a separate replay list is maintained (when replay protection is provided),
+- SRTCP maintains a separate counter for its master key (even if the master key is the same as that for SRTP, see below), as a means to maintain a count of the number of SRTCP packets that have been processed with that key.
+
+Note in particular that the master key(s) MAY be shared between SRTP and the corresponding SRTCP, if the pre-defined transforms (including the key derivation) are used but the session key(s) MUST NOT be so shared.
+
+In addition, there can be cases (see Sections 8 and 9.1) where several SRTP streams within a given RTP session, identified by their synchronization source (SSRCs, which is part of the RTP header), share most of the crypto context parameters (including possibly master and session keys).  In such cases, just as in the normal SRTP/SRTCP parameter sharing above, separate replay lists and packet counters for each stream (SSRC) MUST still be maintained.  Also, separate SRTP indices MUST then be maintained.
+
+A summary of parameters, pre-defined transforms, and default values for the above parameters (and other SRTP parameters) can be found in Sections 5 and 8.2.
+
+#### 3.2.2.  Transform-dependent parameters
+
+All encryption, authentication/integrity, and key derivation parameters are defined in the transforms section (Section 4). Typical examples of such parameters are block size of ciphers, session keys, data for the Initialization Vector (IV) formation, etc. Future SRTP transform specifications MUST include a section to list the additional cryptographic context's parameters for that transform, if any.
+
+#### 3.2.3.  Mapping SRTP Packets to Cryptographic Contexts
+
+Recall that an RTP session for each participant is defined [RFC3550] by a pair of destination transport addresses (one network address plus a port pair for RTP and RTCP), and that a multimedia session is defined as a collection of RTP sessions.  For example, a particular multimedia session could include an audio RTP session, a video RTP session, and a text RTP session.
+
+A cryptographic context SHALL be uniquely identified by the triplet context identifier:
+
+    ```
+    context id = <SSRC, destination network address, destination transport port number>
+    ```
+
+where the destination network address and the destination transport port are the ones in the SRTP packet.  It is assumed that, when presented with this information, the key management returns a context with the information as described in Section 3.2.
+
+As noted above, SRTP and SRTCP by default share the bulk of the parameters in the cryptographic context.  Thus, retrieving the crypto context parameters for an SRTCP stream in practice may imply a binding to the correspondent SRTP crypto context.  It is up to the implementation to assure such binding, since the RTCP port may not be directly deducible from the RTP port only.  Alternatively, the key management may choose to provide separate SRTP- and SRTCP- contexts, duplicating the common parameters (such as master key(s)).  The latter approach then also enables SRTP and SRTCP to use, e.g., distinct transforms, if so desired.  Similar considerations arise when multiple SRTP streams, forming part of one single RTP session, share keys and other parameters.
+
+If no valid context can be found for a packet corresponding to a certain context identifier, that packet MUST be discarded.
+
+### 3.3.  SRTP Packet Processing
+
+The following applies to SRTP.  SRTCP is described in Section 3.4.
+
+Assuming initialization of the cryptographic context(s) has taken place via key management, the sender SHALL do the following to construct an SRTP packet:
+
+1. Determine which cryptographic context to use as described in Section 3.2.3.
+2. Determine the index of the SRTP packet using the rollover counter, the highest sequence number in the cryptographic context, and the sequence number in the RTP packet, as described in Section 3.3.1.
+3. Determine the master key and master salt.  This is done using the index determined in the previous step or the current MKI in the cryptographic context, according to Section 8.1.
+4. Determine the session keys and session salt (if they are used by the transform) as described in Section 4.3, using master key, master salt, key_derivation_rate, and session key-lengths in the cryptographic context with the index, determined in Steps 2 and 3.
+5. Encrypt the RTP payload to produce the Encrypted Portion of the packet (see Section 4.1, for the defined ciphers).  This step uses the encryption algorithm indicated in the cryptographic context, the session encryption key and the session salt (if used) found in Step 4 together with the index found in Step 2.
+6. If the MKI indicator is set to one, append the MKI to the packet.
+7. For message authentication, compute the authentication tag for the Authenticated Portion of the packet, as described in Section 4.2. This step uses the current rollover counter, the authentication algorithm indicated in the cryptographic context, and the session authentication key found in Step 4.  Append the authentication tag to the packet.
+8. If necessary, update the ROC as in Section 3.3.1, using the packet index determined in Step 2.
+
+To authenticate and decrypt an SRTP packet, the receiver SHALL do the following:
+
+1. Determine which cryptographic context to use as described in Section 3.2.3.
+2. Run the algorithm in Section 3.3.1 to get the index of the SRTP packet.  The algorithm uses the rollover counter and highest sequence number in the cryptographic context with the sequence number in the SRTP packet, as described in Section 3.3.1.
+3. Determine the master key and master salt.  If the MKI indicator in the context is set to one, use the MKI in the SRTP packet, otherwise use the index from the previous step, according to Section 8.1.
+4. Determine the session keys, and session salt (if used by the transform) as described in Section 4.3, using master key, master salt, key_derivation_rate and session key-lengths in the cryptographic context with the index, determined in Steps 2 and 3.
+5. For message authentication and replay protection, first check if the packet has been replayed (Section 3.3.2), using the Replay List and the index as determined in Step 2.  If the packet is judged to be replayed, then the packet MUST be discarded, and the event SHOULD be logged.
+
+    Next, perform verification of the authentication tag, using the rollover counter from Step 2, the authentication algorithm indicated in the cryptographic context, and the session authentication key from Step 4.  If the result is "AUTHENTICATION FAILURE" (see Section 4.2), the packet MUST be discarded from further processing and the event SHOULD be logged.
+6. Decrypt the Encrypted Portion of the packet (see Section 4.1, for the defined ciphers), using the decryption algorithm indicated in the cryptographic context, the session encryption key and salt (if used) found in Step 4 with the index from Step 2.
+7. Update the rollover counter and highest sequence number, s_l, in the cryptographic context as in Section 3.3.1, using the packet index estimated in Step 2.  If replay protection is provided, also update the Replay List as described in Section 3.3.2.
+8. When present, remove the MKI and authentication tag fields from the packet.
+
+#### 3.3.1.  Packet Index Determination, and ROC, s_l Update
+
+SRTP implementations use an "implicit" packet index for sequencing, i.e., not all of the index is explicitly carried in the SRTP packet. For the pre-defined transforms, the index i is used in replay protection (Section 3.3.2), encryption (Section 4.1), message authentication (Section 4.2), and for the key derivation (Section 4.3).
+
+When the session starts, the sender side MUST set the rollover counter, ROC, to zero.  Each time the RTP sequence number, SEQ, wraps modulo 2^16, the sender side MUST increment ROC by one, modulo 2^32 (see security aspects below).  The sender's packet index is then defined as
+
+```
+    i = 2^16 * ROC + SEQ.
+```
+
+Receiver-side implementations use the RTP sequence number to determine the correct index of a packet, which is the location of the packet in the sequence of all SRTP packets.  A robust approach for the proper use of a rollover counter requires its handling and use to be well defined.  In particular, out-of-order RTP packets with sequence numbers close to 2^16 or zero must be properly handled.
+
+The index estimate is based on the receiver's locally maintained ROC and s_l values.  At the setup of the session, the ROC MUST be set to zero.  Receivers joining an on-going session MUST be given the current ROC value using out-of-band signaling such as key-management signaling.  Furthermore, the receiver SHALL initialize s_l to the RTP sequence number (SEQ) of the first observed SRTP packet (unless the initial value is provided by out of band signaling such as key management).
+
+On consecutive SRTP packets, the receiver SHOULD estimate the index as
+
+```
+    i = 2^16 * v + SEQ,
+```
+
+where v is chosen from the set `{ ROC-1, ROC, ROC+1 }` (modulo 2^32) such that i is closest (in modulo 2^48 sense) to the value `2^16 * ROC + s_l` (see Appendix A for pseudocode).
+
+After the packet has been processed and authenticated (when enabled for SRTP packets for the session), the receiver MUST use v to conditionally update its s_l and ROC variables as follows.  If `v=(ROC-1) mod 2^32`, then there is no update to s_l or ROC.  If `v=ROC`, then s_l is set to SEQ if and only if SEQ is larger than the current s_l; there is no change to ROC.  If `v=(ROC+1) mod 2^32`, then s_l is set to SEQ and ROC is set to v.
+
+After a re-keying occurs (changing to a new master key), the rollover counter always maintains its sequence of values, i.e., it MUST NOT be reset to zero.
+
+As the rollover counter is 32 bits long and the sequence number is 16 bits long, the maximum number of packets belonging to a given SRTP stream that can be secured with the same key is 2^48 using the pre-defined transforms.  After that number of SRTP packets have been sent with a given (master or session) key, the sender MUST NOT send any more packets with that key.  (There exists a similar limit for SRTCP, which in practice may be more restrictive, see Section 9.2.)  This limitation enforces a security benefit by providing an upper bound on the amount of traffic that can pass before cryptographic keys are changed.  Re-keying (see Section 8.1) MUST be triggered, before this amount of traffic, and MAY be triggered earlier, e.g., for increased security and access control to media.  Recurring key derivation by means of a non-zero key_derivation_rate (see Section 4.3), also gives stronger security but does not change the above absolute maximum value.
+
+On the receiver side, there is a caveat to updating s_l and ROC: if message authentication is not present, neither the initialization of s_l, nor the ROC update can be made completely robust.  The receiver's "implicit index" approach works for the pre-defined transforms as long as the reorder and loss of the packets are not too great and bit-errors do not occur in unfortunate ways.  In particular, 2^15 packets would need to be lost, or a packet would need to be 2^15 packets out of sequence before synchronization is lost.  Such drastic loss or reorder is likely to disrupt the RTP application itself.
+
+The algorithm for the index estimate and ROC update is a matter of implementation, and should take into consideration the environment (e.g., packet loss rate) and the cases when synchronization is likely to be lost, e.g., when the initial sequence number (randomly chosen by RTP) is not known in advance (not sent in the key management protocol) but may be near to wrap modulo `2^16`.
+
+A more elaborate and more robust scheme than the one given above is the handling of RTP's own "rollover counter", see Appendix A.1 of [RFC3550].
+
+#### 3.3.2.  Replay Protection
+
+Secure replay protection is only possible when integrity protection is present.  It is RECOMMENDED to use replay protection, both for RTP and RTCP, as integrity protection alone cannot assure security against replay attacks.
+
+A packet is "replayed" when it is stored by an adversary, and then re-injected into the network.  When message authentication is provided, SRTP protects against such attacks through a Replay List. Each SRTP receiver maintains a Replay List, which conceptually contains the indices of all of the packets which have been received and authenticated.  In practice, the list can use a "sliding window" approach, so that a fixed amount of storage suffices for replay protection.  Packet indices which lag behind the packet index in the context by more than SRTP-WINDOW-SIZE can be assumed to have been received, where SRTP-WINDOW-SIZE is a receiver-side, implementation- dependent parameter and MUST be at least 64, but which MAY be set to a higher value.
+
+The receiver checks the index of an incoming packet against the replay list and the window.  Only packets with index ahead of the window, or, inside the window but not already received, SHALL be accepted.
+
+After the packet has been authenticated (if necessary the window is first moved ahead), the replay list SHALL be updated with the new index.
+
+The Replay List can be efficiently implemented by using a bitmap to represent which packets have been received, as described in the Security Architecture for IP [RFC2401].
+
+### 3.4.  Secure RTCP
 
    Secure RTCP follows the definition of Secure RTP.  SRTCP adds three
    mandatory new fields (the SRTCP index, an "encrypt-flag", and the
