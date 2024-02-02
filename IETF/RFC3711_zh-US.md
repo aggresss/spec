@@ -243,9 +243,9 @@ Recall that an RTP session for each participant is defined [RFC3550] by a pair o
 
 A cryptographic context SHALL be uniquely identified by the triplet context identifier:
 
-    ```
+```
     context id = <SSRC, destination network address, destination transport port number>
-    ```
+```
 
 where the destination network address and the destination transport port are the ones in the SRTP packet. It is assumed that, when presented with this information, the key management returns a context with the information as described in Section 3.2.
 
@@ -597,18 +597,18 @@ The pre-defined authentication transform for SRTP is HMAC-SHA1 [RFC2104]. With H
 Regardless of the encryption or message authentication transform that is employed (it may be an SRTP pre-defined transform or newly introduced according to Section 6), interoperable SRTP implementations MUST use the SRTP key derivation to generate session keys. Once the key derivation rate is properly signaled at the start of the session, there is no need for extra communication between the parties that use SRTP key derivation.
 
 ```
-                         packet index ---+
-                                         |
-                                         v
-               +-----------+ master  +--------+ session encr_key
-               | ext       | key     |        |---------->
-               | key mgmt  |-------->|  key   | session auth_key
-               | (optional |         | deriv  |---------->
-               | rekey)    |-------->|        | session salt_key
-               |           | master  |        |---------->
-               +-----------+ salt    +--------+
+                packet index ---+
+                                |
+                                v
+    +-----------+ master  +--------+ session encr_key
+    | ext       | key     |        |---------->
+    | key mgmt  |-------->|  key   | session auth_key
+    | (optional |         | deriv  |---------->
+    | rekey)    |-------->|        | session salt_key
+    |           | master  |        |---------->
+    +-----------+ salt    +--------+
 
-   Figure 5: SRTP key derivation.
+    Figure 5: SRTP key derivation.
 ```
 
 At least one initial key derivation SHALL be performed by SRTP, i.e., the first key derivation is REQUIRED. Further applications of the key derivation MAY be performed, according to the "key_derivation_rate" value in the cryptographic context. The key derivation function SHALL initially be invoked before the first packet and then, when r > 0, a key derivation is performed whenever index mod r equals zero. This can be thought of as "refreshing" the session keys. The value of "key_derivation_rate" MUST be kept fixed for the lifetime of the associated master key.
@@ -664,14 +664,14 @@ The currently defined PRF, keyed by 128, 192, or 256 bit master key, has input b
 The default transforms also are mandatory-to-implement transforms in SRTP. Of course, "mandatory-to-implement" does not imply "mandatory-to-use". Table 1 summarizes the pre-defined transforms. The default values below are valid for the pre-defined transforms.
 
 ```
-                         mandatory-to-impl.   optional     default
+                            mandatory-to-impl.   optional     default
 
-   encryption            AES-CM, NULL         AES-f8       AES-CM
-   message integrity     HMAC-SHA1              -          HMAC-SHA1
-   key derivation (PRF)  AES-CM                 -          AES-CM
+    encryption            AES-CM, NULL         AES-f8       AES-CM
+    message integrity     HMAC-SHA1              -          HMAC-SHA1
+    key derivation (PRF)  AES-CM                 -          AES-CM
 
-   Table 1: Mandatory-to-implement, optional and default transforms in
-   SRTP and SRTCP.
+    Table 1: Mandatory-to-implement, optional and default transforms in
+    SRTP and SRTCP.
 ```
 
 ### 5.1. Encryption: AES-CM and NULL
