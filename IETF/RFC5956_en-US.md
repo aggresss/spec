@@ -61,13 +61,13 @@ The FEC Framework requires the source and repair packets to be carried in differ
 A basic example scenario is shown in Figure 1. Here, the source flow S1 is protected by the repair flow R1. Also, the source flows S1 and S2 are grouped and protected together by the repair flow R2.
 
 ```
-        SOURCE FLOWS             | FEC FRAMEWORK INSTANCE #1
+          SOURCE FLOWS             | FEC FRAMEWORK INSTANCE #1
         | S1: Source Flow |--------| R1: Repair Flow
     +---|
     |   | S2: Source Flow
     |
     +______________________________| FEC FRAMEWORK INSTANCE #2
-                                | R2: Repair Flow
+                                   | R2: Repair Flow
 
 Figure 1: Example scenario with two FEC Framework instances where R1
         protects S1 and R2 protects the group of S1 and S2
@@ -84,7 +84,7 @@ Using multiple FEC Framework instances for a single source flow provides flexibi
     S3: Source Flow |---------| R3: Repair Flow
                     |
                     |---------| FEC FRAMEWORK INSTANCE #2
-                                | R4: Repair Flow
+                              | R4: Repair Flow
 
 Figure 2: Example scenario with two FEC Framework instances, each
 with a single repair flow protecting the same source flow S3
@@ -125,7 +125,7 @@ For example, in Figure 3, the repair flows R5 and R6 may be additive within the 
                     |         | R6: Repair Flow
                     |
                     |---------| FEC FRAMEWORK INSTANCE #2
-                                | R7: Repair Flow
+                              | R7: Repair Flow
 
 Figure 3: Example scenario with two FEC Framework instances where two
 repair flows in the first instance and a single repair flow in the
