@@ -406,13 +406,13 @@ The most important parameters when determining the mode of operation are the all
 
 As stated in Section 3.3:
 
-    Let N be the average number of events to be reported per interval T by a receiver, B the RTCP bandwidth fraction for this particular receiver, and R the average RTCP packet size, then the receiver operates in Immediate Feedback mode as long as N<=B*T/R.
+> Let N be the average number of events to be reported per interval T by a receiver, B the RTCP bandwidth fraction for this particular receiver, and R the average RTCP packet size, then the receiver operates in Immediate Feedback mode as long as N<=B*T/R.
 
-    The upper bound for the Early RTCP mode then solely depends on the acceptable quality degradation, i.e., how many events per time interval may go unreported.
+> The upper bound for the Early RTCP mode then solely depends on the acceptable quality degradation, i.e., how many events per time interval may go unreported.
 
 As stated in Section 3.3:
 
-    Using the above notation, Early RTCP mode can be roughly characterized by N > B*T/R as "lower bound".  An estimate for an upper bound is more difficult.  Setting N=1, we obtain for a given R and B the interval T = R/B as average interval between events to be reported.  This information can be used as a hint to determine whether or not early transmission of RTCP packets is useful.
+> Using the above notation, Early RTCP mode can be roughly characterized by N > B*T/R as "lower bound".  An estimate for an upper bound is more difficult.  Setting N=1, we obtain for a given R and B the interval T = R/B as average interval between events to be reported.  This information can be used as a hint to determine whether or not early transmission of RTCP packets is useful.
 
 Example: If a 256-kbit/s video with 30 fps is transmitted through a network with an MTU size of some 1,500 bytes, then, in most cases, each frame would fit in into one packet leading to a packet rate of 30 packets per second.  If 5% packet loss occurs in the network (equally distributed, no inter-dependence between receivers), then each receiver will, on average, have to report 3 packets lost each two seconds.  Assuming a single sender and more than three receivers, this yields 3.75% of the RTCP bandwidth allocated to the receivers and thus 9.6 kbit/s.  Assuming further a size of 120 bytes for the average compound RTCP packet allows 10 RTCP packets to be sent per second or 20 in two seconds.  If every receiver needs to report three lost packets per two seconds, this yields a maximum group size of 6-7 receivers if all loss events are reported.  The rules for transmission of Early RTCP packets should provide sufficient flexibility for most of this reporting to occur in a timely fashion.
 
