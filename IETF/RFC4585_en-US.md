@@ -625,135 +625,54 @@ In this example, the RTCP feedback-enabled receivers will gain an occasional adv
 
 ## 5.  Interworking and Coexistence of AVP and AVPF Entities
 
-   The AVPF profile defined in this document is an extension of the
-   AVP profile as defined in [2].  Both profiles follow the same basic
-   rules (including the upper bandwidth limit for RTCP and the
-   bandwidth assignments to senders and receivers).  Therefore,
-   senders and receivers using either of the two profiles can be
-   mixed in a single session (see Example 3 in Section 4.5).
+The AVPF profile defined in this document is an extension of the AVP profile as defined in [2].  Both profiles follow the same basic rules (including the upper bandwidth limit for RTCP and the bandwidth assignments to senders and receivers).  Therefore, senders and receivers using either of the two profiles can be mixed in a single session (see Example 3 in Section 4.5).
 
-   AVP and AVPF are defined in a way that, from a robustness point of
-   view, the RTP entities do not need to be aware of entities of the
-   respective other profile: they will not disturb each other's
-   functioning.  However, the quality of the media presented may
-   suffer.
+AVP and AVPF are defined in a way that, from a robustness point of view, the RTP entities do not need to be aware of entities of the respective other profile: they will not disturb each other's functioning.  However, the quality of the media presented may suffer.
 
-   The following considerations apply to senders and receivers when
-   used in a combined session.
+The following considerations apply to senders and receivers when used in a combined session.
 
-   o  AVP entities (senders and receivers)
+- AVP entities (senders and receivers)
 
-      AVP senders will receive RTCP feedback packets from AVPF
-      receivers and ignore these packets.  They will see occasional
-      closer spacing of RTCP messages (e.g., violating the five-second
-      rule) by AVPF entities.  As the overall bandwidth constraints
-      are adhered to by both types of entities, they will still get
-      their share of the RTCP bandwidth.  However, while AVP entities
-      are bound by the five-second rule, depending on the group size
-      and session bandwidth, AVPF entities may provide more frequent
-      RTCP reports than AVP ones will.  Also, the overall reporting
-      may decrease slightly as AVPF entities may send bigger compound
-      RTCP packets (due to the extra RTCP packets).
+    AVP senders will receive RTCP feedback packets from AVPF receivers and ignore these packets.  They will see occasional closer spacing of RTCP messages (e.g., violating the five-second rule) by AVPF entities.  As the overall bandwidth constraints are adhered to by both types of entities, they will still get their share of the RTCP bandwidth.  However, while AVP entities are bound by the five-second rule, depending on the group size and session bandwidth, AVPF entities may provide more frequent RTCP reports than AVP ones will.  Also, the overall reporting may decrease slightly as AVPF entities may send bigger compound RTCP packets (due to the extra RTCP packets).
 
-      If T_rr_interval is used as lower bound between Regular RTCP
-      packets, T_rr_interval is sufficiently large (e.g., T_rr_interval
-      > M*Td as per Section 6.3.5 of [1]), and no Early RTCP packets
-      are sent by AVPF entities, AVP entities may accidentally time
-      out those AVPF group members and hence underestimate the group
-      size.  Therefore, if AVP entities may be involved in a media
-      session, T_rr_interval SHOULD NOT be larger than five seconds.
+    If T_rr_interval is used as lower bound between Regular RTCP packets, T_rr_interval is sufficiently large (e.g., `T_rr_interval > M*Td` as per Section 6.3.5 of [1]), and no Early RTCP packets are sent by AVPF entities, AVP entities may accidentally time out those AVPF group members and hence underestimate the group size.  Therefore, if AVP entities may be involved in a media session, T_rr_interval SHOULD NOT be larger than five seconds.
+- AVPF entities (senders and receivers)
 
-   o  AVPF entities (senders and receivers)
+    If the dynamically calculated T_rr is sufficiently small (e.g., less than one second), AVPF entities may accidentally time out AVP group members and hence underestimate the group size. Therefore, if AVP entities may be involved in a media session, T_rr_interval SHOULD be used and SHOULD be set to five seconds.
 
-      If the dynamically calculated T_rr is sufficiently small (e.g.,
-      less than one second), AVPF entities may accidentally time out
-      AVP group members and hence underestimate the group size.
-      Therefore, if AVP entities may be involved in a media session,
-      T_rr_interval SHOULD be used and SHOULD be set to five seconds.
+    In conclusion, if AVP entities may be involved in a media session and T_rr_interval is to be used, T_rr_interval SHOULD be set to five seconds.
+- AVPF senders
 
-      In conclusion, if AVP entities may be involved in a media
-      session and T_rr_interval is to be used, T_rr_interval SHOULD be
-      set to five seconds.
+    AVPF senders will receive feedback information only from AVPF receivers.  If they rely on feedback to provide the target media quality, the quality achieved for AVP receivers may be suboptimal.
+- AVPF receivers
 
-   o  AVPF senders
-
-      AVPF senders will receive feedback information only from AVPF
-      receivers.  If they rely on feedback to provide the target media
-      quality, the quality achieved for AVP receivers may be suboptimal.
-
-   o  AVPF receivers
-
-      AVPF receivers SHOULD send Early RTCP feedback packets only if
-      all sending entities in the media session support AVPF.  AVPF
-      receivers MAY send feedback information as part of regularly
-      scheduled compound RTCP packets following the timing rules of
-
-      [1] and [2] also in media sessions operating in mixed mode.
-      However, the receiver providing feedback MUST NOT rely on the
-      sender reacting to the feedback at all.
+    AVPF receivers SHOULD send Early RTCP feedback packets only if all sending entities in the media session support AVPF.  AVPF receivers MAY send feedback information as part of regularly scheduled compound RTCP packets following the timing rules of [1] and [2] also in media sessions operating in mixed mode. However, the receiver providing feedback MUST NOT rely on the sender reacting to the feedback at all.
 
 ## 6.  Format of RTCP Feedback Messages
 
-   This section defines the format of the low-delay RTCP feedback
-   messages.  These messages are classified into three categories as
-   follows:
+This section defines the format of the low-delay RTCP feedback messages.  These messages are classified into three categories as follows:
 
-   - Transport layer FB messages
-   - Payload-specific FB messages
-   - Application layer FB messages
+- Transport layer FB messages
+- Payload-specific FB messages
+- Application layer FB messages
 
-   Transport layer FB messages are intended to transmit general purpose
-   feedback information, i.e., information independent of the particular
-   codec or the application in use.  The information is expected to be
-   generated and processed at the transport/RTP layer.  Currently, only
-   a generic negative acknowledgement (NACK) message is defined.
+Transport layer FB messages are intended to transmit general purpose feedback information, i.e., information independent of the particular codec or the application in use.  The information is expected to be generated and processed at the transport/RTP layer.  Currently, only a generic negative acknowledgement (NACK) message is defined.
 
-   Payload-specific FB messages transport information that is specific
-   to a certain payload type and will be generated and acted upon at the
-   codec "layer".  This document defines a common header to be used in
-   conjunction with all payload-specific FB messages.  The definition of
-   specific messages is left either to RTP payload format specifications
-   or to additional feedback format documents.
+Payload-specific FB messages transport information that is specific to a certain payload type and will be generated and acted upon at the codec "layer".  This document defines a common header to be used in conjunction with all payload-specific FB messages.  The definition of specific messages is left either to RTP payload format specifications or to additional feedback format documents.
 
-   Application layer FB messages provide a means to transparently convey
-   feedback from the receiver's to the sender's application.  The
-   information contained in such a message is not expected to be acted
-   upon at the transport/RTP or the codec layer.  The data to be
-   exchanged between two application instances is usually defined in the
-   application protocol specification and thus can be identified by the
-   application so that there is no need for additional external
-   information.  Hence, this document defines only a common header to be
-   used along with all application layer FB messages.  From a protocol
-   point of view, an application layer FB message is treated as a
-   special case of a payload-specific FB message.
+Application layer FB messages provide a means to transparently convey feedback from the receiver's to the sender's application.  The information contained in such a message is not expected to be acted upon at the transport/RTP or the codec layer.  The data to be exchanged between two application instances is usually defined in the application protocol specification and thus can be identified by the application so that there is no need for additional external information.  Hence, this document defines only a common header to be used along with all application layer FB messages.  From a protocol point of view, an application layer FB message is treated as a special case of a payload-specific FB message.
 
-      Note: Proper processing of some FB messages at the media sender
-      side may require the sender to know which payload type the FB
-      message refers to.  Most of the time, this knowledge can likely be
-      derived from a media stream using only a single payload type.
-      However, if several codecs are used simultaneously (e.g., with
-      audio and DTMF) or when codec changes occur, the payload type
-      information may need to be conveyed explicitly as part of the FB
-      message.  This applies to all
+Note: Proper processing of some FB messages at the media sender side may require the sender to know which payload type the FB message refers to.  Most of the time, this knowledge can likely be derived from a media stream using only a single payload type. However, if several codecs are used simultaneously (e.g., with audio and DTMF) or when codec changes occur, the payload type information may need to be conveyed explicitly as part of the FB message.  This applies to all payload-specific as well as application layer FB messages.  It is up to the specification of an FB message to define how payload type information is transmitted.
 
-      payload-specific as well as application layer FB messages.  It is
-      up to the specification of an FB message to define how payload
-      type information is transmitted.
+This document defines two transport layer and three (video) payload- specific FB messages as well as a single container for application layer FB messages.  Additional transport layer and payload-specific FB messages MAY be defined in other documents and MUST be registered through IANA (see Section 9, "IANA Considerations").
 
-   This document defines two transport layer and three (video) payload-
-   specific FB messages as well as a single container for application
-   layer FB messages.  Additional transport layer and payload-specific
-   FB messages MAY be defined in other documents and MUST be registered
-   through IANA (see Section 9, "IANA Considerations").
+The general syntax and semantics for the above RTCP FB message types are described in the following subsections.
 
-   The general syntax and semantics for the above RTCP FB message types
-   are described in the following subsections.
+### 6.1.   Common Packet Format for Feedback Messages
 
-6.1.   Common Packet Format for Feedback Messages
+All FB messages MUST use a common packet format that is depicted in Figure 3:
 
-   All FB messages MUST use a common packet format that is depicted in
-   Figure 3:
-
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -767,98 +686,71 @@ In this example, the RTCP feedback-enabled receivers will gain an occasional adv
    :                                                               :
 
            Figure 3: Common Packet Format for Feedback Messages
+```
 
-   The fields V, P, SSRC, and length are defined in the RTP
-   specification [2], the respective meaning being summarized below:
+- The fields V, P, SSRC, and length are defined in the RTP specification [2], the respective meaning being summarized below:
+- version (V): 2 bits
 
-   version (V): 2 bits
-      This field identifies the RTP version.  The current version is 2.
+    This field identifies the RTP version.  The current version is 2.
+- padding (P): 1 bit
 
-   padding (P): 1 bit
-      If set, the padding bit indicates that the packet contains
-      additional padding octets at the end that are not part of the
-      control information but are included in the length field.
+    If set, the padding bit indicates that the packet contains additional padding octets at the end that are not part of the control information but are included in the length field.
+- Feedback message type (FMT): 5 bits
 
-   Feedback message type (FMT): 5 bits
-      This field identifies the type of the FB message and is
-      interpreted relative to the type (transport layer, payload-
-      specific, or application layer feedback).  The values for each of
-      the three feedback types are defined in the respective sections
-      below.
+    This field identifies the type of the FB message and is interpreted relative to the type (transport layer, payload-specific, or application layer feedback).  The values for each of the three feedback types are defined in the respective sections below.
+- Payload type (PT): 8 bits
 
-   Payload type (PT): 8 bits
-      This is the RTCP packet type that identifies the packet as being
-      an RTCP FB message.  Two values are defined by the IANA:
+    This is the RTCP packet type that identifies the packet as being an RTCP FB message.  Two values are defined by the IANA:
 
+    ```
             Name   | Value | Brief Description
          ----------+-------+------------------------------------
             RTPFB  |  205  | Transport layer FB message
             PSFB   |  206  | Payload-specific FB message
+    ```
+- Length: 16 bits
 
-   Length: 16 bits
-      The length of this packet in 32-bit words minus one, including the
-      header and any padding.  This is in line with the definition of
-      the length field used in RTCP sender and receiver reports [3].
+    The length of this packet in 32-bit words minus one, including the header and any padding.  This is in line with the definition of the length field used in RTCP sender and receiver reports [3].
+- SSRC of packet sender: 32 bits
 
-   SSRC of packet sender: 32 bits
-      The synchronization source identifier for the originator of this
-      packet.
+    The synchronization source identifier for the originator of this packet.
+- SSRC of media source: 32 bits
 
-   SSRC of media source: 32 bits
-      The synchronization source identifier of the media source that
-      this piece of feedback information is related to.
+    The synchronization source identifier of the media source that this piece of feedback information is related to.
+- Feedback Control Information (FCI): variable length
 
-   Feedback Control Information (FCI): variable length
-      The following three sections define which additional information
-      MAY be included in the FB message for each type of feedback:
-      transport layer, payload-specific, or application layer feedback.
-      Note that further FCI contents MAY be specified in further
-      documents.
+    The following three sections define which additional information MAY be included in the FB message for each type of feedback: transport layer, payload-specific, or application layer feedback. Note that further FCI contents MAY be specified in further documents.
 
-   Each RTCP feedback packet MUST contain at least one FB message in the
-   FCI field.  Sections 6.2 and 6.3 define for each FCI type, whether or
-   not multiple FB messages MAY be compressed into a single FCI field.
-   If this is the case, they MUST be of the same type, i.e., same FMT.
-   If multiple types of feedback messages, i.e., several FMTs, need to
-   be conveyed, then several RTCP FB messages MUST be generated and
-   SHOULD be concatenated in the same compound RTCP packet.
+Each RTCP feedback packet MUST contain at least one FB message in the FCI field.  Sections 6.2 and 6.3 define for each FCI type, whether or not multiple FB messages MAY be compressed into a single FCI field. If this is the case, they MUST be of the same type, i.e., same FMT. If multiple types of feedback messages, i.e., several FMTs, need to be conveyed, then several RTCP FB messages MUST be generated and SHOULD be concatenated in the same compound RTCP packet.
 
-6.2.   Transport Layer Feedback Messages
+### 6.2.  Transport Layer Feedback Messages
 
-   Transport layer FB messages are identified by the value RTPFB as RTCP
-   message type.
+Transport layer FB messages are identified by the value RTPFB as RTCP message type.
 
-   A single general purpose transport layer FB message is defined in
-   this document: Generic NACK.  It is identified by means of the FMT
-   parameter as follows:
+A single general purpose transport layer FB message is defined in this document: Generic NACK.  It is identified by means of the FMT parameter as follows:
 
+```
    0:    unassigned
    1:    Generic NACK
    2-30: unassigned
    31:   reserved for future expansion of the identifier number space
+```
 
-   The following subsection defines the formats of the FCI field for
-   this type of FB message.  Further generic feedback messages MAY be
-   defined in the future.
+The following subsection defines the formats of the FCI field for this type of FB message.  Further generic feedback messages MAY be defined in the future.
 
-6.2.1.  Generic NACK
+#### 6.2.1.  Generic NACK
 
-   The Generic NACK message is identified by PT=RTPFB and FMT=1.
+The Generic NACK message is identified by PT=RTPFB and FMT=1.
 
-   The FCI field MUST contain at least one and MAY contain more than one
-   Generic NACK.
+The FCI field MUST contain at least one and MAY contain more than one Generic NACK.
 
-   The Generic NACK is used to indicate the loss of one or more RTP
-   packets.  The lost packet(s) are identified by the means of a packet
-   identifier and a bit mask.
+The Generic NACK is used to indicate the loss of one or more RTP packets.  The lost packet(s) are identified by the means of a packet identifier and a bit mask.
 
-   Generic NACK feedback SHOULD NOT be used if the underlying transport
-   protocol is capable of providing similar feedback information to the
-   sender (as may be the case, e.g., with DCCP).
+Generic NACK feedback SHOULD NOT be used if the underlying transport protocol is capable of providing similar feedback information to the sender (as may be the case, e.g., with DCCP).
 
-   The Feedback Control Information (FCI) field has the following Syntax
-   (Figure 4):
+The Feedback Control Information (FCI) field has the following Syntax (Figure 4):
 
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -866,43 +758,26 @@ In this example, the RTCP feedback-enabled receivers will gain an occasional adv
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
                Figure 4: Syntax for the Generic NACK message
+```
 
-   Packet ID (PID): 16 bits
-      The PID field is used to specify a lost packet.  The PID field
-      refers to the RTP sequence number of the lost packet.
+- Packet ID (PID): 16 bits
 
-   bitmask of following lost packets (BLP): 16 bits
-      The BLP allows for reporting losses of any of the 16 RTP packets
-      immediately following the RTP packet indicated by the PID.  The
-      BLP's definition is identical to that given in [6].  Denoting the
-      BLP's least significant bit as bit 1, and its most significant bit
-      as bit 16, then bit i of the bit mask is set to 1 if the receiver
-      has not received RTP packet number (PID+i) (modulo 2^16) and
-      indicates this packet is lost; bit i is set to 0 otherwise.  Note
-      that the sender MUST NOT assume that a receiver has received a
-      packet because its bit mask was set to 0.  For example, the least
-      significant bit of the BLP would be set to 1 if the packet
-      corresponding to the PID and the following packet have been lost.
-      However, the sender cannot infer that packets PID+2 through PID+16
-      have been received simply because bits 2 through 15 of the BLP are
-      0; all the sender knows is that the receiver has not reported them
-      as lost at this time.
+    The PID field is used to specify a lost packet.  The PID field refers to the RTP sequence number of the lost packet.
+- bitmask of following lost packets (BLP): 16 bits
 
-   The length of the FB message MUST be set to 2+n, with n being the
-   number of Generic NACKs contained in the FCI field.
+    The BLP allows for reporting losses of any of the 16 RTP packets immediately following the RTP packet indicated by the PID.  The BLP's definition is identical to that given in [6].  Denoting the BLP's least significant bit as bit 1, and its most significant bit as bit 16, then bit i of the bit mask is set to 1 if the receiver has not received RTP packet number (PID+i) (modulo 2^16) and indicates this packet is lost; bit i is set to 0 otherwise.  Note that the sender MUST NOT assume that a receiver has received a packet because its bit mask was set to 0.  For example, the least significant bit of the BLP would be set to 1 if the packet corresponding to the PID and the following packet have been lost. However, the sender cannot infer that packets PID+2 through PID+16 have been received simply because bits 2 through 15 of the BLP are 0; all the sender knows is that the receiver has not reported them as lost at this time.
 
-   The Generic NACK message implicitly references the payload type
-   through the sequence number(s).
+    The length of the FB message MUST be set to 2+n, with n being the number of Generic NACKs contained in the FCI field.
 
-6.3.  Payload-Specific Feedback Messages
+    The Generic NACK message implicitly references the payload type through the sequence number(s).
 
-   Payload-Specific FB messages are identified by the value PT=PSFB as
-   RTCP message type.
+### 6.3.  Payload-Specific Feedback Messages
 
-   Three payload-specific FB messages are defined so far plus an
-   application layer FB message.  They are identified by means of the
-   FMT parameter as follows:
+   Payload-Specific FB messages are identified by the value PT=PSFB as RTCP message type.
 
+   Three payload-specific FB messages are defined so far plus an application layer FB message.  They are identified by means of the FMT parameter as follows:
+
+```
       0:     unassigned
       1:     Picture Loss Indication (PLI)
       2:     Slice Loss Indication (SLI)
@@ -911,92 +786,51 @@ In this example, the RTCP feedback-enabled receivers will gain an occasional adv
       15:    Application layer FB (AFB) message
       16-30: unassigned
       31:    reserved for future expansion of the sequence number space
+```
 
-   The following subsections define the FCI formats for the payload-
-   specific FB messages, Section 6.4 defines FCI format for the
-   application layer FB message.
+The following subsections define the FCI formats for the payload-specific FB messages, Section 6.4 defines FCI format for the application layer FB message.
 
-6.3.1.  Picture Loss Indication (PLI)
+#### 6.3.1.  Picture Loss Indication (PLI)
 
-   The PLI FB message is identified by PT=PSFB and FMT=1.
+The PLI FB message is identified by PT=PSFB and FMT=1.
 
-   There MUST be exactly one PLI contained in the FCI field.
+There MUST be exactly one PLI contained in the FCI field.
 
-6.3.1.1.  Semantics
+##### 6.3.1.1.  Semantics
 
-   With the Picture Loss Indication message, a decoder informs the
-   encoder about the loss of an undefined amount of coded video data
-   belonging to one or more pictures.  When used in conjunction with any
-   video coding scheme that is based on inter-picture prediction, an
-   encoder that receives a PLI becomes aware that the prediction chain
-   may be broken.  The sender MAY react to a PLI by transmitting an
-   intra-picture to achieve resynchronization (making this message
-   effectively similar to the FIR message as defined in [6]); however,
-   the sender MUST consider congestion control as outlined in Section 7,
-   which MAY restrict its ability to send an intra frame.
+With the Picture Loss Indication message, a decoder informs the encoder about the loss of an undefined amount of coded video data belonging to one or more pictures.  When used in conjunction with any video coding scheme that is based on inter-picture prediction, an encoder that receives a PLI becomes aware that the prediction chain may be broken.  The sender MAY react to a PLI by transmitting an intra-picture to achieve resynchronization (making this message effectively similar to the FIR message as defined in [6]); however, the sender MUST consider congestion control as outlined in Section 7, which MAY restrict its ability to send an intra frame.
 
-   Other RTP payload specifications such as RFC 2032 [6] already define
-   a feedback mechanism for some for certain codecs.  An application
-   supporting both schemes MUST use the feedback mechanism defined in
-   this specification when sending feedback.  For backward compatibility
-   reasons, such an application SHOULD also be capable to receive and
-   react to the feedback scheme defined in the respective RTP payload
-   format, if this is required by that payload format.
+Other RTP payload specifications such as RFC 2032 [6] already define a feedback mechanism for some for certain codecs.  An application supporting both schemes MUST use the feedback mechanism defined in this specification when sending feedback.  For backward compatibility reasons, such an application SHOULD also be capable to receive and react to the feedback scheme defined in the respective RTP payload format, if this is required by that payload format.
 
-6.3.1.2.  Message Format
+##### 6.3.1.2.  Message Format
 
-   PLI does not require parameters.  Therefore, the length field MUST be
-   2, and there MUST NOT be any Feedback Control Information.
+PLI does not require parameters.  Therefore, the length field MUST be 2, and there MUST NOT be any Feedback Control Information.
 
-   The semantics of this FB message is independent of the payload type.
+The semantics of this FB message is independent of the payload type.
 
-6.3.1.3.  Timing Rules
+#### 6.3.1.3.  Timing Rules
 
-   The timing follows the rules outlined in Section 3.  In systems that
-   employ both PLI and other types of feedback, it may be advisable to
-   follow the Regular RTCP RR timing rules for PLI, since PLI is not as
-   delay critical as other FB types.
+The timing follows the rules outlined in Section 3.  In systems that employ both PLI and other types of feedback, it may be advisable to follow the Regular RTCP RR timing rules for PLI, since PLI is not as delay critical as other FB types.
 
-6.3.1.4.  Remarks
+#### 6.3.1.4.  Remarks
 
-   PLI messages typically trigger the sending of full intra-pictures.
-   Intra-pictures are several times larger then predicted (inter-)
-   pictures.  Their size is independent of the time they are generated.
-   In most environments, especially when employing bandwidth-limited
-   links, the use of an intra-picture implies an allowed delay that is a
+PLI messages typically trigger the sending of full intra-pictures. Intra-pictures are several times larger then predicted (inter-) pictures.  Their size is independent of the time they are generated. In most environments, especially when employing bandwidth-limited links, the use of an intra-picture implies an allowed delay that is a significant multitude of the typical frame duration.  An example: If the sending frame rate is 10 fps, and an intra-picture is assumed to be 10 times as big as an inter-picture, then a full second of latency has to be accepted.  In such an environment, there is no need for a particular short delay in sending the FB message.  Hence, waiting for the next possible time slot allowed by RTCP timing rules as per [2] with Tmin=0 does not have a negative impact on the system performance.
 
-   significant multitude of the typical frame duration.  An example: If
-   the sending frame rate is 10 fps, and an intra-picture is assumed to
-   be 10 times as big as an inter-picture, then a full second of latency
-   has to be accepted.  In such an environment, there is no need for a
-   particular short delay in sending the FB message.  Hence, waiting for
-   the next possible time slot allowed by RTCP timing rules as per [2]
-   with Tmin=0 does not have a negative impact on the system
-   performance.
+#### 6.3.2.  Slice Loss Indication (SLI)
 
-6.3.2.  Slice Loss Indication (SLI)
+The SLI FB message is identified by PT=PSFB and FMT=2.
 
-   The SLI FB message is identified by PT=PSFB and FMT=2.
+The FCI field MUST contain at least one and MAY contain more than one SLI.
 
-   The FCI field MUST contain at least one and MAY contain more than one
-   SLI.
+##### 6.3.2.1.  Semantics
 
-6.3.2.1.  Semantics
+With the Slice Loss Indication, a decoder can inform an encoder that it has detected the loss or corruption of one or several consecutive macroblock(s) in scan order (see below).  This FB message MUST NOT be used for video codecs with non-uniform, dynamically changeable macroblock sizes such as H.263 with enabled Annex Q.  In such a case, an encoder cannot always identify the corrupted spatial region.
 
-   With the Slice Loss Indication, a decoder can inform an encoder that
-   it has detected the loss or corruption of one or several consecutive
-   macroblock(s) in scan order (see below).  This FB message MUST NOT be
-   used for video codecs with non-uniform, dynamically changeable
-   macroblock sizes such as H.263 with enabled Annex Q.  In such a case,
-   an encoder cannot always identify the corrupted spatial region.
+##### 6.3.2.2.  Format
 
-6.3.2.2.  Format
+The Slice Loss Indication uses one additional FCI field, the content of which is depicted in Figure 6.  The length of the FB message MUST be set to 2+n, with n being the number of SLIs contained in the FCI field.
 
-   The Slice Loss Indication uses one additional FCI field, the content
-   of which is depicted in Figure 6.  The length of the FB message MUST
-   be set to 2+n, with n being the number of SLIs contained in the FCI
-   field.
-
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1004,106 +838,53 @@ In this example, the RTCP feedback-enabled receivers will gain an occasional adv
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
             Figure 6: Syntax of the Slice Loss Indication (SLI)
+```
 
-   First: 13 bits
-      The macroblock (MB) address of the first lost macroblock.  The MB
-      numbering is done such that the macroblock in the upper left
-      corner of the picture is considered macroblock number 1 and the
-      number for each macroblock increases from left to right and then
-      from top to bottom in raster-scan order (such that if there is a
-      total of N macroblocks in a picture, the bottom right macroblock
-      is considered macroblock number N).
+- First: 13 bits
 
-   Number: 13 bits
-      The number of lost macroblocks, in scan order as discussed above.
+    The macroblock (MB) address of the first lost macroblock.  The MB numbering is done such that the macroblock in the upper left corner of the picture is considered macroblock number 1 and the number for each macroblock increases from left to right and then from top to bottom in raster-scan order (such that if there is a total of N macroblocks in a picture, the bottom right macroblock is considered macroblock number N).
+- Number: 13 bits
 
-   PictureID: 6 bits
-      The six least significant bits of the codec-specific identifier
-      that is used to reference the picture in which the loss of the
-      macroblock(s) has occurred.  For many video codecs, the PictureID
-      is identical to the Temporal Reference.
+    The number of lost macroblocks, in scan order as discussed above.
+- PictureID: 6 bits
 
-   The applicability of this FB message is limited to a small set of
-   video codecs; therefore, no explicit payload type information is
-   provided.
+    The six least significant bits of the codec-specific identifier that is used to reference the picture in which the loss of the macroblock(s) has occurred.  For many video codecs, the PictureID is identical to the Temporal Reference.
 
-6.3.2.3.  Timing Rules
+    The applicability of this FB message is limited to a small set of video codecs; therefore, no explicit payload type information is provided.
 
-   The efficiency of algorithms using the Slice Loss Indication is
-   reduced greatly when the Indication is not transmitted in a timely
-   fashion.  Motion compensation propagates corrupted pixels that are
-   not reported as being corrupted.  Therefore, the use of the algorithm
-   discussed in Section 3 is highly recommended.
+##### 6.3.2.3.  Timing Rules
 
-6.3.2.4.  Remarks
+The efficiency of algorithms using the Slice Loss Indication is reduced greatly when the Indication is not transmitted in a timely fashion.  Motion compensation propagates corrupted pixels that are not reported as being corrupted.  Therefore, the use of the algorithm discussed in Section 3 is highly recommended.
 
-   The term Slice is defined and used here in the sense of MPEG-1 -- a
-   consecutive number of macroblocks in scan order.  More recent video
-   coding standards sometimes have a different understanding of the term
-   Slice.  In H.263 (1998), for example, a concept known as "rectangular
-   slice" exists.  The loss of one rectangular slice may lead to the
-   necessity of sending more than one SLI in order to precisely identify
-   the region of lost/damaged MBs.
+##### 6.3.2.4.  Remarks
 
-   The first field of the FCI defines the first macroblock of a picture
-   as 1 and not, as one could suspect, as 0.  This was done to align
-   this specification with the comparable mechanism available in ITU-T
-   Rec. H.245 [24].  The maximum number of macroblocks in a picture
-   (2**13 or 8192) corresponds to the maximum picture sizes of most of
-   the ITU-T and ISO/IEC video codecs.  If future video codecs offer
-   larger picture sizes and/or smaller macroblock sizes, then an
-   additional FB message has to be defined.  The six least significant
-   bits of the Temporal Reference field are deemed to be sufficient to
-   indicate the picture in which the loss occurred.
+The term Slice is defined and used here in the sense of MPEG-1 -- a consecutive number of macroblocks in scan order.  More recent video coding standards sometimes have a different understanding of the term Slice.  In H.263 (1998), for example, a concept known as "rectangular slice" exists.  The loss of one rectangular slice may lead to the necessity of sending more than one SLI in order to precisely identify the region of lost/damaged MBs.
 
-   The reaction to an SLI is not part of this specification.  One
-   typical way of reacting to an SLI is to use intra refresh for the
-   affected spatial region.
+The first field of the FCI defines the first macroblock of a picture as 1 and not, as one could suspect, as 0.  This was done to align this specification with the comparable mechanism available in ITU-T Rec. H.245 [24].  The maximum number of macroblocks in a picture (2**13 or 8192) corresponds to the maximum picture sizes of most of the ITU-T and ISO/IEC video codecs.  If future video codecs offer larger picture sizes and/or smaller macroblock sizes, then an additional FB message has to be defined.  The six least significant bits of the Temporal Reference field are deemed to be sufficient to indicate the picture in which the loss occurred.
 
-   Algorithms were reported that keep track of the regions affected by
-   motion compensation, in order to allow for a transmission of Intra
-   macroblocks to all those areas, regardless of the timing of the FB
-   (see H.263 (2000) Appendix I [17] and [15]).  Although the timing of
-   the FB is less critical when those algorithms are used than if they
-   are not, it has to be observed that those algorithms correct large
-   parts of the picture and, therefore, have to transmit much higher
-   data volume in case of delayed FBs.
+The reaction to an SLI is not part of this specification.  One typical way of reacting to an SLI is to use intra refresh for the affected spatial region.
 
-6.3.3.  Reference Picture Selection Indication (RPSI)
+Algorithms were reported that keep track of the regions affected by motion compensation, in order to allow for a transmission of Intra macroblocks to all those areas, regardless of the timing of the FB (see H.263 (2000) Appendix I [17] and [15]).  Although the timing of the FB is less critical when those algorithms are used than if they are not, it has to be observed that those algorithms correct large parts of the picture and, therefore, have to transmit much higher data volume in case of delayed FBs.
 
-   The RPSI FB message is identified by PT=PSFB and FMT=3.
+#### 6.3.3.  Reference Picture Selection Indication (RPSI)
 
-   There MUST be exactly one RPSI contained in the FCI field.
+The RPSI FB message is identified by PT=PSFB and FMT=3.
 
-6.3.3.1.  Semantics
+There MUST be exactly one RPSI contained in the FCI field.
 
-   Modern video coding standards such as MPEG-4 visual version 2 [16] or
-   H.263 version 2 [17] allow using older reference pictures than the
-   most recent one for predictive coding.  Typically, a first-in-first-
-   out queue of reference pictures is maintained.  If an encoder has
-   learned about a loss of encoder-decoder synchronicity, a known-as-
-   correct reference picture can be used.  As this reference picture is
-   temporally further away then usual, the resulting predictively coded
-   picture will use more bits.
+##### 6.3.3.1.  Semantics
 
-   Both MPEG-4 and H.263 define a binary format for the "payload" of an
-   RPSI message that includes information such as the temporal ID of the
-   damaged picture and the size of the damaged region.  This bit string
-   is typically small (a couple of dozen bits), of variable length, and
-   self-contained, i.e., contains all information that is necessary to
-   perform reference picture selection.
+Modern video coding standards such as MPEG-4 visual version 2 [16] or H.263 version 2 [17] allow using older reference pictures than the most recent one for predictive coding.  Typically, a first-in-first-out queue of reference pictures is maintained.  If an encoder has learned about a loss of encoder-decoder synchronicity, a known-as-correct reference picture can be used.  As this reference picture is temporally further away then usual, the resulting predictively coded picture will use more bits.
 
-   Both MPEG-4 and H.263 allow the use of RPSI with positive feedback
-   information as well.  That is, pictures (or Slices) are reported that
-   were decoded without error.  Note that any form of positive feedback
-   MUST NOT be used when in a multiparty session (reporting positive
-   feedback about individual reference pictures at RTCP intervals is not
-   expected to be of much use anyway).
+Both MPEG-4 and H.263 define a binary format for the "payload" of an RPSI message that includes information such as the temporal ID of the damaged picture and the size of the damaged region.  This bit string is typically small (a couple of dozen bits), of variable length, and self-contained, i.e., contains all information that is necessary to perform reference picture selection.
 
-6.3.3.2.  Format
+Both MPEG-4 and H.263 allow the use of RPSI with positive feedback information as well.  That is, pictures (or Slices) are reported that were decoded without error.  Note that any form of positive feedback MUST NOT be used when in a multiparty session (reporting positive feedback about individual reference pictures at RTCP intervals is not expected to be of much use anyway).
 
-   The FCI for the RPSI message follows the format depicted in Figure 7:
+##### 6.3.3.2.  Format
 
+The FCI for the RPSI message follows the format depicted in Figure 7:
+
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1113,165 +894,72 @@ In this example, the RTCP feedback-enabled receivers will gain an occasional adv
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
    Figure 7: Syntax of the Reference Picture Selection Indication (RPSI)
+```
 
-   PB: 8 bits
-      The number of unused bits required to pad the length of the RPSI
-      message to a multiple of 32 bits.
+- PB: 8 bits
 
-   0:  1 bit
-      MUST be set to zero upon transmission and ignored upon reception.
+    The number of unused bits required to pad the length of the RPSI message to a multiple of 32 bits.
+- 0:  1 bit
 
-   Payload Type: 7 bits
-      Indicates the RTP payload type in the context of which the native
-      RPSI bit string MUST be interpreted.
+    MUST be set to zero upon transmission and ignored upon reception.
+- Payload Type: 7 bits
 
-   Native RPSI bit string: variable length
-      The RPSI information as natively defined by the video codec.
+    Indicates the RTP payload type in the context of which the native RPSI bit string MUST be interpreted.
 
-   Padding: #PB bits
-      A number of bits set to zero to fill up the contents of the RPSI
-      message to the next 32-bit boundary.  The number of padding bits
-      MUST be indicated by the PB field.
+    Native RPSI bit string: variable length The RPSI information as natively defined by the video codec.
+- Padding: #PB bits
 
-6.3.3.3.  Timing Rules
+    A number of bits set to zero to fill up the contents of the RPSI message to the next 32-bit boundary.  The number of padding bits MUST be indicated by the PB field.
 
-   RPSI is even more critical to delay than algorithms using SLI.  This
-   is because the older the RPSI message is, the more bits the encoder
-   has to spend to re-establish encoder-decoder synchronicity.  See [15]
-   for some information about the overhead of RPSI for certain bit
-   rate/frame rate/loss rate scenarios.
+##### 6.3.3.3.  Timing Rules
 
-   Therefore, RPSI messages should typically be sent as soon as
-   possible, employing the algorithm of Section 3.
+RPSI is even more critical to delay than algorithms using SLI.  This is because the older the RPSI message is, the more bits the encoder has to spend to re-establish encoder-decoder synchronicity.  See [15] for some information about the overhead of RPSI for certain bit rate/frame rate/loss rate scenarios.
+
+Therefore, RPSI messages should typically be sent as soon as possible, employing the algorithm of Section 3.
 
 6.4.  Application Layer Feedback Messages
 
-   Application layer FB messages are a special case of payload-specific
-   messages and are identified by PT=PSFB and FMT=15.  There MUST be
-   exactly one application layer FB message contained in the FCI field,
-   unless the application layer FB message structure itself allows for
-   stacking (e.g., by means of a fixed size or explicit length
-   indicator).
+Application layer FB messages are a special case of payload-specific messages and are identified by PT=PSFB and FMT=15.  There MUST be exactly one application layer FB message contained in the FCI field, unless the application layer FB message structure itself allows for stacking (e.g., by means of a fixed size or explicit length indicator).
 
-   These messages are used to transport application-defined data
-   directly from the receiver's to the sender's application.  The data
-   that is transported is not identified by the FB message.  Therefore,
-   the application MUST be able to identify the message payload.
+These messages are used to transport application-defined data directly from the receiver's to the sender's application.  The data that is transported is not identified by the FB message.  Therefore, the application MUST be able to identify the message payload.
 
-   Usually, applications define their own set of messages, e.g., NEWPRED
-   messages in MPEG-4 [16] (carried in RTP packets according to RFC 3016
-   [23]) or FB messages in H.263/Annex N, U [17] (packetized as per RFC
-   2429 [14]).  These messages do not need any additional information
-   from the RTCP message.  Thus, the application message is simply
-   placed into the FCI field as follows and the length field is set
-   accordingly.
+Usually, applications define their own set of messages, e.g., NEWPRED messages in MPEG-4 [16] (carried in RTP packets according to RFC 3016 [23]) or FB messages in H.263/Annex N, U [17] (packetized as per RFC 2429 [14]).  These messages do not need any additional information from the RTCP message.  Thus, the application message is simply placed into the FCI field as follows and the length field is set accordingly.
 
-   Application Message (FCI): variable length
-      This field contains the original application message that should
-      be transported from the receiver to the source.  The format is
-      application dependent.  The length of this field is variable.  If
-      the application data is not 32-bit aligned, padding bits and bytes
-      MUST be added to achieve 32-bit alignment.  Identification of
-      padding is up to the application layer and not defined in this
-      specification.
+Application Message (FCI): variable length
 
-   The application layer FB message specification MUST define whether or
-   not the message needs to be interpreted specifically in the context
-   of a certain codec (identified by the RTP payload type).  If a
-   reference to the payload type is required for proper processing, the
-   application layer FB message specification MUST define a way to
-   communicate the payload type information as part of the application
-   layer FB message itself.
+    This field contains the original application message that should be transported from the receiver to the source.  The format is application dependent.  The length of this field is variable.  If the application data is not 32-bit aligned, padding bits and bytes MUST be added to achieve 32-bit alignment.  Identification of padding is up to the application layer and not defined in this specification.
+
+The application layer FB message specification MUST define whether or not the message needs to be interpreted specifically in the context of a certain codec (identified by the RTP payload type).  If a reference to the payload type is required for proper processing, the application layer FB message specification MUST define a way to communicate the payload type information as part of the application layer FB message itself.
 
 ## 7.  Early Feedback and Congestion Control
 
-   In the previous sections, the FB messages were defined as well as the
-   timing rules according to which to send these messages.  The way to
-   react to the feedback received depends on the application using the
-   feedback mechanisms and hence is beyond the scope of this document.
+In the previous sections, the FB messages were defined as well as the timing rules according to which to send these messages.  The way to react to the feedback received depends on the application using the feedback mechanisms and hence is beyond the scope of this document.
 
-   However, across all applications, there is a common requirement for
-   (TCP-friendly) congestion control on the media stream as defined in
-   [1] and [2] when operating in a best-effort network environment.
+However, across all applications, there is a common requirement for (TCP-friendly) congestion control on the media stream as defined in [1] and [2] when operating in a best-effort network environment.
 
-   It should be noted that RTCP feedback itself is insufficient for
-   congestion control purposes as it is likely to operate at much slower
-   timescales than other transport layer feedback mechanisms (that
-   usually operate in the order of RTT).  Therefore, additional
-   mechanisms are required to perform proper congestion control.
+It should be noted that RTCP feedback itself is insufficient for congestion control purposes as it is likely to operate at much slower timescales than other transport layer feedback mechanisms (that usually operate in the order of RTT).  Therefore, additional mechanisms are required to perform proper congestion control.
 
-   A congestion control algorithm that shares the available bandwidth
-   reasonably fairly with competing TCP connections, e.g., TFRC [7],
-   MUST be used to determine the data rate for the media stream within
-   the bounds of the RTP sender's and the media session's capabilities
-   if the RTP/AVPF session is transmitted in a best-effort environment.
+A congestion control algorithm that shares the available bandwidth reasonably fairly with competing TCP connections, e.g., TFRC [7], MUST be used to determine the data rate for the media stream within the bounds of the RTP sender's and the media session's capabilities if the RTP/AVPF session is transmitted in a best-effort environment.
 
 ## 8.  Security Considerations
 
-   RTP packets transporting information with the proposed payload format
-   are subject to the security considerations discussed in the RTP
-   specification [1] and in the RTP/AVP profile specification [2].  This
-   profile does not specify any additional security services.
+RTP packets transporting information with the proposed payload format are subject to the security considerations discussed in the RTP specification [1] and in the RTP/AVP profile specification [2].  This profile does not specify any additional security services.
 
-   This profile modifies the timing behavior of RTCP and eliminates the
-   minimum RTCP interval of five seconds and allows for earlier feedback
-   to be provided by receivers.  Group members of the associated RTP
-   session (possibly pretending to represent a large number of entities)
-   may disturb the operation of RTCP by sending large numbers of RTCP
-   packets thereby reducing the RTCP bandwidth available for Regular
-   RTCP reporting as well as for Early FB messages.  (Note that an
-   entity need not be a member of a multicast group to cause these
-   effects.)  Similarly, malicious members may send very large RTCP
-   messages, thereby increasing the avg_rtcp_size variable and reducing
-   the effectively available RTCP bandwidth.
+This profile modifies the timing behavior of RTCP and eliminates the minimum RTCP interval of five seconds and allows for earlier feedback to be provided by receivers.  Group members of the associated RTP session (possibly pretending to represent a large number of entities) may disturb the operation of RTCP by sending large numbers of RTCP packets thereby reducing the RTCP bandwidth available for Regular RTCP reporting as well as for Early FB messages.  (Note that an entity need not be a member of a multicast group to cause these effects.)  Similarly, malicious members may send very large RTCP messages, thereby increasing the avg_rtcp_size variable and reducing the effectively available RTCP bandwidth.
 
-   Feedback information may be suppressed if unknown RTCP feedback
-   packets are received.  This introduces the risk of a malicious group
-   member reducing Early feedback by simply transmitting payload-
-   specific RTCP feedback packets with random contents that are not
-   recognized by any receiver (so they will suppress feedback) or by the
-   sender (so no repair actions will be taken).
+Feedback information may be suppressed if unknown RTCP feedback packets are received.  This introduces the risk of a malicious group member reducing Early feedback by simply transmitting payload- specific RTCP feedback packets with random contents that are not recognized by any receiver (so they will suppress feedback) or by the sender (so no repair actions will be taken).
 
-   A malicious group member can also report arbitrary high loss rates in
-   the feedback information to make the sender throttle the data
-   transmission and increase the amount of redundancy information or
-   take other action to deal with the pretended packet loss (e.g., send
-   fewer frames or decrease audio/video quality).  This may result in a
-   degradation of the quality of the reproduced media stream.
+A malicious group member can also report arbitrary high loss rates in the feedback information to make the sender throttle the data transmission and increase the amount of redundancy information or take other action to deal with the pretended packet loss (e.g., send fewer frames or decrease audio/video quality).  This may result in a degradation of the quality of the reproduced media stream.
 
-   Finally, a malicious group member can act as a large number of group
-   members and thereby obtain an artificially large share of the Early
-   feedback bandwidth and reduce the reactivity of the other group
-   members -- possibly even causing them to no longer operate in
-   Immediate or Early feedback mode and thus undermining the whole
-   purpose of this profile.
+Finally, a malicious group member can act as a large number of group members and thereby obtain an artificially large share of the Early feedback bandwidth and reduce the reactivity of the other group members -- possibly even causing them to no longer operate in Immediate or Early feedback mode and thus undermining the whole purpose of this profile.
 
-   Senders as well as receivers SHOULD behave conservatively when
-   observing strange reporting behavior.  For excessive failure
-   reporting from one or a few receivers, the sender MAY decide to no
-   longer consider this feedback when adapting its transmission behavior
-   for the media stream.  In any case, senders and receivers SHOULD
-   still adhere to the maximum RTCP bandwidth but make sure that they
-   are capable of transmitting at least regularly scheduled RTCP
-   packets.  Senders SHOULD carefully consider how to adjust their
-   transmission bandwidth when encountering strange reporting behavior;
-   they MUST NOT increase their transmission bandwidth even if ignoring
-   suspicious feedback.
+Senders as well as receivers SHOULD behave conservatively when observing strange reporting behavior.  For excessive failure reporting from one or a few receivers, the sender MAY decide to no longer consider this feedback when adapting its transmission behavior for the media stream.  In any case, senders and receivers SHOULD still adhere to the maximum RTCP bandwidth but make sure that they are capable of transmitting at least regularly scheduled RTCP packets.  Senders SHOULD carefully consider how to adjust their transmission bandwidth when encountering strange reporting behavior; they MUST NOT increase their transmission bandwidth even if ignoring suspicious feedback.
 
-   Attacks using false RTCP packets (Regular as well as Early ones) can
-   be avoided by authenticating all RTCP messages.  This can be achieved
-   by using the AVPF profile together with the Secure RTP profile as
-   defined in [22]; as a prerequisite, an appropriate combination of
-   those two profiles (an "SAVPF") is being specified [21].  Note that,
-   when employing group authentication (as opposed to source
-   authentication), the aforementioned attacks may be carried out by
-   malicious or malfunctioning group members in possession of the right
-   keying material.
+Attacks using false RTCP packets (Regular as well as Early ones) can be avoided by authenticating all RTCP messages.  This can be achieved by using the AVPF profile together with the Secure RTP profile as defined in [22]; as a prerequisite, an appropriate combination of those two profiles (an "SAVPF") is being specified [21].  Note that, when employing group authentication (as opposed to source authentication), the aforementioned attacks may be carried out by malicious or malfunctioning group members in possession of the right keying material.
 
 ## 9.  IANA Considerations
 
-   The following contact information shall be used for all registrations
-   included here:
+The following contact information shall be used for all registrations included here:
 
 ```
      Contact:      Joerg Ott
@@ -1279,9 +967,7 @@ In this example, the RTCP feedback-enabled receivers will gain an occasional adv
                    tel:+358-9-451-2460
 ```
 
-   The feedback profile as an extension to the profile for audio-visual
-   conferences with minimal control has been registered for the Session
-   Description Protocol (specifically the type "proto"): "RTP/AVPF".
+The feedback profile as an extension to the profile for audio-visual conferences with minimal control has been registered for the Session Description Protocol (specifically the type "proto"): "RTP/AVPF".
 
 ```
    SDP Protocol ("proto"):
@@ -1305,9 +991,7 @@ In this example, the RTCP feedback-enabled receivers will gain an occasional adv
      Values:             See this document and registrations below
 ```
 
-   A new registry has been set up for the "rtcp-fb" attribute, with the
-   following registrations created initially: "ack", "nack", "trr-int",
-   and "app" as defined in this document.
+A new registry has been set up for the "rtcp-fb" attribute, with the following registrations created initially: "ack", "nack", "trr-int", and "app" as defined in this document.
 
 ```
    Initial value registration for the attribute "rtcp-fb"
@@ -1329,18 +1013,9 @@ In this example, the RTCP feedback-enabled receivers will gain an occasional adv
      Reference:      RFC 4585.
 ```
 
-   Further entries may be registered on a first-come first-serve basis.
-   Each new registration needs to indicate the parameter name and the
-   syntax of possible additional arguments.  For each new registration,
-   it is mandatory that a permanent, stable, and publicly accessible
-   document exists that specifies the semantics of the registered
-   parameter, the syntax and semantics of its parameters as well as
+Further entries may be registered on a first-come first-serve basis. Each new registration needs to indicate the parameter name and the syntax of possible additional arguments.  For each new registration, it is mandatory that a permanent, stable, and publicly accessible document exists that specifies the semantics of the registered parameter, the syntax and semantics of its parameters as well as corresponding feedback packet formats (if needed).  The general registration procedures of [3] apply.
 
-   corresponding feedback packet formats (if needed).  The general
-   registration procedures of [3] apply.
-
-   For use with both "ack" and "nack", a joint sub-registry has been set
-   up that initially registers the following values:
+For use with both "ack" and "nack", a joint sub-registry has been set up that initially registers the following values:
 
 ```
    Initial value registration for the attribute values "ack" and "nack":
@@ -1366,21 +1041,9 @@ In this example, the RTCP feedback-enabled receivers will gain an occasional adv
      Reference:      RFC 4585.
 ```
 
-   Further entries may be registered on a first-come first-serve basis.
-   Each registration needs to indicate the parameter name, the syntax of
-   possible additional arguments, and whether the parameter is
-   applicable to "ack" or "nack" feedback or both or some different
-   "rtcp-fb" attribute parameter.  For each new registration, it is
-   mandatory that a permanent, stable, and publicly accessible document
-   exists that specifies the semantics of the registered parameter, the
-   syntax and semantics of its parameters as well as corresponding
-   feedback packet formats (if needed).  The general registration
-   procedures of [3] apply.
+Further entries may be registered on a first-come first-serve basis. Each registration needs to indicate the parameter name, the syntax of possible additional arguments, and whether the parameter is applicable to "ack" or "nack" feedback or both or some different "rtcp-fb" attribute parameter.  For each new registration, it is mandatory that a permanent, stable, and publicly accessible document exists that specifies the semantics of the registered parameter, the syntax and semantics of its parameters as well as corresponding feedback packet formats (if needed).  The general registration procedures of [3] apply.
 
-   Two RTCP Control Packet Types: for the class of transport layer FB
-   messages ("RTPFB") and for the class of payload-specific FB messages
-   ("PSFB").  Per Section 6, RTPFB=205 and PSFB=206 have been added to
-   the RTCP registry.
+Two RTCP Control Packet Types: for the class of transport layer FB messages ("RTPFB") and for the class of payload-specific FB messages ("PSFB").  Per Section 6, RTPFB=205 and PSFB=206 have been added to the RTCP registry.
 
 ```
    RTP RTCP Control Packet types (PT):
@@ -1396,13 +1059,9 @@ In this example, the RTCP feedback-enabled receivers will gain an occasional adv
      Reference:     RFC 4585.
 ```
 
-   As AVPF defines additional RTCP payload types, the corresponding
-   "reserved" RTP payload type space (72-76, as defined in [2]), has
-   been expanded accordingly.
+As AVPF defines additional RTCP payload types, the corresponding "reserved" RTP payload type space (72-76, as defined in [2]), has been expanded accordingly.
 
-   A new sub-registry has been set up for the FMT values for both the
-   RTPFB payload type and the PSFB payload type, with the following
-   registrations created initially:
+A new sub-registry has been set up for the FMT values for both the RTPFB payload type and the PSFB payload type, with the following registrations created initially:
 
 ```
    Within the RTPFB range, the following two format (FMT) values are
@@ -1447,118 +1106,45 @@ In this example, the RTCP feedback-enabled receivers will gain an occasional adv
      Reference:      RFC 4585.
 ```
 
-   Further entries may be registered following the "Specification
-   Required" rules as defined in RFC 2434 [9].  Each registration needs
-   to indicate the FMT value, if there is a specific FB message to go
-   into the FCI field, and whether or not multiple FB messages may be
-   stacked in a single FCI field.  For each new registration, it is
-   mandatory that a permanent, stable, and publicly accessible document
-   exists that specifies the semantics of the registered parameter as
-   well as the syntax and semantics of the associated FB message (if
-   any).  The general registration procedures of [3] apply.
+Further entries may be registered following the "Specification Required" rules as defined in RFC 2434 [9].  Each registration needs to indicate the FMT value, if there is a specific FB message to go into the FCI field, and whether or not multiple FB messages may be stacked in a single FCI field.  For each new registration, it is mandatory that a permanent, stable, and publicly accessible document exists that specifies the semantics of the registered parameter as well as the syntax and semantics of the associated FB message (if any).  The general registration procedures of [3] apply.
 
 ## 10.  Acknowledgements
 
-   This document is a product of the Audio-Visual Transport (AVT)
-   Working Group of the IETF.  The authors would like to thank Steve
-   Casner and Colin Perkins for their comments and suggestions as well
-   as for their responsiveness to numerous questions.  The authors would
-   also like to particularly thank Magnus Westerlund for his review and
-   his valuable suggestions and Shigeru Fukunaga for the contributions
-   on FB message formats and semantics.
+This document is a product of the Audio-Visual Transport (AVT) Working Group of the IETF.  The authors would like to thank Steve Casner and Colin Perkins for their comments and suggestions as well as for their responsiveness to numerous questions.  The authors would also like to particularly thank Magnus Westerlund for his review and his valuable suggestions and Shigeru Fukunaga for the contributions on FB message formats and semantics.
 
-   We would also like to thank Andreas Buesching and people at Panasonic
-   for their simulations and the first independent implementations of
-   the feedback profile.
+We would also like to thank Andreas Buesching and people at Panasonic for their simulations and the first independent implementations of the feedback profile.
 
 ## 11.  References
 
-11.1.  Normative References
+### 11.1.  Normative References
 
-   [1]  Schulzrinne, H., Casner, S., Frederick, R., and V. Jacobson,
-        "RTP: A Transport Protocol for Real-Time Applications", STD 64,
-        RFC 3550, July 2003.
+- [1]  Schulzrinne, H., Casner, S., Frederick, R., and V. Jacobson, "RTP: A Transport Protocol for Real-Time Applications", STD 64, RFC 3550, July 2003.
+- [2]  Schulzrinne, H. and S. Casner, "RTP Profile for Audio and Video Conferences with Minimal Control", STD 65, RFC 3551, July 2003.
+- [3]  Handley, M., Jacobson, V., and C. Perkins, "SDP: Session Description Protocol", RFC 4566, July 2006.
+- [4]  Casner, S., "Session Description Protocol (SDP) Bandwidth Modifiers for RTP Control Protocol (RTCP) Bandwidth", RFC 3556, July 2003.
+- [5]  Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, March 1997.
+- [6]  Turletti, T. and C. Huitema, "RTP Payload Format for H.261 Video Streams", RFC 2032, October 1996.
+- [7]  Handley, M., Floyd, S., Padhye, J., and J. Widmer, "TCP Friendly Rate Control (TFRC): Protocol Specification", RFC 3448, January 2003.
+- [8]  Rosenberg, J. and H. Schulzrinne, "An Offer/Answer Model with Session Description Protocol (SDP)", RFC 3264, June 2002.
+- [9]  Narten, T. and H. Alvestrand, "Guidelines for Writing an IANA Considerations Section in RFCs", BCP 26, RFC 2434, October 1998.
 
-   [2]  Schulzrinne, H. and S. Casner, "RTP Profile for Audio and Video
-        Conferences with Minimal Control", STD 65, RFC 3551, July 2003.
+### 11.2.  Informative References
 
-   [3]  Handley, M., Jacobson, V., and C. Perkins, "SDP: Session
-        Description Protocol", RFC 4566, July 2006.
-
-   [4]  Casner, S., "Session Description Protocol (SDP) Bandwidth
-        Modifiers for RTP Control Protocol (RTCP) Bandwidth", RFC 3556,
-        July 2003.
-
-   [5]  Bradner, S., "Key words for use in RFCs to Indicate Requirement
-        Levels", BCP 14, RFC 2119, March 1997.
-
-   [6]  Turletti, T. and C. Huitema, "RTP Payload Format for H.261 Video
-        Streams", RFC 2032, October 1996.
-
-   [7]  Handley, M., Floyd, S., Padhye, J., and J. Widmer, "TCP Friendly
-        Rate Control (TFRC): Protocol Specification", RFC 3448, January
-        2003.
-
-   [8]  Rosenberg, J. and H. Schulzrinne, "An Offer/Answer Model with
-        Session Description Protocol (SDP)", RFC 3264, June 2002.
-
-   [9]  Narten, T. and H. Alvestrand, "Guidelines for Writing an IANA
-        Considerations Section in RFCs", BCP 26, RFC 2434, October 1998.
-
-11.2.  Informative References
-
-   [10] Camarillo, G., Eriksson, G., Holler, J., and H. Schulzrinne,
-        "Grouping of Media Lines in the Session Description Protocol
-        (SDP)", RFC 3388, December 2002.
-
-   [11] Perkins, C. and O. Hodson, "Options for Repair of Streaming
-        Media", RFC 2354, June 1998.
-
-   [12] Rosenberg, J. and H. Schulzrinne, "An RTP Payload Format for
-        Generic Forward Error Correction", RFC 2733, December 1999.
-
-   [13] Perkins, C., Kouvelas, I., Hodson, O., Hardman, V., Handley, M.,
-        Bolot, J., Vega-Garcia, A., and S. Fosse-Parisis, "RTP Payload
-        for Redundant Audio Data", RFC 2198, September 1997.
-
-   [14] Bormann, C., Cline, L., Deisher, G., Gardos, T., Maciocco, C.,
-        Newell, D., Ott, J., Sullivan, G., Wenger, S., and C. Zhu, "RTP
-        Payload Format for the 1998 Version of ITU-T Rec. H.263 Video
-        (H.263+)", RFC 2429, October 1998.
-
-   [15] B. Girod, N. Faerber, "Feedback-based error control for mobile
-        video transmission", Proceedings IEEE, Vol. 87, No. 10, pp.
-        1707 - 1723, October, 1999.
-
-   [16] ISO/IEC 14496-2:2001/Amd.1:2002, "Information technology -
-        Coding of audio-visual objects - Part2: Visual", 2001.
-
-   [17] ITU-T Recommendation H.263, "Video Coding for Low Bit Rate
-        Communication", November 2000.
-
-   [18] Schulzrinne, H. and S. Petrack, "RTP Payload for DTMF Digits,
-        Telephony Tones and Telephony Signals", RFC 2833, May 2000.
-
-   [19] Kohler, E., Handley, M., and S. Floyd, "Datagram Congestion
-        Control Protocol (DCCP)", RFC 4340, March 2006.
-
-   [20] Handley, M., Floyd, S., Padhye, J., and J. Widmer, "TCP Friendly
-        Rate Control (TFRC): Protocol Specification", RFC 3448, January
-        2003.
-
-   [21] Ott, J. and E. Carrara, "Extended Secure RTP Profile for RTCP-
-        based Feedback (RTP/SAVPF)", Work in Progress, December 2005.
-
-   [22] Baugher, M., McGrew, D., Naslund, M., Carrara, E., and K.
-        Norrman, "The Secure Real-time Transport Protocol (SRTP)", RFC
-        3711, March 2004.
-
-   [23] Kikuchi, Y., Nomura, T., Fukunaga, S., Matsui, Y., and H.
-        Kimata, "RTP Payload Format for MPEG-4 Audio/Visual Streams",
-        RFC 3016, November 2000.
-
-   [24] ITU-T Recommendation H.245, "Control protocol for multimedia
-        communication", May 2006.
+- [10] Camarillo, G., Eriksson, G., Holler, J., and H. Schulzrinne, "Grouping of Media Lines in the Session Description Protocol (SDP)", RFC 3388, December 2002.
+- [11] Perkins, C. and O. Hodson, "Options for Repair of Streaming Media", RFC 2354, June 1998.
+- [12] Rosenberg, J. and H. Schulzrinne, "An RTP Payload Format for Generic Forward Error Correction", RFC 2733, December 1999.
+- [13] Perkins, C., Kouvelas, I., Hodson, O., Hardman, V., Handley, M., Bolot, J., Vega-Garcia, A., and S. Fosse-Parisis, "RTP Payload for Redundant Audio Data", RFC 2198, September 1997.
+- [14] Bormann, C., Cline, L., Deisher, G., Gardos, T., Maciocco, C., Newell, D., Ott, J., Sullivan, G., Wenger, S., and C. Zhu, "RTP Payload Format for the 1998 Version of ITU-T Rec. H.263 Video (H.263+)", RFC 2429, October 1998.
+- [15] B. Girod, N. Faerber, "Feedback-based error control for mobile video transmission", Proceedings IEEE, Vol. 87, No. 10, pp. 1707 - 1723, October, 1999.
+- [16] ISO/IEC 14496-2:2001/Amd.1:2002, "Information technology - Coding of audio-visual objects - Part2: Visual", 2001.
+- [17] ITU-T Recommendation H.263, "Video Coding for Low Bit Rate Communication", November 2000.
+- [18] Schulzrinne, H. and S. Petrack, "RTP Payload for DTMF Digits, Telephony Tones and Telephony Signals", RFC 2833, May 2000.
+- [19] Kohler, E., Handley, M., and S. Floyd, "Datagram Congestion Control Protocol (DCCP)", RFC 4340, March 2006.
+- [20] Handley, M., Floyd, S., Padhye, J., and J. Widmer, "TCP Friendly Rate Control (TFRC): Protocol Specification", RFC 3448, January 2003.
+- [21] Ott, J. and E. Carrara, "Extended Secure RTP Profile for RTCP-based Feedback (RTP/SAVPF)", Work in Progress, December 2005.
+- [22] Baugher, M., McGrew, D., Naslund, M., Carrara, E., and K. Norrman, "The Secure Real-time Transport Protocol (SRTP)", RFC 3711, March 2004.
+- [23] Kikuchi, Y., Nomura, T., Fukunaga, S., Matsui, Y., and H. Kimata, "RTP Payload Format for MPEG-4 Audio/Visual Streams", RFC 3016, November 2000.
+- [24] ITU-T Recommendation H.245, "Control protocol for multimedia communication", May 2006.
 
 ---
 
@@ -1610,46 +1196,20 @@ In this example, the RTCP feedback-enabled receivers will gain an occasional adv
 
 **Full Copyright Statement**
 
-   Copyright (C) The Internet Society (2006).
+Copyright (C) The Internet Society (2006).
 
-   This document is subject to the rights, licenses and restrictions
-   contained in BCP 78, and except as set forth therein, the authors
-   retain all their rights.
+This document is subject to the rights, licenses and restrictions contained in BCP 78, and except as set forth therein, the authors retain all their rights.
 
-   This document and the information contained herein are provided on an
-   "AS IS" basis and THE CONTRIBUTOR, THE ORGANIZATION HE/SHE REPRESENTS
-   OR IS SPONSORED BY (IF ANY), THE INTERNET SOCIETY AND THE INTERNET
-   ENGINEERING TASK FORCE DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED,
-   INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE
-   INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED
-   WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+This document and the information contained herein are provided on an "AS IS" basis and THE CONTRIBUTOR, THE ORGANIZATION HE/SHE REPRESENTS OR IS SPONSORED BY (IF ANY), THE INTERNET SOCIETY AND THE INTERNET ENGINEERING TASK FORCE DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
 
 **Intellectual Property**
 
-   The IETF takes no position regarding the validity or scope of any
-   Intellectual Property Rights or other rights that might be claimed to
-   pertain to the implementation or use of the technology described in
-   this document or the extent to which any license under such rights
-   might or might not be available; nor does it represent that it has
-   made any independent effort to identify any such rights.  Information
-   on the procedures with respect to rights in RFC documents can be
-   found in BCP 78 and BCP 79.
+The IETF takes no position regarding the validity or scope of any Intellectual Property Rights or other rights that might be claimed to pertain to the implementation or use of the technology described in this document or the extent to which any license under such rights might or might not be available; nor does it represent that it has made any independent effort to identify any such rights.  Information on the procedures with respect to rights in RFC documents can be found in BCP 78 and BCP 79.
 
-   Copies of IPR disclosures made to the IETF Secretariat and any
-   assurances of licenses to be made available, or the result of an
-   attempt made to obtain a general license or permission for the use of
-   such proprietary rights by implementers or users of this
-   specification can be obtained from the IETF on-line IPR repository at
-   http://www.ietf.org/ipr.
+Copies of IPR disclosures made to the IETF Secretariat and any assurances of licenses to be made available, or the result of an attempt made to obtain a general license or permission for the use of such proprietary rights by implementers or users of this specification can be obtained from the IETF on-line IPR repository at http://www.ietf.org/ipr.
 
-   The IETF invites any interested party to bring to its attention any
-   copyrights, patents or patent applications, or other proprietary
-   rights that may cover technology that may be required to implement
-   this standard.  Please address the information to the IETF at
-   ietf-ipr@ietf.org.
+The IETF invites any interested party to bring to its attention any copyrights, patents or patent applications, or other proprietary rights that may cover technology that may be required to implement this standard.  Please address the information to the IETF at ietf-ipr@ietf.org.
 
 **Acknowledgement**
 
-   Funding for the RFC Editor function is provided by the IETF
-   Administrative Support Activity (IASA).
-
+Funding for the RFC Editor function is provided by the IETF Administrative Support Activity (IASA).
