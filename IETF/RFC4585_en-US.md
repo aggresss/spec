@@ -407,7 +407,6 @@ The most important parameters when determining the mode of operation are the all
 As stated in Section 3.3:
 
 > Let N be the average number of events to be reported per interval T by a receiver, B the RTCP bandwidth fraction for this particular receiver, and R the average RTCP packet size, then the receiver operates in Immediate Feedback mode as long as N<=B*T/R.
-
 > The upper bound for the Early RTCP mode then solely depends on the acceptable quality degradation, i.e., how many events per time interval may go unreported.
 
 As stated in Section 3.3:
@@ -510,46 +509,34 @@ The literals of the above grammar have the following semantics:
 
 Feedback type "ack":
 
-    This feedback type indicates that positive acknowledgements for feedback are supported.
-
-    The feedback type "ack" MUST only be used if the media session is allowed to operate in ACK mode as defined in Section 3.6.1.
-
-    Parameters MUST be provided to further distinguish different types of positive acknowledgement feedback.
-
-    The parameter "rpsi" indicates the use of Reference Picture Selection Indication feedback as defined in Section 6.3.3.
-
-    If the parameter "app" is specified, this indicates the use of application layer feedback.  In this case, additional parameters following "app" MAY be used to further differentiate various types of application layer feedback.  This document does not define any parameters specific to "app".
-
-    Further parameters for "ack" MAY be defined in other documents.
+> This feedback type indicates that positive acknowledgements for feedback are supported.
+> The feedback type "ack" MUST only be used if the media session is allowed to operate in ACK mode as defined in Section 3.6.1.
+> Parameters MUST be provided to further distinguish different types of positive acknowledgement feedback.
+> The parameter "rpsi" indicates the use of Reference Picture Selection Indication feedback as defined in Section 6.3.3.
+> If the parameter "app" is specified, this indicates the use of application layer feedback.  In this case, additional parameters following "app" MAY be used to further differentiate various types of application layer feedback.  This document does not define any parameters specific to "app".
+> Further parameters for "ack" MAY be defined in other documents.
 
 Feedback type "nack":
 
-    This feedback type indicates that negative acknowledgements for feedback are supported.
-
-    The feedback type "nack", without parameters, indicates use of the Generic NACK feedback format as defined in Section 6.2.1.
-
-    The following three parameters are defined in this document for use with "nack" in conjunction with the media type "video":
-
-    - "pli" indicates the use of Picture Loss Indication feedback as defined in Section 6.3.1.
-    - "sli" indicates the use of Slice Loss Indication feedback as defined in Section 6.3.2.
-    - "rpsi" indicates the use of Reference Picture Selection Indication feedback as defined in Section 6.3.3.
-    - "app" indicates the use of application layer feedback.  Additional parameters after "app" MAY be provided to differentiate different types of application layer feedback.  No parameters specific to "app" are defined in this document.
-
-    Further parameters for "nack" MAY be defined in other documents.
+> This feedback type indicates that negative acknowledgements for feedback are supported.
+> The feedback type "nack", without parameters, indicates use of the Generic NACK feedback format as defined in Section 6.2.1.
+> The following three parameters are defined in this document for use with "nack" in conjunction with the media type "video":
+- "pli" indicates the use of Picture Loss Indication feedback as defined in Section 6.3.1.
+- "sli" indicates the use of Slice Loss Indication feedback as defined in Section 6.3.2.
+- "rpsi" indicates the use of Reference Picture Selection Indication feedback as defined in Section 6.3.3.
+- "app" indicates the use of application layer feedback.  Additional parameters after "app" MAY be provided to differentiate different types of application layer feedback.  No parameters specific to "app" are defined in this document.
+> Further parameters for "nack" MAY be defined in other documents.
 
 Other feedback types `<rtcp-fb-id>`:
 
-    Other documents MAY define additional types of feedback; to keep the grammar extensible for those cases, the rtcp-fb-id is introduced as a placeholder.  A new feedback scheme name MUST to be unique (and thus MUST be registered with IANA).  Along with a new name, its semantics, packet formats (if necessary), and rules for its operation MUST be specified.
+> Other documents MAY define additional types of feedback; to keep the grammar extensible for those cases, the rtcp-fb-id is introduced as a placeholder.  A new feedback scheme name MUST to be unique (and thus MUST be registered with IANA).  Along with a new name, its semantics, packet formats (if necessary), and rules for its operation MUST be specified.
 
 Regular RTCP minimum interval "trr-int":
 
-    The attribute "trr-int" is used to specify the minimum interval T_rr_interval between two Regular (full compound) RTCP packets in milliseconds for this media session.  If "trr-int" is not specified, a default value of 0 is assumed.
-
-    Note that it is assumed that more specific information about application layer feedback (as defined in Section 6.4) will be conveyed as feedback types and parameters defined elsewhere.  Hence, no further provision for any types and parameters is made in this document.
-
-    Further types of feedback as well as further parameters may be defined in other documents.
-
-    It is up to the recipients whether or not they send feedback information and up to the sender(s) (how) to make use of feedback provided.
+> The attribute "trr-int" is used to specify the minimum interval T_rr_interval between two Regular (full compound) RTCP packets in milliseconds for this media session.  If "trr-int" is not specified, a default value of 0 is assumed.
+> Note that it is assumed that more specific information about application layer feedback (as defined in Section 6.4) will be conveyed as feedback types and parameters defined elsewhere.  Hence, no further provision for any types and parameters is made in this document.
+> Further types of feedback as well as further parameters may be defined in other documents.
+> It is up to the recipients whether or not they send feedback information and up to the sender(s) (how) to make use of feedback provided.
 
 ### 4.3.  RTCP Bandwidth Modifiers
 
@@ -927,7 +914,7 @@ Usually, applications define their own set of messages, e.g., NEWPRED messages i
 
 Application Message (FCI): variable length
 
-    This field contains the original application message that should be transported from the receiver to the source.  The format is application dependent.  The length of this field is variable.  If the application data is not 32-bit aligned, padding bits and bytes MUST be added to achieve 32-bit alignment.  Identification of padding is up to the application layer and not defined in this specification.
+> This field contains the original application message that should be transported from the receiver to the source.  The format is application dependent.  The length of this field is variable.  If the application data is not 32-bit aligned, padding bits and bytes MUST be added to achieve 32-bit alignment.  Identification of padding is up to the application layer and not defined in this specification.
 
 The application layer FB message specification MUST define whether or not the message needs to be interpreted specifically in the context of a certain codec (identified by the RTP payload type).  If a reference to the payload type is required for proper processing, the application layer FB message specification MUST define a way to communicate the payload type information as part of the application layer FB message itself.
 
