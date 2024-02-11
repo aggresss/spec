@@ -795,11 +795,11 @@ PLI does not require parameters.  Therefore, the length field MUST be 2, and the
 
 The semantics of this FB message is independent of the payload type.
 
-#### 6.3.1.3.  Timing Rules
+##### 6.3.1.3.  Timing Rules
 
 The timing follows the rules outlined in Section 3.  In systems that employ both PLI and other types of feedback, it may be advisable to follow the Regular RTCP RR timing rules for PLI, since PLI is not as delay critical as other FB types.
 
-#### 6.3.1.4.  Remarks
+##### 6.3.1.4.  Remarks
 
 PLI messages typically trigger the sending of full intra-pictures. Intra-pictures are several times larger then predicted (inter-) pictures.  Their size is independent of the time they are generated. In most environments, especially when employing bandwidth-limited links, the use of an intra-picture implies an allowed delay that is a significant multitude of the typical frame duration.  An example: If the sending frame rate is 10 fps, and an intra-picture is assumed to be 10 times as big as an inter-picture, then a full second of latency has to be accepted.  In such an environment, there is no need for a particular short delay in sending the FB message.  Hence, waiting for the next possible time slot allowed by RTCP timing rules as per [2] with Tmin=0 does not have a negative impact on the system performance.
 
