@@ -929,309 +929,138 @@ The values reported in these fields SHOULD be the most recently obtained values 
 
 ## 5.  SDP Signaling
 
-   This section defines Session Description Protocol (SDP) [4] signaling
-   for XR blocks that can be employed by applications that utilize SDP.
-   This signaling is defined to be used either by applications that
-   implement the SDP Offer/Answer model [8] or by applications that use
-   SDP to describe media and transport configurations in connection
+This section defines Session Description Protocol (SDP) [4] signaling for XR blocks that can be employed by applications that utilize SDP. This signaling is defined to be used either by applications that implement the SDP Offer/Answer model [8] or by applications that use SDP to describe media and transport configurations in connection with such protocols as the Session Announcement Protocol (SAP) [15] or the Real Time Streaming Protocol (RTSP) [17].  There exist other potential signaling methods that are not defined here.
 
+The XR blocks MAY be used without prior signaling.  This is consistent with the rules governing other RTCP packet types, as described in [9].  An example in which signaling would not be used is an application that always requires the use of one or more XR blocks. However, for applications that are configured at session initiation, the use of some type of signaling is recommended.
 
+Note that, although the use of SDP signaling for XR blocks may be optional, if used, it MUST be used as defined here.  If SDP signaling is used in an environment where XR blocks are only implemented by some fraction of the participants, the ones not implementing the XR blocks will ignore the SDP attribute.
 
-   with such protocols as the Session Announcement Protocol (SAP) [15]
-   or the Real Time Streaming Protocol (RTSP) [17].  There exist other
-   potential signaling methods that are not defined here.
+### 5.1.  The SDP Attribute
 
-   The XR blocks MAY be used without prior signaling.  This is
-   consistent with the rules governing other RTCP packet types, as
-   described in [9].  An example in which signaling would not be used is
-   an application that always requires the use of one or more XR blocks.
-   However, for applications that are configured at session initiation,
-   the use of some type of signaling is recommended.
+This section defines one new SDP attribute "rtcp-xr" that can be used to signal participants in a media session that they should use the specified XR blocks.  This attribute can be easily extended in the future with new parameters to cover any new report blocks.
 
-   Note that, although the use of SDP signaling for XR blocks may be
-   optional, if used, it MUST be used as defined here.  If SDP signaling
-   is used in an environment where XR blocks are only implemented by
-   some fraction of the participants, the ones not implementing the XR
-   blocks will ignore the SDP attribute.
+The RTCP XR blocks SDP attribute is defined below in Augmented Backus-Naur Form (ABNF) [2].  It is both a session and a media level attribute.  When specified at session level, it applies to all media level blocks in the session.  Any media level specification MUST replace a session level specification, if one is present, for that media block.
 
-5.1.  The SDP Attribute
-
-   This section defines one new SDP attribute "rtcp-xr" that can be used
-   to signal participants in a media session that they should use the
-   specified XR blocks.  This attribute can be easily extended in the
-   future with new parameters to cover any new report blocks.
-
-   The RTCP XR blocks SDP attribute is defined below in Augmented
-   Backus-Naur Form (ABNF) [2].  It is both a session and a media level
-   attribute.  When specified at session level, it applies to all media
-   level blocks in the session.  Any media level specification MUST
-   replace a session level specification, if one is present, for that
-   media block.
-
+```
     rtcp-xr-attrib = "a=" "rtcp-xr" ":" [xr-format *(SP xr-format)] CRLF
 
-     xr-format = pkt-loss-rle
-               / pkt-dup-rle
-               / pkt-rcpt-times
-               / rcvr-rtt
-               / stat-summary
-               / voip-metrics
-               / format-ext
+    xr-format = pkt-loss-rle
+            / pkt-dup-rle
+            / pkt-rcpt-times
+            / rcvr-rtt
+            / stat-summary
+            / voip-metrics
+            / format-ext
 
-     pkt-loss-rle   = "pkt-loss-rle" ["=" max-size]
-     pkt-dup-rle    = "pkt-dup-rle" ["=" max-size]
-     pkt-rcpt-times = "pkt-rcpt-times" ["=" max-size]
-     rcvr-rtt       = "rcvr-rtt" "=" rcvr-rtt-mode [":" max-size]
-     rcvr-rtt-mode  = "all"
-                    / "sender"
-     stat-summary   = "stat-summary" ["=" stat-flag *("," stat-flag)]
+    pkt-loss-rle   = "pkt-loss-rle" ["=" max-size]
+    pkt-dup-rle    = "pkt-dup-rle" ["=" max-size]
+    pkt-rcpt-times = "pkt-rcpt-times" ["=" max-size]
+    rcvr-rtt       = "rcvr-rtt" "=" rcvr-rtt-mode [":" max-size]
+    rcvr-rtt-mode  = "all"
+                / "sender"
+    stat-summary   = "stat-summary" ["=" stat-flag *("," stat-flag)]
 
-     stat-flag      = "loss"
-                    / "dup"
-                    / "jitt"
-                    / "TTL"
-                    / "HL"
-     voip-metrics   = "voip-metrics"
-     max-size       = 1*DIGIT ; maximum block size in octets
-     DIGIT          = %x30-39
-     format-ext     = non-ws-string
+    stat-flag      = "loss"
+                / "dup"
+                / "jitt"
+                / "TTL"
+                / "HL"
+    voip-metrics   = "voip-metrics"
+    max-size       = 1*DIGIT ; maximum block size in octets
+    DIGIT          = %x30-39
+    format-ext     = non-ws-string
 
-     non-ws-string  = 1*(%x21-FF)
-     CRLF           = %d13.10
+    non-ws-string  = 1*(%x21-FF)
+    CRLF           = %d13.10
+```
 
-   The "rtcp-xr" attribute contains zero, one, or more XR block related
-   parameters.  Each parameter signals functionality for an XR block, or
-   a group of XR blocks.  The attribute is extensible so that parameters
-   can be defined for any future XR block (and a parameter should be
-   defined for every future block).
+The "rtcp-xr" attribute contains zero, one, or more XR block related parameters.  Each parameter signals functionality for an XR block, or a group of XR blocks.  The attribute is extensible so that parameters can be defined for any future XR block (and a parameter should be defined for every future block).
 
-   Each "rtcp-xr" parameter belongs to one of two categories.  The first
-   category, the unilateral parameters, are for report blocks that
-   simply report on the RTP stream and related metrics.  The second
-   category, collaborative parameters, are for XR blocks that involve
-   actions by more than one party in order to carry out their functions.
+Each "rtcp-xr" parameter belongs to one of two categories.  The first category, the unilateral parameters, are for report blocks that simply report on the RTP stream and related metrics.  The second category, collaborative parameters, are for XR blocks that involve actions by more than one party in order to carry out their functions.
 
-   Round trip time (RTT) measurement is an example of collaborative
-   functionality.  An RTP data packet receiver sends a Receiver
-   Reference Time Report Block (Section 4.4).  A participant that
-   receives this block sends a DLRR Report Block (Section 4.5) in
-   response, allowing the receiver to calculate its RTT to that
-   participant.  As this example illustrates, collaborative
-   functionality may be implemented by two or more different XR blocks.
-   The collaborative functionality of several XR blocks may be governed
-   by a single "rtcp-xr" parameter.
+Round trip time (RTT) measurement is an example of collaborative functionality.  An RTP data packet receiver sends a Receiver Reference Time Report Block (Section 4.4).  A participant that receives this block sends a DLRR Report Block (Section 4.5) in response, allowing the receiver to calculate its RTT to that participant.  As this example illustrates, collaborative functionality may be implemented by two or more different XR blocks. The collaborative functionality of several XR blocks may be governed by a single "rtcp-xr" parameter.
 
-   For the unilateral category, this document defines the following
-   parameters.  The parameter names and their corresponding XR formats
-   are as follows:
+For the unilateral category, this document defines the following parameters.  The parameter names and their corresponding XR formats are as follows:
 
-      Parameter name    XR block (block type and name)
-      --------------    ------------------------------------
-      pkt-loss-rle      1  Loss RLE Report Block
-      pkt-dup-rle       2  Duplicate RLE Report Block
-      pkt-rcpt-times    3  Packet Receipt Times Report Block
-      stat-summary      6  Statistics Summary Report Block
-      voip-metrics      7  VoIP Metrics Report Block
+```
+    Parameter name    XR block (block type and name)
+    --------------    ------------------------------------
+    pkt-loss-rle      1  Loss RLE Report Block
+    pkt-dup-rle       2  Duplicate RLE Report Block
+    pkt-rcpt-times    3  Packet Receipt Times Report Block
+    stat-summary      6  Statistics Summary Report Block
+    voip-metrics      7  VoIP Metrics Report Block
+```
 
-   The "pkt-loss-rle", "pkt-dup-rle", and "pkt-rcpt-times" parameters
-   MAY specify an integer value.  This value indicates the largest size
-   the whole report block SHOULD have in octets.  This shall be seen as
-   an indication that thinning shall be applied if necessary to meet the
-   target size.
+The "pkt-loss-rle", "pkt-dup-rle", and "pkt-rcpt-times" parameters MAY specify an integer value.  This value indicates the largest size the whole report block SHOULD have in octets.  This shall be seen as an indication that thinning shall be applied if necessary to meet the target size.
 
-   The "stat-summary" parameter contains a list indicating which fields
-   SHOULD be included in the Statistics Summary report blocks that are
-   sent.  The list is a comma separated list, containing one or more
-   field indicators.  The space character (0x20) SHALL NOT be present
-   within the list.  Field indicators represent the flags defined in
-   Section 4.6.  The field indicators and their respective flags are as
-   follows:
+The "stat-summary" parameter contains a list indicating which fields SHOULD be included in the Statistics Summary report blocks that are sent.  The list is a comma separated list, containing one or more field indicators.  The space character (0x20) SHALL NOT be present within the list.  Field indicators represent the flags defined in Section 4.6.  The field indicators and their respective flags are as follows:
 
-      Indicator    Flag
-      ---------    ---------------------------
-      loss         loss report flag (L)
-      dup          duplicate report flag (D)
-      jitt         jitter flag (J)
-      TTL          TTL or Hop Limit flag (ToH)
-      HL           TTL or Hop Limit flag (ToH)
+```
+    Indicator    Flag
+    ---------    ---------------------------
+    loss         loss report flag (L)
+    dup          duplicate report flag (D)
+    jitt         jitter flag (J)
+    TTL          TTL or Hop Limit flag (ToH)
+    HL           TTL or Hop Limit flag (ToH)
+```
 
-   For "loss", "dup", and "jitt", the presence of the indicator
-   indicates that the corresponding flag should be set to 1 in the
-   Statistics Summary report blocks that are sent.  The presence of
-   "TTL" indicates that the corresponding flag should be set to 1.  The
-   presence of "HL" indicates that the corresponding flag should be set
-   to 2.  The indicators "TTL" and "HL" MUST NOT be signaled together.
+For "loss", "dup", and "jitt", the presence of the indicator indicates that the corresponding flag should be set to 1 in the Statistics Summary report blocks that are sent.  The presence of "TTL" indicates that the corresponding flag should be set to 1.  The presence of "HL" indicates that the corresponding flag should be set to 2.  The indicators "TTL" and "HL" MUST NOT be signaled together.
 
-   Blocks in the collaborative category are classified as initiator
-   blocks or response blocks.  Signaling SHOULD indicate which
-   participants are required to respond to the initiator block.  A party
-   that wishes to receive response blocks from those participants can
-   trigger this by sending an initiator block.
+Blocks in the collaborative category are classified as initiator blocks or response blocks.  Signaling SHOULD indicate which participants are required to respond to the initiator block.  A party that wishes to receive response blocks from those participants can trigger this by sending an initiator block.
 
-   The collaborative category currently consists only of one
-   functionality, namely the RTT measurement mechanism for RTP data
-   receivers.  The collective functionality of the Receiver Reference
-   Time Report Block and DLRR Report Block is represented by the "rcvr-
-   rtt" parameter.  This parameter takes as its arguments a mode value
-   and, optionally, a maximum size for the DLRR report block.  The mode
-   value "all" indicates that both RTP data senders and data receivers
-   MAY send DLRR blocks, while the mode value "sender" indicates that
-   only active RTP senders MAY send DLRR blocks, i.e., non RTP senders
-   SHALL NOT send DLRR blocks.  If a maximum size in octets is included,
-   any DLRR Report Blocks that are sent SHALL NOT exceed the specified
-   size.  If size limitations mean that a DLRR Report Block sender
-   cannot report in one block upon all participants from which it has
+The collaborative category currently consists only of one functionality, namely the RTT measurement mechanism for RTP data receivers.  The collective functionality of the Receiver Reference Time Report Block and DLRR Report Block is represented by the "rcvr- rtt" parameter.  This parameter takes as its arguments a mode value and, optionally, a maximum size for the DLRR report block.  The mode value "all" indicates that both RTP data senders and data receivers MAY send DLRR blocks, while the mode value "sender" indicates that only active RTP senders MAY send DLRR blocks, i.e., non RTP senders SHALL NOT send DLRR blocks.  If a maximum size in octets is included, any DLRR Report Blocks that are sent SHALL NOT exceed the specified size.  If size limitations mean that a DLRR Report Block sender cannot report in one block upon all participants from which it has received a Receiver Reference Time Report Block then it SHOULD report on participants in a round robin fashion across several report intervals.
 
+The "rtcp-xr" attributes parameter list MAY be empty.  This is useful in cases in which an application needs to signal that it understands the SDP signaling but does not wish to avail itself of XR functionality.  For example, an application in a SIP controlled session could signal that it wishes to stop using all XR blocks by removing all applicable SDP parameters in a re-INVITE message that it sends.  If XR blocks are not to be used at all from the beginning of a session, it is RECOMMENDED that the "rtcp-xr" attribute not be supplied at all.
 
-   received a Receiver Reference Time Report Block then it SHOULD report
-   on participants in a round robin fashion across several report
-   intervals.
+When the "rtcp-xr" attribute is present, participants SHOULD NOT send XR blocks other than the ones indicated by the parameters.  This means that inclusion of a "rtcp-xr" attribute without any parameters tells a participant that it SHOULD NOT send any XR blocks at all. The purpose is to conserve bandwidth.  This is especially important when collaborative parameters are applied to a large multicast group: the sending of an initiator block could potentially trigger responses from all participants.  There are, however, contexts in which it makes sense to send an XR block in the absence of a parameter signaling its use.  For instance, an application might be designed so as to send certain report blocks without negotiation, while using SDP signaling to negotiate the use of other blocks.
 
-   The "rtcp-xr" attributes parameter list MAY be empty.  This is useful
-   in cases in which an application needs to signal that it understands
-   the SDP signaling but does not wish to avail itself of XR
-   functionality.  For example, an application in a SIP controlled
-   session could signal that it wishes to stop using all XR blocks by
-   removing all applicable SDP parameters in a re-INVITE message that it
-   sends.  If XR blocks are not to be used at all from the beginning of
-   a session, it is RECOMMENDED that the "rtcp-xr" attribute not be
-   supplied at all.
+### 5.2.  Usage in Offer/Answer
 
-   When the "rtcp-xr" attribute is present, participants SHOULD NOT send
-   XR blocks other than the ones indicated by the parameters.  This
-   means that inclusion of a "rtcp-xr" attribute without any parameters
-   tells a participant that it SHOULD NOT send any XR blocks at all.
-   The purpose is to conserve bandwidth.  This is especially important
-   when collaborative parameters are applied to a large multicast group:
-   the sending of an initiator block could potentially trigger responses
-   from all participants.  There are, however, contexts in which it
-   makes sense to send an XR block in the absence of a parameter
-   signaling its use.  For instance, an application might be designed so
-   as to send certain report blocks without negotiation, while using SDP
-   signaling to negotiate the use of other blocks.
+In the Offer/Answer context [8], the interpretation of SDP signaling for XR packets depends upon the direction attribute that is signaled: "recvonly", "sendrecv", or "sendonly" [4].  If no direction attribute is supplied, then "sendrecv" is assumed.  This section applies only to unicast media streams, except where noted.  Discussion of unilateral parameters is followed by discussion of collaborative parameters in this section.
 
-5.2.  Usage in Offer/Answer
+For "sendonly" and "sendrecv" media stream offers that specify unilateral "rtcp-xr" attribute parameters, the answerer SHOULD send the corresponding XR blocks.  For "sendrecv" offers, the answerer MAY include the "rtcp-xr" attribute in its response, and specify any unilateral parameters in order to request that the offerer send the corresponding XR blocks.  The offerer SHOULD send these blocks.
 
-   In the Offer/Answer context [8], the interpretation of SDP signaling
-   for XR packets depends upon the direction attribute that is signaled:
-   "recvonly", "sendrecv", or "sendonly" [4].  If no direction attribute
-   is supplied, then "sendrecv" is assumed.  This section applies only
-   to unicast media streams, except where noted.  Discussion of
-   unilateral parameters is followed by discussion of collaborative
-   parameters in this section.
+For "recvonly" media stream offers, the offerer's use of the "rtcp-xr" attribute in connection with unilateral parameters indicates that the offerer is capable of sending the corresponding XR blocks.  If the answerer responds with an "rtcp-xr" attribute, the offerer SHOULD send XR blocks for each specified unilateral parameter that was in its offer.
 
-   For "sendonly" and "sendrecv" media stream offers that specify
-   unilateral "rtcp-xr" attribute parameters, the answerer SHOULD send
-   the corresponding XR blocks.  For "sendrecv" offers, the answerer MAY
-   include the "rtcp-xr" attribute in its response, and specify any
-   unilateral parameters in order to request that the offerer send the
-   corresponding XR blocks.  The offerer SHOULD send these blocks.
+For multicast media streams, the inclusion of an "rtcp-xr" attribute with unilateral parameters means that every media recipient SHOULD send the corresponding XR blocks.
 
-   For "recvonly" media stream offers, the offerer's use of the "rtcp-
-   xr" attribute in connection with unilateral parameters indicates that
-   the offerer is capable of sending the corresponding XR blocks.  If
+An SDP offer with a collaborative parameter declares the offerer capable of receiving the corresponding initiator and replying with the appropriate responses.  For example, an offer that specifies the "rcvr-rtt" parameter means that the offerer is prepared to receive Receiver Reference Time Report Blocks and to send DLRR Report Blocks. An offer of a collaborative parameter means that the answerer MAY send the initiator, and, having received the initiator, the offerer SHOULD send the responses.
 
-   the answerer responds with an "rtcp-xr" attribute, the offerer SHOULD
-   send XR blocks for each specified unilateral parameter that was in
-   its offer.
+There are exceptions to the rule that an offerer of a collaborative parameter should send responses.  For instance, the collaborative parameter might specify a mode that excludes the offerer; or congestion control or maximum transmission unit considerations might militate against the offerer's response.
 
-   For multicast media streams, the inclusion of an "rtcp-xr" attribute
-   with unilateral parameters means that every media recipient SHOULD
-   send the corresponding XR blocks.
+By including a collaborative parameter in its answer, the answerer declares its ability to receive initiators and to send responses. The offerer MAY then send initiators, to which the answerer SHOULD reply with responses.  As for the offer of a collaborative parameter, there are exceptions to the rule that the answerer should reply.
 
-   An SDP offer with a collaborative parameter declares the offerer
-   capable of receiving the corresponding initiator and replying with
-   the appropriate responses.  For example, an offer that specifies the
-   "rcvr-rtt" parameter means that the offerer is prepared to receive
-   Receiver Reference Time Report Blocks and to send DLRR Report Blocks.
-   An offer of a collaborative parameter means that the answerer MAY
-   send the initiator, and, having received the initiator, the offerer
-   SHOULD send the responses.
+When making an SDP offer of a collaborative parameter for a multicast media stream, the offerer SHOULD specify which participants are to respond to a received initiator.  A participant that is not specified SHOULD NOT send responses.  Otherwise, undue bandwidth might be consumed.  The offer indicates that each participant that is specified SHOULD respond if it receives an initiator.  It also indicates that a specified participant MAY send an initiator block.
 
-   There are exceptions to the rule that an offerer of a collaborative
-   parameter should send responses.  For instance, the collaborative
-   parameter might specify a mode that excludes the offerer; or
-   congestion control or maximum transmission unit considerations might
-   militate against the offerer's response.
+An SDP answer for a multicast media stream SHOULD include all collaborative parameters that are present in the offer and that are supported by the answerer.  It SHOULD NOT include any collaborative parameter that is absent from the offer.
 
-   By including a collaborative parameter in its answer, the answerer
-   declares its ability to receive initiators and to send responses.
-   The offerer MAY then send initiators, to which the answerer SHOULD
-   reply with responses.  As for the offer of a collaborative parameter,
-   there are exceptions to the rule that the answerer should reply.
+If a participant receives an SDP offer and understands the "rtcp-xr" attribute but does not wish to implement XR functionality offered, its answer SHOULD include an "rtcp-xr" attribute without parameters. By doing so, the party declares that, at a minimum, is capable of understanding the signaling.
 
-   When making an SDP offer of a collaborative parameter for a multicast
-   media stream, the offerer SHOULD specify which participants are to
-   respond to a received initiator.  A participant that is not specified
-   SHOULD NOT send responses.  Otherwise, undue bandwidth might be
-   consumed.  The offer indicates that each participant that is
-   specified SHOULD respond if it receives an initiator.  It also
-   indicates that a specified participant MAY send an initiator block.
+### 5.3.  Usage Outside of Offer/Answer
 
-   An SDP answer for a multicast media stream SHOULD include all
-   collaborative parameters that are present in the offer and that are
-   supported by the answerer.  It SHOULD NOT include any collaborative
-   parameter that is absent from the offer.
+SDP can be employed outside of the Offer/Answer context, for instance for multimedia sessions that are announced through the Session Announcement Protocol (SAP) [15], or streamed through the Real Time Streaming Protocol (RTSP) [17].  The signaling model is simpler, as the sender does not negotiate parameters, but the functionality expected from specifying the "rtcp-xr" attribute is the same as in Offer/Answer.
 
-   If a participant receives an SDP offer and understands the "rtcp-xr"
-   attribute but does not wish to implement XR functionality offered,
-   its answer SHOULD include an "rtcp-xr" attribute without parameters.
-   By doing so, the party declares that, at a minimum, is capable of
-   understanding the signaling.
+When a unilateral parameter is specified for the "rtcp-xr" attribute associated with a media stream, the receiver of that stream SHOULD send the corresponding XR block.  When a collaborative parameter is specified, only the participants indicated by the mode value in the collaborative parameter are concerned.  Each such participant that receives an initiator block SHOULD send the corresponding response block.  Each such participant MAY also send initiator blocks.
 
+## 6.  IANA Considerations
 
-5.3.  Usage Outside of Offer/Answer
+This document defines a new RTCP packet type, the Extended Report (XR) type, within the existing Internet Assigned Numbers Authority (IANA) registry of RTP RTCP Control Packet Types.  This document also defines a new IANA registry: the registry of RTCP XR Block Types. Within this new registry, this document defines an initial set of seven block types and describes how the remaining types are to be allocated.
 
-   SDP can be employed outside of the Offer/Answer context, for instance
-   for multimedia sessions that are announced through the Session
-   Announcement Protocol (SAP) [15], or streamed through the Real Time
-   Streaming Protocol (RTSP) [17].  The signaling model is simpler, as
-   the sender does not negotiate parameters, but the functionality
-   expected from specifying the "rtcp-xr" attribute is the same as in
-   Offer/Answer.
+Further, this document defines a new SDP attribute, "rtcp-xr", within the existing IANA registry of SDP Parameters.  It defines a new IANA registry, the registry of RTCP XR SDP Parameters, and an initial set of six parameters, and describes how additional parameters are to be allocated.
 
-   When a unilateral parameter is specified for the "rtcp-xr" attribute
-   associated with a media stream, the receiver of that stream SHOULD
-   send the corresponding XR block.  When a collaborative parameter is
-   specified, only the participants indicated by the mode value in the
-   collaborative parameter are concerned.  Each such participant that
-   receives an initiator block SHOULD send the corresponding response
-   block.  Each such participant MAY also send initiator blocks.
+### 6.1.  XR Packet Type
 
-1.  IANA Considerations
+The XR packet type defined by this document is registered with the IANA as packet type 207 in the registry of RTP RTCP Control Packet types (PT).
 
-   This document defines a new RTCP packet type, the Extended Report
-   (XR) type, within the existing Internet Assigned Numbers Authority
-   (IANA) registry of RTP RTCP Control Packet Types.  This document also
-   defines a new IANA registry: the registry of RTCP XR Block Types.
-   Within this new registry, this document defines an initial set of
-   seven block types and describes how the remaining types are to be
-   allocated.
+### 6.2.  RTCP XR Block Type Registry
 
-   Further, this document defines a new SDP attribute, "rtcp-xr", within
-   the existing IANA registry of SDP Parameters.  It defines a new IANA
-   registry, the registry of RTCP XR SDP Parameters, and an initial set
-   of six parameters, and describes how additional parameters are to be
-   allocated.
+This document creates an IANA registry called the RTCP XR Block Type Registry to cover the name space of the Extended Report block type (BT) field specified in Section 3.  The BT field contains eight bits, allowing 256 values.  The RTCP XR Block Type Registry is to be managed by the IANA according to the Specification Required policy of
 
-6.1.  XR Packet Type
+RFC 2434 [7].  Future specifications SHOULD attribute block type values in strict numeric order following the values attributed in this document:
 
-   The XR packet type defined by this document is registered with the
-   IANA as packet type 207 in the registry of RTP RTCP Control Packet
-   types (PT).
-
-6.2.  RTCP XR Block Type Registry
-
-   This document creates an IANA registry called the RTCP XR Block Type
-   Registry to cover the name space of the Extended Report block type
-   (BT) field specified in Section 3.  The BT field contains eight bits,
-   allowing 256 values.  The RTCP XR Block Type Registry is to be
-   managed by the IANA according to the Specification Required policy of
-
-   RFC 2434 [7].  Future specifications SHOULD attribute block type
-   values in strict numeric order following the values attributed in
-   this document:
-
+```
       BT  name
       --  ----
        1  Loss RLE Report Block
@@ -1243,27 +1072,21 @@ The values reported in these fields SHOULD be the most recently obtained values 
        7  VoIP Metrics Report Block
 
       The BT value 255 is reserved for future extensions.
+```
 
-   Furthermore, future specifications SHOULD avoid the value 0.  Doing
-   so facilitates packet validity checking, since an all-zeros field
-   might commonly be found in an ill-formed packet.
+Furthermore, future specifications SHOULD avoid the value 0.  Doing so facilitates packet validity checking, since an all-zeros field might commonly be found in an ill-formed packet.
 
-   Any registration MUST contain the following information:
+Any registration MUST contain the following information:
 
-   -  Contact information of the one doing the registration, including
-      at least name, address, and email.
+-  Contact information of the one doing the registration, including at least name, address, and email.
+-  The format of the block type being registered, consistent with the extended report block format described in Section 3.
+-  A description of what the block type represents and how it shall be interpreted, detailing this information for each of its fields.
 
-   -  The format of the block type being registered, consistent with the
-      extended report block format described in Section 3.
+### 6.3.  The "rtcp-xr" SDP Attribute
 
-   -  A description of what the block type represents and how it shall
-      be interpreted, detailing this information for each of its fields.
+The SDP attribute "rtcp-xr" defined by this document is registered with the IANA registry of SDP Parameters as follows:
 
-6.3.  The "rtcp-xr" SDP Attribute
-
-   The SDP attribute "rtcp-xr" defined by this document is registered
-   with the IANA registry of SDP Parameters as follows:
-
+```
    SDP Attribute ("att-field"):
 
      Attribute name:     rtcp-xr
@@ -1274,308 +1097,216 @@ The values reported in these fields SHOULD be the most recently obtained values 
      Purpose:            see Section 5 of this document
      Reference:          this document
      Values:             see this document and registrations below
+```
+
+The attribute has an extensible parameter field and therefore a registry for these parameters is required.  This document creates an IANA registry called the RTCP XR SDP Parameters Registry.  It contains the six parameters defined in Section 5.1: "pkt-loss-rle", "pkt-dup-rle", "pkt-rcpt-times", "stat-summary", "voip-metrics", and "recv-rtt".
+
+Additional parameters are to be added to this registry in accordance with the Specification Required policy of RFC 2434 [7].  Any registration MUST contain the following information:
+
+-  Contact information of the one doing the registration, including at least name, address, and email.
+-  An Augmented Backus-Naur Form (ABNF) [2] definition of the parameter, in accordance with the "format-ext" definition of Section 5.1.
+-  A description of what the parameter represents and how it shall be interpreted, both normally and in Offer/Answer.
+
+## 7.  Security Considerations
+
+This document extends the RTCP reporting mechanism.  The security considerations that apply to RTCP reports [9, Appendix B] also apply to XR reports.  This section details the additional security considerations that apply to the extensions.
+
+The extensions introduce heightened confidentiality concerns. Standard RTCP reports contain a limited number of summary statistics. The information contained in XR reports is both more detailed and more extensive (covering a larger number of parameters).  The per- packet report blocks and the VoIP Metrics Report Block provide examples.
+
+The per-packet information contained in Loss RLE, Duplicate RLE, and Packet Receipt Times Report Blocks facilitates multicast inference of network characteristics (MINC) [11].  Such inference can reveal the gross topology of a multicast distribution tree, as well as parameters, such as the loss rates and delays, along paths between branching points in that tree.  Such information might be considered sensitive to autonomous system administrators.
+
+The VoIP Metrics Report Block provides information on the quality of ongoing voice calls.  Though such information might be carried in an application specific format in standard RTP sessions, making it available in a standard format here makes it more available to potential eavesdroppers.
+
+No new mechanisms are introduced in this document to ensure confidentiality.  Encryption procedures, such as those being suggested for a Secure RTCP (SRTCP) [12] at the time that this document was written, can be used when confidentiality is a concern to end hosts.  Given that RTCP traffic can be encrypted by the end hosts, autonomous systems must be prepared for the fact that certain aspects of their network topology can be revealed.
+
+Any encryption or filtering of XR report blocks entails a loss of monitoring information to third parties.  For example, a network that establishes a tunnel to encrypt VoIP Report Blocks denies that information to the service providers traversed by the tunnel.  The service providers cannot then monitor or respond to the quality of the VoIP calls that they carry, potentially creating problems for the network's users.  As a default, XR packets should not be encrypted or filtered.
+
+The extensions also make certain denial of service attacks easier. This is because of the potential to create RTCP packets much larger than average with the per packet reporting capabilities of the Loss RLE, Duplicate RLE, and Timestamp Report Blocks.  Because of the automatic bandwidth adjustment mechanisms in RTCP, if some session participants are sending large RTCP packets, all participants will see their RTCP reporting intervals lengthened, meaning they will be able to report less frequently.  To limit the effects of large packets, even in the absence of denial of service attacks, applications SHOULD place an upper limit on the size of the XR report blocks they employ.  The "thinning" techniques described in Section 4.1 permit the packet-by-packet report blocks to adhere to a predefined size limit.
 
 
-   The attribute has an extensible parameter field and therefore a
-   registry for these parameters is required.  This document creates an
-   IANA registry called the RTCP XR SDP Parameters Registry.  It
-   contains the six parameters defined in Section 5.1: "pkt-loss-rle",
-   "pkt-dup-rle", "pkt-rcpt-times", "stat-summary", "voip-metrics", and
-   "recv-rtt".
+## A.  Algorithms
 
-   Additional parameters are to be added to this registry in accordance
-   with the Specification Required policy of RFC 2434 [7].  Any
-   registration MUST contain the following information:
+### A.1.  Sequence Number Interpretation
 
-   -  Contact information of the one doing the registration, including
-      at least name, address, and email.
+This is the algorithm suggested by Section 4.1 for keeping track of the sequence numbers from a given sender.  It implements the accounting practice required for the generation of Loss RLE Report Blocks.
 
-   -  An Augmented Backus-Naur Form (ABNF) [2] definition of the
-      parameter, in accordance with the "format-ext" definition of
-      Section 5.1.
+This algorithm keeps track of 16 bit sequence numbers by translating them into a 32 bit sequence number space.  The first packet received from a source is considered to have arrived roughly in the middle of that space.  Each packet that follows is placed either ahead of or behind the prior one in this 32 bit space, depending upon which choice would place it closer (or, in the event of a tie, which choice would not require a rollover in the 16 bit sequence number).
 
-   -  A description of what the parameter represents and how it shall be
-      interpreted, both normally and in Offer/Answer.
+```
+// The reference sequence number is an extended sequence number
+// that serves as the basis for determining whether a new 16 bit
+// sequence number comes earlier or later in the 32 bit sequence
+// space.
+u_int32 _src_ref_seq;
+bool    _uninitialized_src_ref_seq;
 
-1.  Security Considerations
+// Place seq into a 32-bit sequence number space based upon a
+// heuristic for its most likely location.
+u_int32 extend_seq(const u_int16 seq) {
 
-   This document extends the RTCP reporting mechanism.  The security
-   considerations that apply to RTCP reports [9, Appendix B] also apply
-   to XR reports.  This section details the additional security
-   considerations that apply to the extensions.
+        u_int32 extended_seq, seq_a, seq_b, diff_a, diff_b;
+        if(_uninitialized_src_ref_seq) {
 
-   The extensions introduce heightened confidentiality concerns.
-   Standard RTCP reports contain a limited number of summary statistics.
-   The information contained in XR reports is both more detailed and
-   more extensive (covering a larger number of parameters).  The per-
-   packet report blocks and the VoIP Metrics Report Block provide
-   examples.
+                // This is the first sequence number received.  Place
+                // it in the middle of the extended sequence number
+                // space.
+                _src_ref_seq                = seq | 0x80000000u;
+                _uninitialized_src_ref_seq  = false;
+                extended_seq                = _src_ref_seq;
+        }
+        else {
 
-   The per-packet information contained in Loss RLE, Duplicate RLE, and
-   Packet Receipt Times Report Blocks facilitates multicast inference of
-   network characteristics (MINC) [11].  Such inference can reveal the
-   gross topology of a multicast distribution tree, as well as
-   parameters, such as the loss rates and delays, along paths between
-   branching points in that tree.  Such information might be considered
-   sensitive to autonomous system administrators.
-
-   The VoIP Metrics Report Block provides information on the quality of
-   ongoing voice calls.  Though such information might be carried in an
-   application specific format in standard RTP sessions, making it
-   available in a standard format here makes it more available to
-   potential eavesdroppers.
-
-   No new mechanisms are introduced in this document to ensure
-   confidentiality.  Encryption procedures, such as those being
-   suggested for a Secure RTCP (SRTCP) [12] at the time that this
-   document was written, can be used when confidentiality is a concern
-   to end hosts.  Given that RTCP traffic can be encrypted by the end
-   hosts, autonomous systems must be prepared for the fact that certain
-   aspects of their network topology can be revealed.
-
-   Any encryption or filtering of XR report blocks entails a loss of
-   monitoring information to third parties.  For example, a network that
-   establishes a tunnel to encrypt VoIP Report Blocks denies that
-   information to the service providers traversed by the tunnel.  The
-   service providers cannot then monitor or respond to the quality of
-   the VoIP calls that they carry, potentially creating problems for the
-   network's users.  As a default, XR packets should not be encrypted or
-   filtered.
-
-   The extensions also make certain denial of service attacks easier.
-   This is because of the potential to create RTCP packets much larger
-   than average with the per packet reporting capabilities of the Loss
-   RLE, Duplicate RLE, and Timestamp Report Blocks.  Because of the
-   automatic bandwidth adjustment mechanisms in RTCP, if some session
-   participants are sending large RTCP packets, all participants will
-   see their RTCP reporting intervals lengthened, meaning they will be
-   able to report less frequently.  To limit the effects of large
-   packets, even in the absence of denial of service attacks,
-   applications SHOULD place an upper limit on the size of the XR report
-   blocks they employ.  The "thinning" techniques described in Section
-   4.1 permit the packet-by-packet report blocks to adhere to a
-   predefined size limit.
+                // Prior sequence numbers have been received.
+                // Propose two candidates for the extended sequence
+                // number: seq_a is without wraparound, seq_b with
+                // wraparound.
+                seq_a = seq | (_src_ref_seq & 0xFFFF0000u);
+                if(_src_ref_seq < seq_a) {
+                        seq_b  = seq_a - 0x00010000u;
+                        diff_a = seq_a - _src_ref_seq;
 
 
+                        diff_b = _src_ref_seq - seq_b;
+                }
+                else {
+                        seq_b  = seq_a + 0x00010000u;
+                        diff_a = _src_ref_seq - seq_a;
+                        diff_b = seq_b - _src_ref_seq;
+                }
 
-A.  Algorithms
+                // Choose the closer candidate.  If they are equally
+                // close, the choice is somewhat arbitrary: we choose
+                // the candidate for which no rollover is necessary.
+                if(diff_a < diff_b) {
+                        extended_seq = seq_a;
+                }
+                else {
+                        extended_seq = seq_b;
+                }
 
-A.1.  Sequence Number Interpretation
+                // Set the reference sequence number to be this most
+                // recently-received sequence number.
+                _src_ref_seq = extended_seq;
+        }
 
-   This is the algorithm suggested by Section 4.1 for keeping track of
-   the sequence numbers from a given sender.  It implements the
-   accounting practice required for the generation of Loss RLE Report
-   Blocks.
+        // Return our best guess for a 32-bit sequence number that
+        // corresponds to the 16-bit number we were given.
+        return extended_seq;
+}
+```
 
-   This algorithm keeps track of 16 bit sequence numbers by translating
-   them into a 32 bit sequence number space.  The first packet received
-   from a source is considered to have arrived roughly in the middle of
-   that space.  Each packet that follows is placed either ahead of or
-   behind the prior one in this 32 bit space, depending upon which
-   choice would place it closer (or, in the event of a tie, which choice
-   would not require a rollover in the 16 bit sequence number).
+### A.2.  Example Burst Packet Loss Calculation.
 
-   // The reference sequence number is an extended sequence number
-   // that serves as the basis for determining whether a new 16 bit
-   // sequence number comes earlier or later in the 32 bit sequence
-   // space.
-   u_int32 _src_ref_seq;
-   bool    _uninitialized_src_ref_seq;
+This is an algorithm for measuring the burst characteristics for the VoIP Metrics Report Block (Section 4.7).  The algorithm, which has been verified against a working implementation for correctness, is reproduced from ETSI TS 101 329-5 [3].  The algorithm, as described here, takes precedence over any change that might eventually be made to the algorithm in future ETSI documents.
 
-   // Place seq into a 32-bit sequence number space based upon a
-   // heuristic for its most likely location.
-   u_int32 extend_seq(const u_int16 seq) {
+This algorithm is event driven and hence extremely computationally efficient.
 
-           u_int32 extended_seq, seq_a, seq_b, diff_a, diff_b;
-           if(_uninitialized_src_ref_seq) {
+Given the following definition of states:
 
-                   // This is the first sequence number received.  Place
-                   // it in the middle of the extended sequence number
-                   // space.
-                   _src_ref_seq                = seq | 0x80000000u;
-                   _uninitialized_src_ref_seq  = false;
-                   extended_seq                = _src_ref_seq;
-           }
-           else {
+```
+    state 1 = received a packet during a gap
+    state 2 = received a packet during a burst
+    state 3 = lost a packet during a burst
+    state 4 = lost an isolated packet during a gap
+```
 
-                   // Prior sequence numbers have been received.
-                   // Propose two candidates for the extended sequence
-                   // number: seq_a is without wraparound, seq_b with
-                   // wraparound.
-                   seq_a = seq | (_src_ref_seq & 0xFFFF0000u);
-                   if(_src_ref_seq < seq_a) {
-                           seq_b  = seq_a - 0x00010000u;
-                           diff_a = seq_a - _src_ref_seq;
+The "c" variables below correspond to state transition counts, i.e., c14 is the transition from state 1 to state 4.  It is possible to infer one of a pair of state transition counts to an accuracy of 1 which is generally sufficient for this application.
 
+"pkt" is the count of packets received since the last packet was declared lost or discarded, and "lost" is the number of packets lost within the current burst.  "packet_lost" and "packet_discarded" are Boolean variables that indicate if the event that resulted in this function being invoked was a lost or discarded packet.
 
-                           diff_b = _src_ref_seq - seq_b;
-                   }
-                   else {
-                           seq_b  = seq_a + 0x00010000u;
-                           diff_a = _src_ref_seq - seq_a;
-                           diff_b = seq_b - _src_ref_seq;
-                   }
+```
+if(packet_lost) {
+        loss_count++;
+}
+if(packet_discarded) {
+        discard_count++;
+}
+if(!packet_lost && !packet_discarded) {
+        pkt++;
+}
+else {
+        if(pkt >= gmin) {
+                if(lost == 1) {
+                        c14++;
+                }
+                else {
+                        c13++;
+                }
+                lost = 1;
+                c11 += pkt;
+        }
+        else {
+                lost++;
+                if(pkt == 0) {
+                        c33++;
+                }
+                else {
+                        c23++;
+                        c22 += (pkt - 1);
+                }
+        }
+        pkt = 0;
+}
+```
 
-                   // Choose the closer candidate.  If they are equally
-                   // close, the choice is somewhat arbitrary: we choose
-                   // the candidate for which no rollover is necessary.
-                   if(diff_a < diff_b) {
-                           extended_seq = seq_a;
-                   }
-                   else {
-                           extended_seq = seq_b;
-                   }
+At each reporting interval the burst and gap metrics can be calculated as follows.
 
-                   // Set the reference sequence number to be this most
-                   // recently-received sequence number.
-                   _src_ref_seq = extended_seq;
-           }
+```
+// Calculate additional transition counts.
+c31 = c13;
+c32 = c23;
+ctotal = c11 + c14 + c13 + c22 + c23 + c31 + c32 + c33;
 
-           // Return our best guess for a 32-bit sequence number that
-           // corresponds to the 16-bit number we were given.
-           return extended_seq;
-   }
+// Calculate burst and densities.
+p32 = c32 / (c31 + c32 + c33);
+if((c22 + c23) < 1) {
+        p23 = 1;
+}
+else {
+        p23 = 1 - c22/(c22 + c23);
+}
+burst_density = 256 * p23 / (p23 + p32);
+gap_density = 256 * c14 / (c11 + c14);
 
-A.2.  Example Burst Packet Loss Calculation.
+// Calculate burst and gap durations in ms
+m = frameDuration_in_ms * framesPerRTPPkt;
+gap_length = (c11 + c14 + c13) * m / c13;
+burst_length = ctotal * m / c13 - lgap;
 
-   This is an algorithm for measuring the burst characteristics for the
-   VoIP Metrics Report Block (Section 4.7).  The algorithm, which has
-   been verified against a working implementation for correctness, is
-   reproduced from ETSI TS 101 329-5 [3].  The algorithm, as described
-   here, takes precedence over any change that might eventually be made
-   to the algorithm in future ETSI documents.
+/* calculate loss and discard rates */
+loss_rate = 256 * loss_count / ctotal;
+discard_rate = 256 * discard_count / ctotal;
+```
 
-   This algorithm is event driven and hence extremely computationally
-   efficient.
+**Intellectual Property Notice**
 
-   Given the following definition of states:
+The IETF takes no position regarding the validity or scope of any intellectual property or other rights that might be claimed to pertain to the implementation or use of the technology described in this document or the extent to which any license under such rights might or might not be available; neither does it represent that it has made any effort to identify any such rights.  Information on the IETF's procedures with respect to rights in standards-track and standards-related documentation can be found in BCP 11 [5].  Copies of claims of rights made available for publication and any assurances of licenses to be made available, or the result of an attempt made to obtain a general license or permission for the use of such proprietary rights by implementors or users of this specification can be obtained from the IETF Secretariat.
 
-      state 1 = received a packet during a gap
-      state 2 = received a packet during a burst
-      state 3 = lost a packet during a burst
-      state 4 = lost an isolated packet during a gap
+The IETF invites any interested party to bring to its attention any copyrights, patents or patent applications, or other proprietary rights which may cover technology that may be required to practice this standard.  Please address the information to the IETF Executive Director.
 
+**Acknowledgments**
 
-   The "c" variables below correspond to state transition counts, i.e.,
-   c14 is the transition from state 1 to state 4.  It is possible to
-   infer one of a pair of state transition counts to an accuracy of 1
-   which is generally sufficient for this application.
+We thank the following people: Colin Perkins, Steve Casner, and Henning Schulzrinne for their considered guidance; Sue Moon for helping foster collaboration between the authors; Mounir Benzaid for drawing our attention to the reporting needs of MLDA; Dorgham Sisalem and Adam Wolisz for encouraging us to incorporate MLDA block types; and Jose Rey for valuable review of the SDP Signaling section.
 
-   "pkt" is the count of packets received since the last packet was
-   declared lost or discarded, and "lost" is the number of packets lost
-   within the current burst.  "packet_lost" and "packet_discarded" are
-   Boolean variables that indicate if the event that resulted in this
-   function being invoked was a lost or discarded packet.
+**Contributors**
 
-   if(packet_lost) {
-           loss_count++;
-   }
-   if(packet_discarded) {
-           discard_count++;
-   }
-   if(!packet_lost && !packet_discarded) {
-           pkt++;
-   }
-   else {
-           if(pkt >= gmin) {
-                   if(lost == 1) {
-                           c14++;
-                   }
-                   else {
-                           c13++;
-                   }
-                   lost = 1;
-                   c11 += pkt;
-           }
-           else {
-                   lost++;
-                   if(pkt == 0) {
-                           c33++;
-                   }
-                   else {
-                           c23++;
-                           c22 += (pkt - 1);
-                   }
-           }
-           pkt = 0;
-   }
+The following people are the authors of this document:
 
-   At each reporting interval the burst and gap metrics can be
-   calculated as follows.
+```
+    Kevin Almeroth, UCSB
+    Ramon Caceres, IBM Research
+    Alan Clark, Telchemy
+    Robert G. Cole, JHU Applied Physics Laboratory
+    Nick Duffield, AT&T Labs-Research
+    Timur Friedman, Paris 6
+    Kaynam Hedayat, Brix Networks
+    Kamil Sarac, UT Dallas
+    Magnus Westerlund, Ericsson
+```
 
-   // Calculate additional transition counts.
-   c31 = c13;
-   c32 = c23;
-   ctotal = c11 + c14 + c13 + c22 + c23 + c31 + c32 + c33;
+The principal people to contact regarding the individual report blocks described in this document are as follows:
 
-   // Calculate burst and densities.
-   p32 = c32 / (c31 + c32 + c33);
-   if((c22 + c23) < 1) {
-           p23 = 1;
-   }
-   else {
-           p23 = 1 - c22/(c22 + c23);
-   }
-   burst_density = 256 * p23 / (p23 + p32);
-   gap_density = 256 * c14 / (c11 + c14);
-
-   // Calculate burst and gap durations in ms
-   m = frameDuration_in_ms * framesPerRTPPkt;
-   gap_length = (c11 + c14 + c13) * m / c13;
-   burst_length = ctotal * m / c13 - lgap;
-
-   /* calculate loss and discard rates */
-   loss_rate = 256 * loss_count / ctotal;
-   discard_rate = 256 * discard_count / ctotal;
-
-Intellectual Property Notice
-
-   The IETF takes no position regarding the validity or scope of any
-   intellectual property or other rights that might be claimed to
-   pertain to the implementation or use of the technology described in
-   this document or the extent to which any license under such rights
-   might or might not be available; neither does it represent that it
-   has made any effort to identify any such rights.  Information on the
-   IETF's procedures with respect to rights in standards-track and
-   standards-related documentation can be found in BCP 11 [5].  Copies
-   of claims of rights made available for publication and any assurances
-   of licenses to be made available, or the result of an attempt made to
-   obtain a general license or permission for the use of such
-   proprietary rights by implementors or users of this specification can
-   be obtained from the IETF Secretariat.
-
-   The IETF invites any interested party to bring to its attention any
-   copyrights, patents or patent applications, or other proprietary
-   rights which may cover technology that may be required to practice
-   this standard.  Please address the information to the IETF Executive
-   Director.
-
-Acknowledgments
-
-   We thank the following people: Colin Perkins, Steve Casner, and
-   Henning Schulzrinne for their considered guidance; Sue Moon for
-   helping foster collaboration between the authors; Mounir Benzaid for
-   drawing our attention to the reporting needs of MLDA; Dorgham Sisalem
-   and Adam Wolisz for encouraging us to incorporate MLDA block types;
-   and Jose Rey for valuable review of the SDP Signaling section.
-
-Contributors
-
-   The following people are the authors of this document:
-
-     Kevin Almeroth, UCSB
-     Ramon Caceres, IBM Research
-     Alan Clark, Telchemy
-     Robert G. Cole, JHU Applied Physics Laboratory
-     Nick Duffield, AT&T Labs-Research
-     Timur Friedman, Paris 6
-     Kaynam Hedayat, Brix Networks
-     Kamil Sarac, UT Dallas
-     Magnus Westerlund, Ericsson
-
-   The principal people to contact regarding the individual report
-   blocks described in this document are as follows:
-
+```
    sec. report block                         principal contributors
    ---- ------------                         ----------------------
    4.1  Loss RLE Report Block                Friedman, Caceres, Duffield
@@ -1585,78 +1316,37 @@ Contributors
    4.5  DLRR Report Block                    Friedman
    4.6  Statistics Summary Report Block      Almeroth, Sarac
    4.7  VoIP Metrics Report Block            Clark, Cole, Hedayat
+```
 
-   The principal person to contact regarding the SDP signaling described
-   in this document is Magnus Westerlund.
+The principal person to contact regarding the SDP signaling described in this document is Magnus Westerlund.
 
-References
+## References
 
-Normative References
+### Normative References
 
-   [1]  Bradner, S., "Key words for use in RFCs to Indicate Requirement
-        Levels", BCP 14, RFC 2119, March 1997.
+- [1]  Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, March 1997.
+- [2]  Crocker, D., Ed. and P. Overell, "Augmented BNF for Syntax Specifications: ABNF", RFC 2234, November 1997.
+- [3]  ETSI, "Quality of Service (QoS) measurement methodologies", ETSI TS 101 329-5 V1.1.1 (2000-11), November 2000.
+- [4]  Handley, M. and V. Jacobson, "SDP: Session Description Protocol", RFC 2327, April 1998.
+- [5]  Hovey, R. and S. Bradner, "The Organizations Involved in the IETF Standards Process", BCP 11, RFC 2028, October 1996.
+- [6]  ITU-T, "The E-Model, a computational model for use in transmission planning", Recommendation G.107, January 2003.
+- [7]  Narten, T. and H. Alvestrand, "Guidelines for Writing an IANA Considerations Section in RFCs", BCP 26, RFC 2434, October 1998.
+- [8]  Rosenberg, J. and H. Schulzrinne, "An Offer/Answer Model with the Session Description Protocol (SDP)", RFC 3264, June 2002.
+- [9]  Schulzrinne, H., Casner, S., Frederick, R. and V. Jacobson, "RTP: A Transport Protocol for Real-Time Applications", RFC 3550, July 2003.
+- [10] TIA/EIA-810-A Transmission Requirements for Narrowband Voice over IP and Voice over PCM Digital Wireline Telephones, December 2000.
 
-   [2]  Crocker, D., Ed. and P. Overell, "Augmented BNF for Syntax
-        Specifications: ABNF", RFC 2234, November 1997.
+### Informative References
 
-   [3]  ETSI, "Quality of Service (QoS) measurement methodologies", ETSI
-        TS 101 329-5 V1.1.1 (2000-11), November 2000.
+- [11] Adams, A., Bu, T., Caceres, R., Duffield, N.G., Friedman, T., Horowitz, J., Lo Presti, F., Moon, S.B., Paxson, V. and D. Towsley, "The Use of End-to-End Multicast Measurements for Characterizing Internal Network Behavior", IEEE Communications Magazine, May 2000.
+- [12] Baugher, McGrew, Oran, Blom, Carrara, Naslund and Norrman, "The Secure Real-time Transport Protocol", Work in Progress.
+- [13] Caceres, R., Duffield, N.G. and T. Friedman, "Impromptu measurement infrastructures using RTP", Proc. IEEE Infocom 2002.
+- [14] Clark, A.D., "Modeling the Effects of Burst Packet Loss and Recency on Subjective Voice Quality", Proc. IP Telephony Workshop 2001.
+- [15] Handley, M., Perkins, C. and E. Whelan, "Session Announcement Protocol", RFC 2974, October 2000.
+- [16] Reynolds, J., Ed., "Assigned Numbers: RFC 1700 is Replaced by an On-line Database", RFC 3232, January 2002.
+- [17] Schulzrinne, H., Rao, A. and R. Lanphier, "Real Time Streaming Protocol (RTSP)", RFC 2326, April 1998.
+- [18] Sisalem D. and A. Wolisz, "MLDA: A TCP-friendly Congestion Control Framework for Heterogeneous Multicast Environments", Proc. IWQoS 2000.
 
-   [4]  Handley, M. and V. Jacobson, "SDP: Session Description
-        Protocol", RFC 2327, April 1998.
-
-   [5]  Hovey, R. and S. Bradner, "The Organizations Involved in the
-        IETF Standards Process", BCP 11, RFC 2028, October 1996.
-
-   [6]  ITU-T, "The E-Model, a computational model for use in
-        transmission planning", Recommendation G.107, January 2003.
-
-   [7]  Narten, T. and H. Alvestrand, "Guidelines for Writing an IANA
-        Considerations Section in RFCs", BCP 26, RFC 2434, October 1998.
-
-   [8]  Rosenberg, J. and H. Schulzrinne, "An Offer/Answer Model with
-        the Session Description Protocol (SDP)", RFC 3264, June 2002.
-
-   [9]  Schulzrinne, H., Casner, S., Frederick, R. and V. Jacobson,
-        "RTP: A Transport Protocol for Real-Time Applications", RFC
-        3550, July 2003.
-
-   [10] TIA/EIA-810-A Transmission Requirements for Narrowband Voice
-        over IP and Voice over PCM Digital Wireline Telephones, December
-        2000.
-
-Informative References
-
-   [11] Adams, A., Bu, T., Caceres, R., Duffield, N.G., Friedman, T.,
-        Horowitz, J., Lo Presti, F., Moon, S.B., Paxson, V. and D.
-        Towsley, "The Use of End-to-End Multicast Measurements for
-        Characterizing Internal Network Behavior", IEEE Communications
-        Magazine, May 2000.
-
-   [12] Baugher, McGrew, Oran, Blom, Carrara, Naslund and Norrman, "The
-        Secure Real-time Transport Protocol", Work in Progress.
-
-   [13] Caceres, R., Duffield, N.G. and T. Friedman, "Impromptu
-        measurement infrastructures using RTP", Proc. IEEE Infocom 2002.
-
-   [14] Clark, A.D., "Modeling the Effects of Burst Packet Loss and
-        Recency on Subjective Voice Quality", Proc. IP Telephony
-        Workshop 2001.
-
-   [15] Handley, M., Perkins, C. and E. Whelan, "Session Announcement
-        Protocol", RFC 2974, October 2000.
-
-   [16] Reynolds, J., Ed., "Assigned Numbers: RFC 1700 is Replaced by an
-        On-line Database", RFC 3232, January 2002.
-
-   [17] Schulzrinne, H., Rao, A. and R. Lanphier, "Real Time Streaming
-        Protocol (RTSP)", RFC 2326, April 1998.
-
-   [18] Sisalem D. and A. Wolisz, "MLDA: A TCP-friendly Congestion
-        Control Framework for Heterogeneous Multicast Environments",
-        Proc. IWQoS 2000.
-
-
+```
 Authors' Addresses
 
    Kevin Almeroth
@@ -1744,37 +1434,18 @@ Authors' Addresses
    Phone: +46 8 404 82 87
    Fax:   +46 8 757 55 50
    EMail: magnus.westerlund@ericsson.com
+```
 
+**Full Copyright Statement**
 
-Full Copyright Statement
+Copyright (C) The Internet Society (2003).  All Rights Reserved.
 
-   Copyright (C) The Internet Society (2003).  All Rights Reserved.
+This document and translations of it may be copied and furnished to others, and derivative works that comment on or otherwise explain it or assist in its implementation may be prepared, copied, published and distributed, in whole or in part, without restriction of any kind, provided that the above copyright notice and this paragraph are included on all such copies and derivative works.  However, this document itself may not be modified in any way, such as by removing the copyright notice or references to the Internet Society or other Internet organizations, except as needed for the purpose of developing Internet standards in which case the procedures for copyrights defined in the Internet Standards process must be followed, or as required to translate it into languages other than English.
 
-   This document and translations of it may be copied and furnished to
-   others, and derivative works that comment on or otherwise explain it
-   or assist in its implementation may be prepared, copied, published
-   and distributed, in whole or in part, without restriction of any
-   kind, provided that the above copyright notice and this paragraph are
-   included on all such copies and derivative works.  However, this
-   document itself may not be modified in any way, such as by removing
-   the copyright notice or references to the Internet Society or other
-   Internet organizations, except as needed for the purpose of
-   developing Internet standards in which case the procedures for
-   copyrights defined in the Internet Standards process must be
-   followed, or as required to translate it into languages other than
-   English.
+The limited permissions granted above are perpetual and will not be revoked by the Internet Society or its successors or assignees.
 
-   The limited permissions granted above are perpetual and will not be
-   revoked by the Internet Society or its successors or assignees.
+This document and the information contained herein is provided on an "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
 
-   This document and the information contained herein is provided on an
-   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
-   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
-   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
-   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+**Acknowledgement**
 
-Acknowledgement
-
-   Funding for the RFC Editor function is currently provided by the
-   Internet Society.
+Funding for the RFC Editor function is currently provided by the Internet Society.
