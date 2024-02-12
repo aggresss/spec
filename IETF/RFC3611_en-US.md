@@ -657,7 +657,7 @@ The Statistics Summary Report Block has the following format:
 
     The standard deviation of TTL or Hop Limit values of data packets in the sequence number range.
 
-4.7.  VoIP Metrics Report Block
+### 4.7.  VoIP Metrics Report Block
 
 The VoIP Metrics Report Block provides metrics for monitoring voice over IP (VoIP) calls.  These metrics include packet loss and discard metrics, delay metrics, analog metrics, and voice quality metrics. The block reports separately on packets lost on the IP channel, and those that have been received but then discarded by the receiving jitter buffer.  It also reports on the combined effect of losses and discards, as both have equal effect on call quality.
 
@@ -1061,17 +1061,17 @@ This document creates an IANA registry called the RTCP XR Block Type Registry to
 RFC 2434 [7].  Future specifications SHOULD attribute block type values in strict numeric order following the values attributed in this document:
 
 ```
-      BT  name
-      --  ----
-       1  Loss RLE Report Block
-       2  Duplicate RLE Report Block
-       3  Packet Receipt Times Report Block
-       4  Receiver Reference Time Report Block
-       5  DLRR Report Block
-       6  Statistics Summary Report Block
-       7  VoIP Metrics Report Block
+    BT  name
+    --  ----
+    1  Loss RLE Report Block
+    2  Duplicate RLE Report Block
+    3  Packet Receipt Times Report Block
+    4  Receiver Reference Time Report Block
+    5  DLRR Report Block
+    6  Statistics Summary Report Block
+    7  VoIP Metrics Report Block
 
-      The BT value 255 is reserved for future extensions.
+    The BT value 255 is reserved for future extensions.
 ```
 
 Furthermore, future specifications SHOULD avoid the value 0.  Doing so facilitates packet validity checking, since an all-zeros field might commonly be found in an ill-formed packet.
@@ -1087,16 +1087,16 @@ Any registration MUST contain the following information:
 The SDP attribute "rtcp-xr" defined by this document is registered with the IANA registry of SDP Parameters as follows:
 
 ```
-   SDP Attribute ("att-field"):
+SDP Attribute ("att-field"):
 
-     Attribute name:     rtcp-xr
-     Long form:          RTP Control Protocol Extended Report Parameters
-     Type of name:       att-field
-     Type of attribute:  session and media level
-     Subject to charset: no
-     Purpose:            see Section 5 of this document
-     Reference:          this document
-     Values:             see this document and registrations below
+    Attribute name:     rtcp-xr
+    Long form:          RTP Control Protocol Extended Report Parameters
+    Type of name:       att-field
+    Type of attribute:  session and media level
+    Subject to charset: no
+    Purpose:            see Section 5 of this document
+    Reference:          this document
+    Values:             see this document and registrations below
 ```
 
 The attribute has an extensible parameter field and therefore a registry for these parameters is required.  This document creates an IANA registry called the RTCP XR SDP Parameters Registry.  It contains the six parameters defined in Section 5.1: "pkt-loss-rle", "pkt-dup-rle", "pkt-rcpt-times", "stat-summary", "voip-metrics", and "recv-rtt".
