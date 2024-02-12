@@ -193,209 +193,104 @@ An extended report block has the following format:
 
 This section defines seven extended report blocks: block types for reporting upon received packet losses and duplicates, packet reception times, receiver reference time information, receiver inter-report delays, detailed reception statistics, and voice over IP (VoIP) metrics.  An implementation SHOULD ignore incoming blocks with types not relevant or unknown to it.  Additional block types MUST be registered with the Internet Assigned Numbers Authority (IANA) [16], as described in Section 6.2.
 
-4.1.  Loss RLE Report Block
+### 4.1.  Loss RLE Report Block
 
-   This block type permits detailed reporting upon individual packet
-   receipt and loss events.  Such reports can be used, for example, for
-   multicast inference of network characteristics (MINC) [11].  With
-   MINC, one can discover the topology of the multicast tree used for
-   distributing a source's RTP packets, and of the loss rates along
-   links within that tree, or they could be used to provide raw data to
-   a network management application.
+This block type permits detailed reporting upon individual packet receipt and loss events.  Such reports can be used, for example, for multicast inference of network characteristics (MINC) [11].  With MINC, one can discover the topology of the multicast tree used for distributing a source's RTP packets, and of the loss rates along links within that tree, or they could be used to provide raw data to a network management application.
 
-   Since a Boolean trace of lost and received RTP packets is potentially
-   lengthy, this block type permits the trace to be compressed through
-   run length encoding.  To further reduce block size, loss event
-   reports can be systematically dropped from the trace in a mechanism
-   called thinning that is described below and that is studied in [13].
+Since a Boolean trace of lost and received RTP packets is potentially lengthy, this block type permits the trace to be compressed through run length encoding.  To further reduce block size, loss event reports can be systematically dropped from the trace in a mechanism called thinning that is described below and that is studied in [13].
 
-   A participant that generates a Loss RLE Report Block should favor
-   accuracy in reporting on observed events over interpretation of those
-   events whenever possible.  Interpretation should be left to those who
-   observe the report blocks.  Following this approach implies that
+A participant that generates a Loss RLE Report Block should favor accuracy in reporting on observed events over interpretation of those events whenever possible.  Interpretation should be left to those who observe the report blocks.  Following this approach implies that accounting for Loss RLE Report Blocks will differ from the accounting for the generation of the SR and RR packets described in the RTP specification [9] in the following two areas: per-sender accounting and per-packet accounting.
+
+In its per-sender accounting, an RTP session participant SHOULD NOT make the receipt of a threshold minimum number of RTP packets a condition for reporting upon the sender of those packets.  This accounting technique differs from the technique described in Section 6.2.1 and Appendix A.1 of the RTP specification that allows a threshold to determine whether a sender is considered valid.
+
+In its per-packet accounting, an RTP session participant SHOULD treat all sequence numbers as valid.  This accounting technique differs from the technique described in Appendix A.1 of the RTP specification that suggests ruling a sequence number valid or invalid on the basis of its contiguity with the sequence numbers of previously received packets.
+
+Sender validity and sequence number validity are interpretations of the raw data.  Such interpretations are justified in the interest, for example, of excluding the stray old packet from an unrelated session from having an effect upon the calculation of the RTCP transmission interval.  The presence of stray packets might, on the other hand, be of interest to a network monitoring application.
+
+One accounting interpretation that is still necessary is for a participant to decide whether the 16 bit sequence number has rolled over.  Under ordinary circumstances this is not a difficult task. For example, if packet number 65,535 (the highest possible sequence number) is followed shortly by packet number 0, it is reasonable to assume that there has been a rollover.  However, it is possible that the packet is an earlier one (from 65,535 packets earlier).  It is also possible that the sequence numbers have rolled over multiple times, either forward or backward.  The interpretation becomes more difficult when there are large gaps between the sequence numbers, even accounting for rollover, and when there are long intervals between received packets.
+
+The per-packet accounting technique mandated here is for a participant to keep track of the sequence number of the packet most recently received from a sender.  For the next packet that arrives from that sender, the sequence number MUST be judged to fall no more than 32,768 packets ahead or behind the most recent one, whichever choice places it closer.  In the event that both choices are equally distant (only possible when the distance is 32,768), the choice MUST be the one that does not require a rollover.  Appendix A.1 presents an algorithm that implements this technique.
 
 
-   accounting for Loss RLE Report Blocks will differ from the accounting
-   for the generation of the SR and RR packets described in the RTP
-   specification [9] in the following two areas: per-sender accounting
-   and per-packet accounting.
+Each block reports on a single RTP data packet source, identified by its SSRC.  The receiver that is supplying the report is identified in the header of the RTCP packet.
 
-   In its per-sender accounting, an RTP session participant SHOULD NOT
-   make the receipt of a threshold minimum number of RTP packets a
-   condition for reporting upon the sender of those packets.  This
-   accounting technique differs from the technique described in Section
-   6.2.1 and Appendix A.1 of the RTP specification that allows a
-   threshold to determine whether a sender is considered valid.
+Choice of beginning and ending RTP packet sequence numbers for the trace is left to the application.  These values are reported in the block.  The last sequence number in the trace MAY differ from the sequence number reported on in any accompanying SR or RR report.
 
-   In its per-packet accounting, an RTP session participant SHOULD treat
-   all sequence numbers as valid.  This accounting technique differs
-   from the technique described in Appendix A.1 of the RTP specification
-   that suggests ruling a sequence number valid or invalid on the basis
-   of its contiguity with the sequence numbers of previously received
-   packets.
+Note that because of sequence number wraparound, the ending sequence number MAY be less than the beginning sequence number.  A Loss RLE Report Block MUST NOT be used to report upon a range of 65,534 or greater in the sequence number space, as there is no means of identifying multiple wraparounds.
 
-   Sender validity and sequence number validity are interpretations of
-   the raw data.  Such interpretations are justified in the interest,
-   for example, of excluding the stray old packet from an unrelated
-   session from having an effect upon the calculation of the RTCP
-   transmission interval.  The presence of stray packets might, on the
-   other hand, be of interest to a network monitoring application.
+The trace described by a Loss RLE report consists of a sequence of Boolean values, one for each sequence number of the trace.  A value of one represents a packet receipt, meaning that one or more packets having that sequence number have been received since the most recent wraparound of sequence numbers (or since the beginning of the RTP session if no wraparound has been judged to have occurred).  A value of zero represents a packet loss, meaning that there has been no packet receipt for that sequence number as of the time of the report. If a packet with a given sequence number is received after a report of a loss for that sequence number, a later Loss RLE report MAY report a packet receipt for that sequence number.
 
-   One accounting interpretation that is still necessary is for a
-   participant to decide whether the 16 bit sequence number has rolled
-   over.  Under ordinary circumstances this is not a difficult task.
-   For example, if packet number 65,535 (the highest possible sequence
-   number) is followed shortly by packet number 0, it is reasonable to
-   assume that there has been a rollover.  However, it is possible that
-   the packet is an earlier one (from 65,535 packets earlier).  It is
-   also possible that the sequence numbers have rolled over multiple
-   times, either forward or backward.  The interpretation becomes more
-   difficult when there are large gaps between the sequence numbers,
-   even accounting for rollover, and when there are long intervals
-   between received packets.
+The encoding itself consists of a series of 16 bit units called chunks that describe sequences of packet receipts or losses in the trace.  Each chunk either specifies a run length or a bit vector, or is a null chunk.  A run length describes between 1 and 16,383 events that are all the same (either all receipts or all losses).  A bit vector describes 15 events that may be mixed receipts and losses.  A null chunk describes no events, and is used to round out the block to a 32 bit word boundary.
 
-   The per-packet accounting technique mandated here is for a
-   participant to keep track of the sequence number of the packet most
-   recently received from a sender.  For the next packet that arrives
-   from that sender, the sequence number MUST be judged to fall no more
-   than 32,768 packets ahead or behind the most recent one, whichever
-   choice places it closer.  In the event that both choices are equally
-   distant (only possible when the distance is 32,768), the choice MUST
-   be the one that does not require a rollover.  Appendix A.1 presents
-   an algorithm that implements this technique.
+The mapping from a sequence of lost and received packets into a sequence of chunks is not necessarily unique.  For example, the following trace covers 45 packets, of which the 22nd and 24th have been lost and the others received:
 
+```
+    1111 1111 1111 1111 1111 1010 1111 1111 1111 1111 1111 1
+```
 
-   Each block reports on a single RTP data packet source, identified by
-   its SSRC.  The receiver that is supplying the report is identified in
-   the header of the RTCP packet.
+One way to encode this would be:
 
-   Choice of beginning and ending RTP packet sequence numbers for the
-   trace is left to the application.  These values are reported in the
-   block.  The last sequence number in the trace MAY differ from the
-   sequence number reported on in any accompanying SR or RR report.
+```
+    bit vector 1111 1111 1111 111
+    bit vector 1111 1101 0111 111
+    bit vector 1111 1111 1111 111
+    null chunk
+```
 
-   Note that because of sequence number wraparound, the ending sequence
-   number MAY be less than the beginning sequence number.  A Loss RLE
-   Report Block MUST NOT be used to report upon a range of 65,534 or
-   greater in the sequence number space, as there is no means of
-   identifying multiple wraparounds.
+Another way to encode this would be:
 
-   The trace described by a Loss RLE report consists of a sequence of
-   Boolean values, one for each sequence number of the trace.  A value
-   of one represents a packet receipt, meaning that one or more packets
-   having that sequence number have been received since the most recent
-   wraparound of sequence numbers (or since the beginning of the RTP
-   session if no wraparound has been judged to have occurred).  A value
-   of zero represents a packet loss, meaning that there has been no
-   packet receipt for that sequence number as of the time of the report.
-   If a packet with a given sequence number is received after a report
-   of a loss for that sequence number, a later Loss RLE report MAY
-   report a packet receipt for that sequence number.
+```
+    run of 21 receipts
+    bit vector 0101 1111 1111 111
+    run of 9 receipts
+    null chunk
+```
 
-   The encoding itself consists of a series of 16 bit units called
-   chunks that describe sequences of packet receipts or losses in the
-   trace.  Each chunk either specifies a run length or a bit vector, or
-   is a null chunk.  A run length describes between 1 and 16,383 events
-   that are all the same (either all receipts or all losses).  A bit
-   vector describes 15 events that may be mixed receipts and losses.  A
-   null chunk describes no events, and is used to round out the block to
-   a 32 bit word boundary.
+The choice of encoding is left to the application.  As part of this freedom of choice, applications MAY terminate a series of run length and bit vector chunks with a bit vector chunk that runs beyond the sequence number space described by the report block.  For example, if the 44th packet in the same sequence was lost:
 
-   The mapping from a sequence of lost and received packets into a
-   sequence of chunks is not necessarily unique.  For example, the
-   following trace covers 45 packets, of which the 22nd and 24th have
-   been lost and the others received:
+```
+    1111 1111 1111 1111 1111 1010 1111 1111 1111 1111 1110 1
+```
 
-      1111 1111 1111 1111 1111 1010 1111 1111 1111 1111 1111 1
+This could be encoded as:
 
+```
+    run of 21 receipts
+    bit vector 0101 1111 1111 111
+    bit vector 1111 1110 1000 000
+    null chunk
+```
 
+In this example, the last five bits of the second bit vector describe a part of the sequence number space that extends beyond the last sequence number in the trace.  These bits have been set to zero.
 
-   One way to encode this would be:
+All bits in a bit vector chunk that describe a part of the sequence number space that extends beyond the last sequence number in the trace MUST be set to zero, and MUST be ignored by the receiver.
 
-      bit vector 1111 1111 1111 111
-      bit vector 1111 1101 0111 111
-      bit vector 1111 1111 1111 111
-      null chunk
+A null packet MUST appear at the end of a Loss RLE Report Block if the number of run length plus bit vector chunks is odd.  The null chunk MUST NOT appear in any other context.
 
-   Another way to encode this would be:
+Caution should be used in sending Loss RLE Report Blocks because, even with the compression provided by run length encoding, they can easily consume bandwidth out of proportion with normal RTCP packets. The block type includes a mechanism, called thinning, that allows an application to limit report sizes.
 
-      run of 21 receipts
-      bit vector 0101 1111 1111 111
-      run of 9 receipts
-      null chunk
+A thinning value, T, selects a subset of packets within the sequence number space: those with sequence numbers that are multiples of 2^T. Packet reception and loss reports apply only to those packets.  T can vary between 0 and 15.  If T is zero, then every packet in the sequence number space is reported upon.  If T is fifteen, then one in every 32,768 packets is reported upon.
 
-   The choice of encoding is left to the application.  As part of this
-   freedom of choice, applications MAY terminate a series of run length
-   and bit vector chunks with a bit vector chunk that runs beyond the
-   sequence number space described by the report block.  For example, if
-   the 44th packet in the same sequence was lost:
+Suppose that the trace just described begins at sequence number 13,821.  The last sequence number in the trace is 13,865.  If the trace were to be thinned with a thinning value of T=2, then the following sequence numbers would be reported upon: 13,824, 13,828, 13,832, 13,836, 13,840, 13,844, 13,848, 13,852, 13,856, 13,860, 13,864.  The thinned trace would be as follows:
 
-      1111 1111 1111 1111 1111 1010 1111 1111 1111 1111 1110 1
-
-   This could be encoded as:
-
-      run of 21 receipts
-      bit vector 0101 1111 1111 111
-      bit vector 1111 1110 1000 000
-      null chunk
-
-
-   In this example, the last five bits of the second bit vector describe
-   a part of the sequence number space that extends beyond the last
-   sequence number in the trace.  These bits have been set to zero.
-
-   All bits in a bit vector chunk that describe a part of the sequence
-   number space that extends beyond the last sequence number in the
-   trace MUST be set to zero, and MUST be ignored by the receiver.
-
-   A null packet MUST appear at the end of a Loss RLE Report Block if
-   the number of run length plus bit vector chunks is odd.  The null
-   chunk MUST NOT appear in any other context.
-
-   Caution should be used in sending Loss RLE Report Blocks because,
-   even with the compression provided by run length encoding, they can
-   easily consume bandwidth out of proportion with normal RTCP packets.
-   The block type includes a mechanism, called thinning, that allows an
-   application to limit report sizes.
-
-
-
-   A thinning value, T, selects a subset of packets within the sequence
-   number space: those with sequence numbers that are multiples of 2^T.
-   Packet reception and loss reports apply only to those packets.  T can
-   vary between 0 and 15.  If T is zero, then every packet in the
-   sequence number space is reported upon.  If T is fifteen, then one in
-   every 32,768 packets is reported upon.
-
-   Suppose that the trace just described begins at sequence number
-   13,821.  The last sequence number in the trace is 13,865.  If the
-   trace were to be thinned with a thinning value of T=2, then the
-   following sequence numbers would be reported upon: 13,824, 13,828,
-   13,832, 13,836, 13,840, 13,844, 13,848, 13,852, 13,856, 13,860,
-   13,864.  The thinned trace would be as follows:
-
+```
       1    1    1    1    1    0    1    1    1    1    0
+```
 
    This could be encoded as follows:
 
+```
       bit vector 1111 1011 1100 000
       null chunk
+```
 
-   The last four bits in the bit vector, representing sequence numbers
-   13,868, 13,872, 13,876, and 13,880, extend beyond the trace and are
-   thus set to zero and are ignored by the receiver.  With thinning, the
-   loss of the 22nd packet goes unreported because its sequence number,
-   13,842, is not a multiple of four.  Packet receipts for all sequence
-   numbers that are not multiples of four also go unreported.  However,
-   in this example thinning has permitted the Loss RLE Report Block to
-   be shortened by one 32 bit word.
+The last four bits in the bit vector, representing sequence numbers 13,868, 13,872, 13,876, and 13,880, extend beyond the trace and are thus set to zero and are ignored by the receiver.  With thinning, the loss of the 22nd packet goes unreported because its sequence number, 13,842, is not a multiple of four.  Packet receipts for all sequence numbers that are not multiples of four also go unreported.  However, in this example thinning has permitted the Loss RLE Report Block to be shortened by one 32 bit word.
 
-   Choice of the thinning value is left to the application.
+Choice of the thinning value is left to the application.
 
+The Loss RLE Report Block has the following format:
 
-
-   The Loss RLE Report Block has the following format:
-
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -411,126 +306,95 @@ This section defines seven extended report blocks: block types for reporting upo
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |          chunk n-1            |             chunk n           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+- **block type (BT)**: 8 bits
 
-   block type (BT): 8 bits
-         A Loss RLE Report Block is identified by the constant 1.
+    A Loss RLE Report Block is identified by the constant 1.
+- **rsvd.**: 4 bits
 
-   rsvd.: 4 bits
-         This field is reserved for future definition.  In the absence
-         of such definition, the bits in this field MUST be set to zero
-         and MUST be ignored by the receiver.
+    This field is reserved for future definition.  In the absence of such definition, the bits in this field MUST be set to zero and MUST be ignored by the receiver.
+- **thinning (T)**: 4 bits
 
-   thinning (T): 4 bits
-         The amount of thinning performed on the sequence number space.
-         Only those packets with sequence numbers 0 mod 2^T are reported
-         on by this block.  A value of 0 indicates that there is no
-         thinning, and all packets are reported on.  The maximum
-         thinning is one packet in every 32,768 (amounting to two
-         packets within each 16-bit sequence space).
+    The amount of thinning performed on the sequence number space. Only those packets with sequence numbers 0 mod 2^T are reported on by this block.  A value of 0 indicates that there is no thinning, and all packets are reported on.  The maximum thinning is one packet in every 32,768 (amounting to two packets within each 16-bit sequence space).
+- **block length**: 16 bits
 
-   block length: 16 bits
-         Defined in Section 3.
+    Defined in Section 3.
+- **SSRC of source**: 32 bits
 
-   SSRC of source: 32 bits
-         The SSRC of the RTP data packet source being reported upon by
-         this report block.
+    The SSRC of the RTP data packet source being reported upon by this report block.
+- **begin_seq**: 16 bits
 
-   begin_seq: 16 bits
-         The first sequence number that this block reports on.
+    The first sequence number that this block reports on.
+- **end_seq**: 16 bits
 
-   end_seq: 16 bits
-         The last sequence number that this block reports on plus one.
+    The last sequence number that this block reports on plus one.
 
+- **chunk i**: 16 bits
 
-   chunk i: 16 bits
-         There are three chunk types: run length, bit vector, and
-         terminating null, defined in the following sections.  If the
-         chunk is all zeroes, then it is a terminating null chunk.
-         Otherwise, the left most bit of the chunk determines its type:
-         0 for run length and 1 for bit vector.
+    There are three chunk types: run length, bit vector, and terminating null, defined in the following sections.  If the chunk is all zeroes, then it is a terminating null chunk. Otherwise, the left most bit of the chunk determines its type: 0 for run length and 1 for bit vector.
 
-4.1.1.  Run Length Chunk
+#### 4.1.1.  Run Length Chunk
 
+```
     0                   1
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |C|R|        run length         |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
-   chunk type (C): 1 bit
-         A zero identifies this as a run length chunk.
+- **chunk type (C)**: 1 bit
 
-   run type (R): 1 bit
-         Zero indicates a run of 0s.  One indicates a run of 1s.
+    A zero identifies this as a run length chunk.
+- **run type (R)**: 1 bit
 
-   run length: 14 bits
-         A value between 1 and 16,383.  The value MUST not be zero for a
-         run length chunk (zeroes in both the run type and run length
-         fields would make the chunk a terminating null chunk).  Run
-         lengths of 15 or less MAY be described with a run length chunk
-         despite the fact that they could also be described as part of a
-         bit vector chunk.
+    Zero indicates a run of 0s.  One indicates a run of 1s.
+- **run length**: 14 bits
 
-4.1.2.  Bit Vector Chunk
+    A value between 1 and 16,383.  The value MUST not be zero for a run length chunk (zeroes in both the run type and run length fields would make the chunk a terminating null chunk).  Run lengths of 15 or less MAY be described with a run length chunk despite the fact that they could also be described as part of a bit vector chunk.
 
+#### 4.1.2.  Bit Vector Chunk
+
+```
     0                   1
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |C|        bit vector           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+- **chunk type (C)**: 1 bit
 
-   chunk type (C): 1 bit
-         A one identifies this as a bit vector chunk.
+    A one identifies this as a bit vector chunk.
+- **bit vector**: 15 bits
 
-   bit vector: 15 bits
-         The vector is read from left to right, in order of increasing
-         sequence number (with the appropriate allowance for
-         wraparound).
+    The vector is read from left to right, in order of increasing sequence number (with the appropriate allowance for wraparound).
 
 
-4.1.3.  Terminating Null Chunk
+#### 4.1.3.  Terminating Null Chunk
 
-   This chunk is all zeroes.
+This chunk is all zeroes.
 
+```
     0                   1
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
-4.2.  Duplicate RLE Report Block
+### 4.2.  Duplicate RLE Report Block
 
-   This block type permits per-sequence-number reports on duplicates in
-   a source's RTP packet stream.  Such information can be used for
-   network diagnosis, and provide an alternative to packet losses as a
-   basis for multicast tree topology inference.
+This block type permits per-sequence-number reports on duplicates in a source's RTP packet stream.  Such information can be used for network diagnosis, and provide an alternative to packet losses as a basis for multicast tree topology inference.
 
-   The Duplicate RLE Report Block format is identical to the Loss RLE
-   Report Block format.  Only the interpretation is different, in that
-   the information concerns packet duplicates rather than packet losses.
-   The trace to be encoded in this case also consists of zeros and ones,
-   but a zero here indicates the presence of duplicate packets for a
-   given sequence number, whereas a one indicates that no duplicates
-   were received.
+The Duplicate RLE Report Block format is identical to the Loss RLE Report Block format.  Only the interpretation is different, in that the information concerns packet duplicates rather than packet losses. The trace to be encoded in this case also consists of zeros and ones, but a zero here indicates the presence of duplicate packets for a given sequence number, whereas a one indicates that no duplicates were received.
 
-   The existence of a duplicate for a given sequence number is
-   determined over the entire reporting period.  For example, if packet
-   number 12,593 arrives, followed by other packets with other sequence
-   numbers, the arrival later in the reporting period of another packet
-   numbered 12,593 counts as a duplicate for that sequence number.  The
-   duplicate does not need to follow immediately upon the first packet
-   of that number.  Care must be taken that a report does not cover a
-   range of 65,534 or greater in the sequence number space.
+The existence of a duplicate for a given sequence number is determined over the entire reporting period.  For example, if packet number 12,593 arrives, followed by other packets with other sequence numbers, the arrival later in the reporting period of another packet numbered 12,593 counts as a duplicate for that sequence number.  The duplicate does not need to follow immediately upon the first packet of that number.  Care must be taken that a report does not cover a range of 65,534 or greater in the sequence number space.
 
-   No distinction is made between the existence of a single duplicate
-   packet and multiple duplicate packets for a given sequence number.
-   Note also that since there is no duplicate for a lost packet, a loss
-   is encoded as a one in a Duplicate RLE Report Block.
+No distinction is made between the existence of a single duplicate packet and multiple duplicate packets for a given sequence number. Note also that since there is no duplicate for a lost packet, a loss is encoded as a one in a Duplicate RLE Report Block.
 
+The Duplicate RLE Report Block has the following format:
 
-
-   The Duplicate RLE Report Block has the following format:
-
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -546,71 +410,45 @@ This section defines seven extended report blocks: block types for reporting upo
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |          chunk n-1            |             chunk n           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+- **block type (BT)**: 8 bits
 
-   block type (BT): 8 bits
-         A Duplicate RLE Report Block is identified by the constant 2.
+    A Duplicate RLE Report Block is identified by the constant 2.
+- **rsvd.**: 4 bits
 
-   rsvd.: 4 bits
-         This field is reserved for future definition.  In the absence
-         of such a definition, the bits in this field MUST be set to
-         zero and MUST be ignored by the receiver.
+    This field is reserved for future definition.  In the absence of such a definition, the bits in this field MUST be set to zero and MUST be ignored by the receiver.
+- **thinning (T)**: 4 bits
 
-   thinning (T): 4 bits
-         As defined in Section 4.1.
+    As defined in Section 4.1.
+- **block length**: 16 bits
 
-   block length: 16 bits
-         Defined in Section 3.
+    Defined in Section 3.
+- **SSRC of source**: 32 bits
 
-   SSRC of source: 32 bits
-         As defined in Section 4.1.
+    As defined in Section 4.1.
+- **begin_seq**: 16 bits
 
-   begin_seq: 16 bits
-         As defined in Section 4.1.
+    As defined in Section 4.1.
+- **end_seq**: 16 bits
 
-   end_seq: 16 bits
-         As defined in Section 4.1.
+    As defined in Section 4.1.
+- **chunk i**: 16 bits
 
-   chunk i: 16 bits
-         As defined in Section 4.1.
+    As defined in Section 4.1.
 
+### 4.3.  Packet Receipt Times Report Block
 
+This block type permits per-sequence-number reports on packet receipt times for a given source's RTP packet stream.  Such information can be used for MINC inference of the topology of the multicast tree used to distribute the source's RTP packets, and of the delays along the links within that tree.  It can also be used to measure partial path characteristics and to model distributions for packet jitter.
 
+Packet receipt times are expressed in the same units as in the RTP timestamps of data packets.  This is so that, for each packet, one can establish both the send time and the receipt time in comparable terms.  Note, however, that as an RTP sender ordinarily initializes its time to a value chosen at random, there can be no expectation that reported send and receipt times will differ by an amount equal to the one-way delay between sender and receiver.  The reported times can nonetheless be useful for the purposes mentioned above.
 
-4.3.  Packet Receipt Times Report Block
+At least one packet MUST have been received for each sequence number reported upon in this block.  If this block type is used to report receipt times for a series of sequence numbers that includes lost packets, several blocks are required.  If duplicate packets have been received for a given sequence number, and those packets differ in their receipt times, any time other than the earliest MUST NOT be reported.  This is to ensure consistency among reports.
 
-   This block type permits per-sequence-number reports on packet receipt
-   times for a given source's RTP packet stream.  Such information can
-   be used for MINC inference of the topology of the multicast tree used
-   to distribute the source's RTP packets, and of the delays along the
-   links within that tree.  It can also be used to measure partial path
-   characteristics and to model distributions for packet jitter.
+Times reported in RTP timestamp format consume more bits than loss or duplicate information, and do not lend themselves to run length encoding.  The use of thinning is encouraged to limit the size of Packet Receipt Times Report Blocks.
 
-   Packet receipt times are expressed in the same units as in the RTP
-   timestamps of data packets.  This is so that, for each packet, one
-   can establish both the send time and the receipt time in comparable
-   terms.  Note, however, that as an RTP sender ordinarily initializes
-   its time to a value chosen at random, there can be no expectation
-   that reported send and receipt times will differ by an amount equal
-   to the one-way delay between sender and receiver.  The reported times
-   can nonetheless be useful for the purposes mentioned above.
+The Packet Receipt Times Report Block has the following format:
 
-   At least one packet MUST have been received for each sequence number
-   reported upon in this block.  If this block type is used to report
-   receipt times for a series of sequence numbers that includes lost
-   packets, several blocks are required.  If duplicate packets have been
-   received for a given sequence number, and those packets differ in
-   their receipt times, any time other than the earliest MUST NOT be
-   reported.  This is to ensure consistency among reports.
-
-   Times reported in RTP timestamp format consume more bits than loss or
-   duplicate information, and do not lend themselves to run length
-   encoding.  The use of thinning is encouraged to limit the size of
-   Packet Receipt Times Report Blocks.
-
-
-
-   The Packet Receipt Times Report Block has the following format:
-
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -628,61 +466,39 @@ This section defines seven extended report blocks: block types for reporting upo
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |       Receipt time of packet (end_seq - 1) mod 65536          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
-   block type (BT): 8 bits
-         A Packet Receipt Times Report Block is identified by the
-         constant 3.
+- **block type (BT)**: 8 bits
 
-   rsvd.: 4 bits
-         This field is reserved for future definition.  In the absence
-         of such a definition, the bits in this field MUST be set to
-         zero and MUST be ignored by the receiver.
+    A Packet Receipt Times Report Block is identified by the constant 3.
+- **rsvd.**: 4 bits
 
-   thinning (T): 4 bits
-         As defined in Section 4.1.
+    This field is reserved for future definition.  In the absence of such a definition, the bits in this field MUST be set to zero and MUST be ignored by the receiver.
+- **thinning (T)**: 4 bits
 
-   block length: 16 bits
-         Defined in Section 3.
+    As defined in Section 4.1.
+- **block length**: 16 bits
 
-   SSRC of source: 32 bits
-         As defined in Section 4.1.
+    Defined in Section 3.
+- **SSRC of source**: 32 bits
 
-   begin_seq: 16 bits
-         As defined in Section 4.1.
+    As defined in Section 4.1.
+- **begin_seq**: 16 bits
 
-   end_seq: 16 bits
-         As defined in Section 4.1.
+    As defined in Section 4.1.
+- **end_seq**: 16 bits
 
+    As defined in Section 4.1.
 
+- **Packet i receipt time**: 32 bits
 
-   Packet i receipt time: 32 bits
-         The receipt time of the packet with sequence number i at the
-         receiver.  The modular arithmetic shown in the packet format
-         diagram is to allow for sequence number rollover.  It is
-         preferable for the time value to be established at the link
-         layer interface, or in any case as close as possible to the
-         wire arrival time.  Units and format are the same as for the
-         timestamp in RTP data packets.  As opposed to RTP data packet
-         timestamps, in which nominal values may be used instead of
-         system clock values in order to convey information useful for
-         periodic playout, the receipt times should reflect the actual
-         time as closely as possible.  For a session, if the RTP
-         timestamp is chosen at random, the first receipt time value
-         SHOULD also be chosen at random, and subsequent timestamps
-         offset from this value.  On the other hand, if the RTP
-         timestamp is meant to reflect the reference time at the sender,
-         then the receipt time SHOULD be as close as possible to the
-         reference time at the receiver.
+    The receipt time of the packet with sequence number i at the receiver.  The modular arithmetic shown in the packet format diagram is to allow for sequence number rollover.  It is preferable for the time value to be established at the link layer interface, or in any case as close as possible to the wire arrival time.  Units and format are the same as for the timestamp in RTP data packets.  As opposed to RTP data packet timestamps, in which nominal values may be used instead of system clock values in order to convey information useful for periodic playout, the receipt times should reflect the actual time as closely as possible.  For a session, if the RTP timestamp is chosen at random, the first receipt time value SHOULD also be chosen at random, and subsequent timestamps offset from this value.  On the other hand, if the RTP timestamp is meant to reflect the reference time at the sender, then the receipt time SHOULD be as close as possible to the reference time at the receiver.
 
-4.4.  Receiver Reference Time Report Block
+### 4.4.  Receiver Reference Time Report Block
 
-   This block extends RTCP's timestamp reporting so that non-senders may
-   also send timestamps.  It recapitulates the NTP timestamp fields from
-   the RTCP Sender Report [9, Sec. 6.3.1].  A non-sender may estimate
-   its round trip time (RTT) to other participants, as proposed in [18],
-   by sending this report block and receiving DLRR Report Blocks (see
-   next section) in reply.
+This block extends RTCP's timestamp reporting so that non-senders may also send timestamps.  It recapitulates the NTP timestamp fields from the RTCP Sender Report [9, Sec. 6.3.1].  A non-sender may estimate its round trip time (RTT) to other participants, as proposed in [18], by sending this report block and receiving DLRR Report Blocks (see next section) in reply.
 
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -692,51 +508,26 @@ This section defines seven extended report blocks: block types for reporting upo
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |             NTP timestamp, least significant word             |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
-   block type (BT): 8 bits
-         A Receiver Reference Time Report Block is identified by the
-         constant 4.
+- **block type (BT)**: 8 bits
 
-   reserved: 8 bits
-         This field is reserved for future definition.  In the absence
-         of such definition, the bits in this field MUST be set to zero
-         and MUST be ignored by the receiver.
+    A Receiver Reference Time Report Block is identified by the constant 4.
+- **reserved**: 8 bits
 
+    This field is reserved for future definition.  In the absence of such definition, the bits in this field MUST be set to zero and MUST be ignored by the receiver.
+- **block length**: 16 bits
 
+    The constant 2, in accordance with the definition of this field in Section 3.
+- **NTP timestamp**: 64 bits
 
+    Indicates the wallclock time when this block was sent so that it may be used in combination with timestamps returned in DLRR Report Blocks (see next section) from other receivers to measure round-trip propagation to those receivers.  Receivers should expect that the measurement accuracy of the timestamp may be limited to far less than the resolution of the NTP timestamp.  The measurement uncertainty of the timestamp is not indicated as it may not be known.  A report block sender that can keep track of elapsed time but has no notion of wallclock time may use the elapsed time since joining the session instead.  This is assumed to be less than 68 years, so the high bit will be zero.  It is permissible to use the sampling clock to estimate elapsed wallclock time.  A report sender that has no notion of wallclock or elapsed time may set the NTP timestamp to zero.
 
-   block length: 16 bits
-         The constant 2, in accordance with the definition of this field
-         in Section 3.
+### 4.5.  DLRR Report Block
 
-   NTP timestamp: 64 bits
-         Indicates the wallclock time when this block was sent so that
-         it may be used in combination with timestamps returned in DLRR
-         Report Blocks (see next section) from other receivers to
-         measure round-trip propagation to those receivers.  Receivers
-         should expect that the measurement accuracy of the timestamp
-         may be limited to far less than the resolution of the NTP
-         timestamp.  The measurement uncertainty of the timestamp is not
-         indicated as it may not be known.  A report block sender that
-         can keep track of elapsed time but has no notion of wallclock
-         time may use the elapsed time since joining the session
-         instead.  This is assumed to be less than 68 years, so the high
-         bit will be zero.  It is permissible to use the sampling clock
-         to estimate elapsed wallclock time.  A report sender that has
-         no notion of wallclock or elapsed time may set the NTP
-         timestamp to zero.
+This block extends RTCP's delay since the last Sender Report (DLSR) mechanism [9, Sec. 6.3.1] so that non-senders may also calculate round trip times, as proposed in [18].  It is termed DLRR for delay since the last Receiver Report, and may be sent in response to a Receiver Timestamp Report Block (see previous section) from a receiver to allow that receiver to calculate its round trip time to the respondent.  The report consists of one or more 3 word sub- blocks: one sub-block per Receiver Report.
 
-4.5.  DLRR Report Block
-
-   This block extends RTCP's delay since the last Sender Report (DLSR)
-   mechanism [9, Sec. 6.3.1] so that non-senders may also calculate
-   round trip times, as proposed in [18].  It is termed DLRR for delay
-   since the last Receiver Report, and may be sent in response to a
-   Receiver Timestamp Report Block (see previous section) from a
-   receiver to allow that receiver to calculate its round trip time to
-   the respondent.  The report consists of one or more 3 word sub-
-   blocks: one sub-block per Receiver Report.
-
+```
   0                   1                   2                   3
   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -752,62 +543,34 @@ This section defines seven extended report blocks: block types for reporting upo
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ block
  :                               ...                             :   2
  +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+```
+
+- **block type (BT)**: 8 bits
+
+    A DLRR Report Block is identified by the constant 5.
+- **reserved**: 8 bits
+
+    This field is reserved for future definition.  In the absence of such definition, the bits in this field MUST be set to zero and MUST be ignored by the receiver.
+- **block length**: 16 bits
+
+    Defined in Section 3.
+- **last RR timestamp (LRR)**: 32 bits
+
+    The middle 32 bits out of 64 in the NTP timestamp (as explained in the previous section), received as part of a Receiver Reference Time Report Block from participant SSRC_n.  If no such block has been received, the field is set to zero.
+- **delay since last RR (DLRR)**: 32 bits
+
+    The delay, expressed in units of 1/65536 seconds, between receiving the last Receiver Reference Time Report Block from participant SSRC_n and sending this DLRR Report Block.  If a Receiver Reference Time Report Block has yet to be received from SSRC_n, the DLRR field is set to zero (or the DLRR is omitted entirely).  Let SSRC_r denote the receiver issuing this DLRR Report Block.  Participant SSRC_n can compute the round- trip propagation delay to SSRC_r by recording the time A when this Receiver Timestamp Report Block is received.  It calculates the total round-trip time A-LRR using the last RR timestamp (LRR) field, and then subtracting this field to leave the round-trip propagation delay as A-LRR-DLRR.  This is illustrated in [9, Fig. 2].
+
+### 4.6.  Statistics Summary Report Block
 
 
+This block reports statistics beyond the information carried in the standard RTCP packet format, but is not as finely grained as that carried in the report blocks previously described.  Information is recorded about lost packets, duplicate packets, jitter measurements, and TTL or Hop Limit values.  Such information can be useful for network management.
 
-   block type (BT): 8 bits
-         A DLRR Report Block is identified by the constant 5.
+The report block contents are dependent upon a series of flag bits carried in the first part of the header.  Not all parameters need to be reported in each block.  Flags indicate which are and which are not reported.  The fields corresponding to unreported parameters MUST be present, but are set to zero.  The receiver MUST ignore any Statistics Summary Report Block with a non-zero value in any field flagged as unreported.
 
-   reserved: 8 bits
-         This field is reserved for future definition.  In the absence
-         of such definition, the bits in this field MUST be set to zero
-         and MUST be ignored by the receiver.
+The Statistics Summary Report Block has the following format:
 
-   block length: 16 bits
-         Defined in Section 3.
-
-   last RR timestamp (LRR): 32 bits
-         The middle 32 bits out of 64 in the NTP timestamp (as explained
-         in the previous section), received as part of a Receiver
-         Reference Time Report Block from participant SSRC_n.  If no
-         such block has been received, the field is set to zero.
-
-   delay since last RR (DLRR): 32 bits
-         The delay, expressed in units of 1/65536 seconds, between
-         receiving the last Receiver Reference Time Report Block from
-         participant SSRC_n and sending this DLRR Report Block.  If a
-         Receiver Reference Time Report Block has yet to be received
-         from SSRC_n, the DLRR field is set to zero (or the DLRR is
-         omitted entirely).  Let SSRC_r denote the receiver issuing this
-         DLRR Report Block.  Participant SSRC_n can compute the round-
-         trip propagation delay to SSRC_r by recording the time A when
-         this Receiver Timestamp Report Block is received.  It
-         calculates the total round-trip time A-LRR using the last RR
-         timestamp (LRR) field, and then subtracting this field to leave
-         the round-trip propagation delay as A-LRR-DLRR.  This is
-         illustrated in [9, Fig. 2].
-
-4.6.  Statistics Summary Report Block
-
-   This block reports statistics beyond the information carried in the
-   standard RTCP packet format, but is not as finely grained as that
-   carried in the report blocks previously described.  Information is
-   recorded about lost packets, duplicate packets, jitter measurements,
-   and TTL or Hop Limit values.  Such information can be useful for
-   network management.
-
-   The report block contents are dependent upon a series of flag bits
-   carried in the first part of the header.  Not all parameters need to
-   be reported in each block.  Flags indicate which are and which are
-   not reported.  The fields corresponding to unreported parameters MUST
-   be present, but are set to zero.  The receiver MUST ignore any
-   Statistics Summary Report Block with a non-zero value in any field
-   flagged as unreported.
-
-
-
-   The Statistics Summary Report Block has the following format:
-
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -831,130 +594,81 @@ This section defines seven extended report blocks: block types for reporting upo
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    | min_ttl_or_hl | max_ttl_or_hl |mean_ttl_or_hl | dev_ttl_or_hl |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
-   block type (BT): 8 bits
-         A Statistics Summary Report Block is identified by the constant
-         6.
+- **block type (BT)**: 8 bits
 
-   loss report flag (L): 1 bit
-         Bit set to 1 if the lost_packets field contains a report, 0
-         otherwise.
+    A Statistics Summary Report Block is identified by the constant 6.
+- **loss report flag (L)**: 1 bit
 
-   duplicate report flag (D): 1 bit
-         Bit set to 1 if the dup_packets field contains a report, 0
-         otherwise.
+    Bit set to 1 if the lost_packets field contains a report, 0 otherwise.
+- **duplicate report flag (D)**: 1 bit
 
-   jitter flag (J): 1 bit
-         Bit set to 1 if the min_jitter, max_jitter, mean_jitter, and
-         dev_jitter fields all contain reports, 0 if none of them do.
+    Bit set to 1 if the dup_packets field contains a report, 0 otherwise.
+- **jitter flag (J)**: 1 bit
 
-   TTL or Hop Limit flag (ToH): 2 bits
-         This field is set to 0 if none of the fields min_ttl_or_hl,
-         max_ttl_or_hl, mean_ttl_or_hl, or dev_ttl_or_hl contain
-         reports.  If the field is non-zero, then all of these fields
-         contain reports.  The value 1 signifies that they report on
-         IPv4 TTL values.  The value 2 signifies that they report on
+    Bit set to 1 if the min_jitter, max_jitter, mean_jitter, and dev_jitter fields all contain reports, 0 if none of them do.
+- **TTL or Hop Limit flag (ToH)**: 2 bits
 
+    This field is set to 0 if none of the fields min_ttl_or_hl, max_ttl_or_hl, mean_ttl_or_hl, or dev_ttl_or_hl contain reports.  If the field is non-zero, then all of these fields contain reports.  The value 1 signifies that they report on IPv4 TTL values.  The value 2 signifies that they report on IPv6 Hop Limit values.  The value 3 is undefined and MUST NOT be used.
+- **rsvd.**: 3 bits
 
+    This field is reserved for future definition.  In the absence of such a definition, the bits in this field MUST be set to zero and MUST be ignored by the receiver.
+- **block length**: 16 bits
 
-         IPv6 Hop Limit values.  The value 3 is undefined and MUST NOT
-         be used.
+    The constant 9, in accordance with the definition of this field in Section 3.
+- **SSRC of source**: 32 bits
 
-   rsvd.: 3 bits
-         This field is reserved for future definition.  In the absence
-         of such a definition, the bits in this field MUST be set to
-         zero and MUST be ignored by the receiver.
+    As defined in Section 4.1.
+- **begin_seq**: 16 bits
 
-   block length: 16 bits
-         The constant 9, in accordance with the definition of this field
-         in Section 3.
+    As defined in Section 4.1.
+- **end_seq**: 16 bits
 
-   SSRC of source: 32 bits
-         As defined in Section 4.1.
+    As defined in Section 4.1.
+- **lost_packets**: 32 bits
 
-   begin_seq: 16 bits
-         As defined in Section 4.1.
+    Number of lost packets in the above sequence number interval.
+- **dup_packets**: 32 bits
 
-   end_seq: 16 bits
-         As defined in Section 4.1.
+    Number of duplicate packets in the above sequence number interval.
+- **min_jitter**: 32 bits
 
-   lost_packets: 32 bits
-         Number of lost packets in the above sequence number interval.
+    The minimum relative transit time between two packets in the above sequence number interval.  All jitter values are measured as the difference between a packet's RTP timestamp and the reporter's clock at the time of arrival, measured in the same units.
+- **max_jitter**: 32 bits
 
-   dup_packets: 32 bits
-         Number of duplicate packets in the above sequence number
-         interval.
+    The maximum relative transit time between two packets in the above sequence number interval.
+- **mean_jitter**: 32 bits
 
-   min_jitter: 32 bits
-         The minimum relative transit time between two packets in the
-         above sequence number interval.  All jitter values are measured
-         as the difference between a packet's RTP timestamp and the
-         reporter's clock at the time of arrival, measured in the same
-         units.
+    The mean relative transit time between each two packet series in the above sequence number interval, rounded to the nearest value expressible as an RTP timestamp.
+- **dev_jitter**: 32 bits
 
-   max_jitter: 32 bits
-         The maximum relative transit time between two packets in the
-         above sequence number interval.
+    The standard deviation of the relative transit time between each two packet series in the above sequence number interval.
+- **min_ttl_or_hl**: 8 bits
 
-   mean_jitter: 32 bits
-         The mean relative transit time between each two packet series
-         in the above sequence number interval, rounded to the nearest
-         value expressible as an RTP timestamp.
+    The minimum TTL or Hop Limit value of data packets in the sequence number range.
+- **max_ttl_or_hl**: 8 bits
 
-   dev_jitter: 32 bits
-         The standard deviation of the relative transit time between
-         each two packet series in the above sequence number interval.
+    The maximum TTL or Hop Limit value of data packets in the sequence number range.
+- **mean_ttl_or_hl**: 8 bits
 
+    The mean TTL or Hop Limit value of data packets in the sequence number range, rounded to the nearest integer.
+- **dev_ttl_or_hl**: 8 bits
 
-   min_ttl_or_hl: 8 bits
-         The minimum TTL or Hop Limit value of data packets in the
-         sequence number range.
-
-   max_ttl_or_hl: 8 bits
-         The maximum TTL or Hop Limit value of data packets in the
-         sequence number range.
-
-   mean_ttl_or_hl: 8 bits
-         The mean TTL or Hop Limit value of data packets in the sequence
-         number range, rounded to the nearest integer.
-
-   dev_ttl_or_hl: 8 bits
-         The standard deviation of TTL or Hop Limit values of data
-         packets in the sequence number range.
+    The standard deviation of TTL or Hop Limit values of data packets in the sequence number range.
 
 4.7.  VoIP Metrics Report Block
 
-   The VoIP Metrics Report Block provides metrics for monitoring voice
-   over IP (VoIP) calls.  These metrics include packet loss and discard
-   metrics, delay metrics, analog metrics, and voice quality metrics.
-   The block reports separately on packets lost on the IP channel, and
-   those that have been received but then discarded by the receiving
-   jitter buffer.  It also reports on the combined effect of losses and
-   discards, as both have equal effect on call quality.
+The VoIP Metrics Report Block provides metrics for monitoring voice over IP (VoIP) calls.  These metrics include packet loss and discard metrics, delay metrics, analog metrics, and voice quality metrics. The block reports separately on packets lost on the IP channel, and those that have been received but then discarded by the receiving jitter buffer.  It also reports on the combined effect of losses and discards, as both have equal effect on call quality.
 
-   In order to properly assess the quality of a Voice over IP call, it
-   is desirable to consider the degree of burstiness of packet loss
-   [14].  Following a Gilbert-Elliott model [3], a period of time,
-   bounded by lost and/or discarded packets with a high rate of losses
-   and/or discards, is a "burst", and a period of time between two
-   bursts is a "gap".  Bursts correspond to periods of time during which
-   the packet loss rate is high enough to produce noticeable degradation
-   in audio quality.  Gaps correspond to periods of time during which
-   only isolated lost packets may occur, and in general these can be
-   masked by packet loss concealment.  Delay reports include the transit
-   delay between RTP end points and the VoIP end system processing
-   delays, both of which contribute to the user perceived delay.
-   Additional metrics include signal, echo, noise, and distortion
-   levels.  Call quality metrics include R factors (as described by the
-   E Model defined in [6,3]) and mean opinion scores (MOS scores).
+In order to properly assess the quality of a Voice over IP call, it is desirable to consider the degree of burstiness of packet loss [14].  Following a Gilbert-Elliott model [3], a period of time, bounded by lost and/or discarded packets with a high rate of losses and/or discards, is a "burst", and a period of time between two bursts is a "gap".  Bursts correspond to periods of time during which the packet loss rate is high enough to produce noticeable degradation in audio quality.  Gaps correspond to periods of time during which only isolated lost packets may occur, and in general these can be masked by packet loss concealment.  Delay reports include the transit delay between RTP end points and the VoIP end system processing delays, both of which contribute to the user perceived delay. Additional metrics include signal, echo, noise, and distortion levels.  Call quality metrics include R factors (as described by the E Model defined in [6,3]) and mean opinion scores (MOS scores).
 
-   Implementations MUST provide values for all the fields defined here.
-   For certain metrics, if the value is undefined or unknown, then the
-   specified default or unknown field value MUST be provided.
+Implementations MUST provide values for all the fields defined here. For certain metrics, if the value is undefined or unknown, then the specified default or unknown field value MUST be provided.
 
 
-   The block is encoded as seven 32-bit words:
+The block is encoded as seven 32-bit words:
 
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -976,516 +690,244 @@ This section defines seven extended report blocks: block types for reporting upo
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |          JB maximum           |          JB abs max           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
-   block type (BT): 8 bits
-         A VoIP Metrics Report Block is identified by the constant 7.
+- **block type (BT)**: 8 bits
 
-   reserved: 8 bits
-         This field is reserved for future definition.  In the absence
-         of such a definition, the bits in this field MUST be set to
-         zero and MUST be ignored by the receiver.
+    A VoIP Metrics Report Block is identified by the constant 7.
+- **reserved**: 8 bits
 
-   block length: 16 bits
-         The constant 8, in accordance with the definition of this field
-         in Section 3.
+    This field is reserved for future definition.  In the absence of such a definition, the bits in this field MUST be set to zero and MUST be ignored by the receiver.
+- **block length**: 16 bits
 
-   SSRC of source: 32 bits
-         As defined in Section 4.1.
+    The constant 8, in accordance with the definition of this field in Section 3.
+- **SSRC of source**: 32 bits
 
-   The remaining fields are described in the following six sections:
-   Packet Loss and Discard Metrics, Delay Metrics, Signal Related
-   Metrics, Call Quality or Transmission Quality Metrics, Configuration
-   Metrics, and Jitter Buffer Parameters.
+    As defined in Section 4.1.
 
+The remaining fields are described in the following six sections: Packet Loss and Discard Metrics, Delay Metrics, Signal Related Metrics, Call Quality or Transmission Quality Metrics, Configuration Metrics, and Jitter Buffer Parameters.
 
+#### 4.7.1.  Packet Loss and Discard Metrics
 
-4.7.1.  Packet Loss and Discard Metrics
+It is very useful to distinguish between packets lost by the network and those discarded due to jitter.  Both have equal effect on the quality of the voice stream, however, having separate counts helps identify the source of quality degradation.  These fields MUST be populated, and MUST be set to zero if no packets have been received.
 
-   It is very useful to distinguish between packets lost by the network
-   and those discarded due to jitter.  Both have equal effect on the
-   quality of the voice stream, however, having separate counts helps
-   identify the source of quality degradation.  These fields MUST be
-   populated, and MUST be set to zero if no packets have been received.
+- **loss rate**: 8 bits
 
-   loss rate: 8 bits
-         The fraction of RTP data packets from the source lost since the
-         beginning of reception, expressed as a fixed point number with
-         the binary point at the left edge of the field.  This value is
-         calculated by dividing the total number of packets lost (after
-         the effects of applying any error protection such as FEC) by
-         the total number of packets expected, multiplying the result of
-         the division by 256, limiting the maximum value to 255 (to
-         avoid overflow), and taking the integer part.  The numbers of
-         duplicated packets and discarded packets do not enter into this
-         calculation.  Since receivers cannot be required to maintain
-         unlimited buffers, a receiver MAY categorize late-arriving
-         packets as lost.  The degree of lateness that triggers a loss
-         SHOULD be significantly greater than that which triggers a
-         discard.
+    The fraction of RTP data packets from the source lost since the beginning of reception, expressed as a fixed point number with the binary point at the left edge of the field.  This value is calculated by dividing the total number of packets lost (after the effects of applying any error protection such as FEC) by the total number of packets expected, multiplying the result of the division by 256, limiting the maximum value to 255 (to avoid overflow), and taking the integer part.  The numbers of duplicated packets and discarded packets do not enter into this calculation.  Since receivers cannot be required to maintain unlimited buffers, a receiver MAY categorize late-arriving packets as lost.  The degree of lateness that triggers a loss SHOULD be significantly greater than that which triggers a discard.
 
-   discard rate: 8 bits
-         The fraction of RTP data packets from the source that have been
-         discarded since the beginning of reception, due to late or
-         early arrival, under-run or overflow at the receiving jitter
-         buffer.  This value is expressed as a fixed point number with
-         the binary point at the left edge of the field.  It is
-         calculated by dividing the total number of packets discarded
-         (excluding duplicate packet discards) by the total number of
-         packets expected, multiplying the result of the division by
-         256, limiting the maximum value to 255 (to avoid overflow), and
-         taking the integer part.
+- **discard rate**: 8 bits
 
-4.7.2.  Burst Metrics
+    The fraction of RTP data packets from the source that have been discarded since the beginning of reception, due to late or early arrival, under-run or overflow at the receiving jitter buffer.  This value is expressed as a fixed point number with the binary point at the left edge of the field.  It is calculated by dividing the total number of packets discarded (excluding duplicate packet discards) by the total number of packets expected, multiplying the result of the division by 256, limiting the maximum value to 255 (to avoid overflow), and taking the integer part.
 
-   A burst is a period during which a high proportion of packets are
-   either lost or discarded due to late arrival.  A burst is defined, in
-   terms of a value Gmin, as the longest sequence that (a) starts with a
-   lost or discarded packet, (b) does not contain any occurrences of
-   Gmin or more consecutively received (and not discarded) packets, and
-   (c) ends with a lost or discarded packet.
+#### 4.7.2.  Burst Metrics
 
-   A gap, informally, is a period of low packet losses and/or discards.
-   Formally, a gap is defined as any of the following: (a) the period
-   from the start of an RTP session to the receipt time of the last
+A burst is a period during which a high proportion of packets are either lost or discarded due to late arrival.  A burst is defined, in terms of a value Gmin, as the longest sequence that (a) starts with a lost or discarded packet, (b) does not contain any occurrences of Gmin or more consecutively received (and not discarded) packets, and (c) ends with a lost or discarded packet.
 
+A gap, informally, is a period of low packet losses and/or discards. Formally, a gap is defined as any of the following: (a) the period from the start of an RTP session to the receipt time of the last received packet before the first burst, (b) the period from the end of the last burst to either the time of the report or the end of the RTP session, whichever comes first, or (c) the period of time between two bursts.
 
-   received packet before the first burst, (b) the period from the end
-   of the last burst to either the time of the report or the end of the
-   RTP session, whichever comes first, or (c) the period of time between
-   two bursts.
+For the purpose of determining if a lost or discarded packet near the start or end of an RTP session is within a gap or a burst, it is assumed that the RTP session is preceded and followed by at least Gmin received packets, and that the time of the report is followed by at least Gmin received packets.
 
-   For the purpose of determining if a lost or discarded packet near the
-   start or end of an RTP session is within a gap or a burst, it is
-   assumed that the RTP session is preceded and followed by at least
-   Gmin received packets, and that the time of the report is followed by
-   at least Gmin received packets.
+A gap has the property that any lost or discarded packets within the gap must be preceded and followed by at least Gmin packets that were received and not discarded.  This gives a maximum loss/discard rate within a gap of: 1 / (Gmin + 1).
 
-   A gap has the property that any lost or discarded packets within the
-   gap must be preceded and followed by at least Gmin packets that were
-   received and not discarded.  This gives a maximum loss/discard rate
-   within a gap of: 1 / (Gmin + 1).
+A Gmin value of 16 is RECOMMENDED, as it results in gap characteristics that correspond to good quality (i.e., low packet loss rate, a minimum distance of 16 received packets between lost packets), and hence differentiates nicely between good and poor quality periods.
 
-   A Gmin value of 16 is RECOMMENDED, as it results in gap
-   characteristics that correspond to good quality (i.e., low packet
-   loss rate, a minimum distance of 16 received packets between lost
-   packets), and hence differentiates nicely between good and poor
-   quality periods.
+For example, a 1 denotes a received packet, 0 a lost packet, and X a discarded packet in the following pattern covering 64 packets:
 
-   For example, a 1 denotes a received packet, 0 a lost packet, and X a
-   discarded packet in the following pattern covering 64 packets:
-
+```
       11110111111111111111111X111X1011110111111111111111111X111111111
       |---------gap----------|--burst---|------------gap------------|
+```
 
-   The burst consists of the twelve packets indicated above, starting at
-   a discarded packet and ending at a lost packet.  The first gap starts
-   at the beginning of the session and the second gap ends at the time
-   of the report.
+The burst consists of the twelve packets indicated above, starting at a discarded packet and ending at a lost packet.  The first gap starts at the beginning of the session and the second gap ends at the time of the report.
 
-   If the packet spacing is 10 ms and the Gmin value is the recommended
-   value of 16, the burst duration is 120 ms, the burst density 0.33,
-   the gap duration 230 ms + 290 ms = 520 ms, and the gap density 0.04.
+If the packet spacing is 10 ms and the Gmin value is the recommended value of 16, the burst duration is 120 ms, the burst density 0.33, the gap duration 230 ms + 290 ms = 520 ms, and the gap density 0.04.
 
-   This would result in reported values as follows (see field
-   descriptions for semantics and details on how these are calculated):
+This would result in reported values as follows (see field descriptions for semantics and details on how these are calculated):
 
+```
       loss rate             12, which corresponds to 5%
       discard rate          12, which corresponds to 5%
       burst density         84, which corresponds to 33%
       gap density           10, which corresponds to 4%
       burst duration       120, value in milliseconds
       gap duration         520, value in milliseconds
+```
 
 
+- **burst density**: 8 bits
 
-   burst density: 8 bits
-         The fraction of RTP data packets within burst periods since the
-         beginning of reception that were either lost or discarded.
-         This value is expressed as a fixed point number with the binary
-         point at the left edge of the field.  It is calculated by
-         dividing the total number of packets lost or discarded
-         (excluding duplicate packet discards) within burst periods by
-         the total number of packets expected within the burst periods,
-         multiplying the result of the division by 256, limiting the
-         maximum value to 255 (to avoid overflow), and taking the
-         integer part.  This field MUST be populated and MUST be set to
-         zero if no packets have been received.
-
-   gap density: 8 bits
-         The fraction of RTP data packets within inter-burst gaps since
-         the beginning of reception that were either lost or discarded.
-         The value is expressed as a fixed point number with the binary
-         point at the left edge of the field.  It is calculated by
-         dividing the total number of packets lost or discarded
-         (excluding duplicate packet discards) within gap periods by the
-         total number of packets expected within the gap periods,
-         multiplying the result of the division by 256, limiting the
-         maximum value to 255 (to avoid overflow), and taking the
-         integer part.  This field MUST be populated and MUST be set to
-         zero if no packets have been received.
-
-   burst duration: 16 bits
-         The mean duration, expressed in milliseconds, of the burst
-         periods that have occurred since the beginning of reception.
-         The duration of each period is calculated based upon the
-         packets that mark the beginning and end of that period.  It is
-         equal to the timestamp of the end packet, plus the duration of
-         the end packet, minus the timestamp of the beginning packet.
-         If the actual values are not available, estimated values MUST
-         be used.  If there have been no burst periods, the burst
-         duration value MUST be zero.
-
-   gap duration: 16 bits
-         The mean duration, expressed in milliseconds, of the gap
-         periods that have occurred since the beginning of reception.
-         The duration of each period is calculated based upon the packet
-         that marks the end of the prior burst and the packet that marks
-         the beginning of the subsequent burst.  It is equal to the
-         timestamp of the subsequent burst packet, minus the timestamp
-         of the prior burst packet, plus the duration of the prior burst
-         packet.  If the actual values are not available, estimated
-         values MUST be used.  In the case of a gap that occurs at the
-         beginning of reception, the sum of the timestamp of the prior
-
-
-
-
-         burst packet and the duration of the prior burst packet are
-         replaced by the reception start time.  In the case of a gap
-         that occurs at the end of reception, the timestamp of the
-         subsequent burst packet is replaced by the reception end time.
-         If there have been no gap periods, the gap duration value MUST
-         be zero.
-
-4.7.3.  Delay Metrics
-
-   For the purpose of the following definitions, the RTP interface is
-   the interface between the RTP instance and the voice application
-   (i.e., FEC, de-interleaving, de-multiplexing, jitter buffer).  For
-   example, the time delay due to RTP payload multiplexing would be
-   considered part of the voice application or end-system delay, whereas
-   delay due to multiplexing RTP frames within a UDP frame would be
-   considered part of the RTP reported delay.  This distinction is
-   consistent with the use of RTCP for delay measurements.
-
-   round trip delay: 16 bits
-         The most recently calculated round trip time between RTP
-         interfaces, expressed in milliseconds.  This value MAY be
-         measured using RTCP, the DLRR method defined in Section 4.5 of
-         this document, where it is necessary to convert the units of
-         measurement from NTP timestamp values to milliseconds, or other
-         approaches.  If RTCP is used, then the reported delay value is
-         the time of receipt of the most recent RTCP packet from source
-         SSRC, minus the LSR (last SR) time reported in its SR (Sender
-         Report), minus the DLSR (delay since last SR) reported in its
-         SR.  A non-zero LSR value is required in order to calculate
-         round trip delay.  A value of 0 is permissible; however, this
-         field MUST be populated as soon as a delay estimate is
-         available.
-
-   end system delay: 16 bits
-         The most recently estimated end system delay, expressed in
-         milliseconds.  End system delay is defined as the sum of the
-         total sample accumulation and encoding delay associated with
-         the sending direction and the jitter buffer, decoding, and
-         playout buffer delay associated with the receiving direction.
-         This delay MAY be estimated or measured.  This value SHOULD be
-         provided in all VoIP metrics reports.  If an implementation is
-         unable to provide the data, the value 0 MUST be used.
-
-
-   Note that the one way symmetric VoIP segment delay may be calculated
-   from the round trip and end system delays is as follows; if the round
-   trip delay is denoted, RTD and the end system delays associated with
-   the two endpoints are ESD(A) and ESD(B) then:
+    The fraction of RTP data packets within burst periods since the beginning of reception that were either lost or discarded. This value is expressed as a fixed point number with the binary point at the left edge of the field.  It is calculated by dividing the total number of packets lost or discarded (excluding duplicate packet discards) within burst periods by the total number of packets expected within the burst periods, multiplying the result of the division by 256, limiting the maximum value to 255 (to avoid overflow), and taking the integer part.  This field MUST be populated and MUST be set to zero if no packets have been received.
 
-    one way symmetric voice path delay  =  ( RTD + ESD(A) + ESD(B) ) / 2
+- **gap density**: 8 bits
 
-4.7.4.  Signal Related Metrics
+    The fraction of RTP data packets within inter-burst gaps since the beginning of reception that were either lost or discarded. The value is expressed as a fixed point number with the binary point at the left edge of the field.  It is calculated by dividing the total number of packets lost or discarded (excluding duplicate packet discards) within gap periods by the total number of packets expected within the gap periods, multiplying the result of the division by 256, limiting the maximum value to 255 (to avoid overflow), and taking the integer part.  This field MUST be populated and MUST be set to zero if no packets have been received.
 
-   The following metrics are intended to provide real time information
-   related to the non-packet elements of the voice over IP system to
-   assist with the identification of problems affecting call quality.
-   The values identified below must be determined for the received audio
-   signal.  The information required to populate these fields may not be
-   available in all systems, although it is strongly recommended that
-   this data SHOULD be provided to support problem diagnosis.
+- **burst duration**: 16 bits
 
-   signal level: 8 bits
-         The voice signal relative level is defined as the ratio of the
-         signal level to a 0 dBm0 reference [10], expressed in decibels
-         as a signed integer in two's complement form.  This is measured
-         only for packets containing speech energy.  The intent of this
-         metric is not to provide a precise measurement of the signal
-         level but to provide a real time indication that the signal
-         level may be excessively high or low.
+    The mean duration, expressed in milliseconds, of the burst periods that have occurred since the beginning of reception. The duration of each period is calculated based upon the packets that mark the beginning and end of that period.  It is equal to the timestamp of the end packet, plus the duration of the end packet, minus the timestamp of the beginning packet. If the actual values are not available, estimated values MUST be used.  If there have been no burst periods, the burst duration value MUST be zero.
 
-         signal level = 10 Log10 ( rms talkspurt power (mW) )
+- **gap duration**: 16 bits
 
-         A value of 127 indicates that this parameter is unavailable.
-         Typical values should generally be in the -15 to -20 dBm range.
+    The mean duration, expressed in milliseconds, of the gap periods that have occurred since the beginning of reception. The duration of each period is calculated based upon the packet that marks the end of the prior burst and the packet that marks the beginning of the subsequent burst.  It is equal to the timestamp of the subsequent burst packet, minus the timestamp of the prior burst packet, plus the duration of the prior burst packet.  If the actual values are not available, estimated values MUST be used.  In the case of a gap that occurs at the beginning of reception, the sum of the timestamp of the prior burst packet and the duration of the prior burst packet are replaced by the reception start time.  In the case of a gap that occurs at the end of reception, the timestamp of the subsequent burst packet is replaced by the reception end time. If there have been no gap periods, the gap duration value MUST be zero.
 
-   noise level: 8 bits
-         The noise level is defined as the ratio of the silent period
-         background noise level to a 0 dBm0 reference, expressed in
-         decibels as a signed integer in two's complement form.
+#### 4.7.3.  Delay Metrics
 
-         noise level = 10 Log10 ( rms silence power (mW) )
+For the purpose of the following definitions, the RTP interface is the interface between the RTP instance and the voice application (i.e., FEC, de-interleaving, de-multiplexing, jitter buffer).  For example, the time delay due to RTP payload multiplexing would be considered part of the voice application or end-system delay, whereas delay due to multiplexing RTP frames within a UDP frame would be considered part of the RTP reported delay.  This distinction is consistent with the use of RTCP for delay measurements.
 
-         A value of 127 indicates that this parameter is unavailable.
+- **round trip delay**: 16 bits
 
-   residual echo return loss (RERL): 8 bits
-         The residual echo return loss value may be measured directly by
-         the VoIP end system's echo canceller or may be estimated by
-         adding the echo return loss (ERL) and echo return loss
-         enhancement (ERLE) values reported by the echo canceller.
+    The most recently calculated round trip time between RTP interfaces, expressed in milliseconds.  This value MAY be measured using RTCP, the DLRR method defined in Section 4.5 of this document, where it is necessary to convert the units of measurement from NTP timestamp values to milliseconds, or other approaches.  If RTCP is used, then the reported delay value is the time of receipt of the most recent RTCP packet from source SSRC, minus the LSR (last SR) time reported in its SR (Sender Report), minus the DLSR (delay since last SR) reported in its SR.  A non-zero LSR value is required in order to calculate round trip delay.  A value of 0 is permissible; however, this field MUST be populated as soon as a delay estimate is available.
 
-         RERL(dB) = ERL (dB) + ERLE (dB)
+- **end system delay**: 16 bits
 
+    The most recently estimated end system delay, expressed in milliseconds.  End system delay is defined as the sum of the total sample accumulation and encoding delay associated with the sending direction and the jitter buffer, decoding, and playout buffer delay associated with the receiving direction. This delay MAY be estimated or measured.  This value SHOULD be provided in all VoIP metrics reports.  If an implementation is unable to provide the data, the value 0 MUST be used.
 
+Note that the one way symmetric VoIP segment delay may be calculated from the round trip and end system delays is as follows; if the round trip delay is denoted, RTD and the end system delays associated with the two endpoints are ESD(A) and ESD(B) then:
 
+```
+one way symmetric voice path delay  =  ( RTD + ESD(A) + ESD(B) ) / 2
+```
 
-         In the case of a VoIP gateway, the source of echo is typically
-         line echo that occurs at 2-4 wire conversion points in the
-         network.  This can be in the 8-12 dB range.  A line echo
-         canceler can provide an ERLE of 30 dB or more and hence reduce
-         this to 40-50 dB.  In the case of an IP phone, this could be
-         acoustic coupling between handset speaker and microphone or
-         residual acoustic echo from speakerphone operation, and may
-         more correctly be termed terminal coupling loss (TCL).  A
-         typical handset would result in 40-50 dB of echo loss due to
-         acoustic feedback.
+#### 4.7.4.  Signal Related Metrics
 
-         Examples:
+The following metrics are intended to provide real time information related to the non-packet elements of the voice over IP system to assist with the identification of problems affecting call quality. The values identified below must be determined for the received audio signal.  The information required to populate these fields may not be available in all systems, although it is strongly recommended that this data SHOULD be provided to support problem diagnosis.
 
-         -  IP gateway connected to circuit switched network with 2 wire
-            loop.  Without echo cancellation, typical 2-4 wire converter
-            ERL of 12 dB.  RERL = ERL + ERLE = 12 + 0 = 12 dB.
+- **signal level**: 8 bits
 
-         -  IP gateway connected to circuit switched network with 2 wire
-            loop.  With echo canceler that improves echo by 30 dB.
-            RERL = ERL + ERLE = 12 + 30 = 42 dB.
+    The voice signal relative level is defined as the ratio of the signal level to a 0 dBm0 reference [10], expressed in decibels as a signed integer in two's complement form.  This is measured only for packets containing speech energy.  The intent of this metric is not to provide a precise measurement of the signal level but to provide a real time indication that the signal level may be excessively high or low.
 
-         -  IP phone with conventional handset.  Acoustic coupling from
-            handset speaker to microphone (terminal coupling loss) is
-            typically 40 dB.  RERL = TCL = 40 dB.
+    ```
+    signal level = 10 Log10 ( rms talkspurt power (mW) )
+    ```
 
-         If we denote the local end of the VoIP path as A and the remote
-         end as B, and if the sender loudness rating (SLR) and receiver
-         loudness rating (RLR) are known for A (default values 8 dB and
-         2 dB respectively), then the echo loudness level at end A
-         (talker echo loudness rating or TELR) is given by:
+    A value of 127 indicates that this parameter is unavailable. Typical values should generally be in the -15 to -20 dBm range.
+- **noise level**: 8 bits
 
-         TELR(A) = SRL(A) + ERL(B) + ERLE(B) + RLR(A)
+    The noise level is defined as the ratio of the silent period background noise level to a 0 dBm0 reference, expressed in decibels as a signed integer in two's complement form.
 
-         TELR(B) = SRL(B) + ERL(A) + ERLE(A) + RLR(B)
+    ```
+    noise level = 10 Log10 ( rms silence power (mW) )
+    ```
 
-         Hence, in order to incorporate echo into a voice quality
-         estimate at the A end of a VoIP connection, it is desirable to
-         send the ERL + ERLE value from B to A using a format such as
-         RTCP XR.
+    A value of 127 indicates that this parameter is unavailable.
+- **residual echo return loss (RERL)**: 8 bits
 
-         Echo related information may not be available in all VoIP end
-         systems.  As echo does have a significant effect on
-         conversational quality, it is recommended that estimated values
-         for echo return loss and terminal coupling loss be provided (if
-         sensible estimates can be reasonably determined).
+    The residual echo return loss value may be measured directly by the VoIP end system's echo canceller or may be estimated by adding the echo return loss (ERL) and echo return loss enhancement (ERLE) values reported by the echo canceller.
+    ```
+    RERL(dB) = ERL (dB) + ERLE (dB)
+    ```
 
+    In the case of a VoIP gateway, the source of echo is typically line echo that occurs at 2-4 wire conversion points in the network.  This can be in the 8-12 dB range.  A line echo canceler can provide an ERLE of 30 dB or more and hence reduce this to 40-50 dB.  In the case of an IP phone, this could be acoustic coupling between handset speaker and microphone or residual acoustic echo from speakerphone operation, and may more correctly be termed terminal coupling loss (TCL).  A typical handset would result in 40-50 dB of echo loss due to acoustic feedback.
 
-
-
-         Typical values for end systems are given below to provide
-         guidance:
+    Examples:
 
-         -  IP Phone with handset: typically 45 dB.
+    - IP gateway connected to circuit switched network with 2 wire loop.  Without echo cancellation, typical 2-4 wire converter ERL of 12 dB.  RERL = ERL + ERLE = 12 + 0 = 12 dB.
+    - IP gateway connected to circuit switched network with 2 wire loop.  With echo canceler that improves echo by 30 dB. RERL = ERL + ERLE = 12 + 30 = 42 dB.
+    - IP phone with conventional handset.  Acoustic coupling from handset speaker to microphone (terminal coupling loss) is typically 40 dB.  RERL = TCL = 40 dB.
 
-         -  PC softphone or speakerphone: extremely variable, consider
-            reporting "undefined" (127).
+    If we denote the local end of the VoIP path as A and the remote end as B, and if the sender loudness rating (SLR) and receiver loudness rating (RLR) are known for A (default values 8 dB and 2 dB respectively), then the echo loudness level at end A (talker echo loudness rating or TELR) is given by:
 
-         -  IP gateway with line echo canceller: typically has ERL and
-            ERLE available.
-
-         -  IP gateway without line echo canceller: frequently a source
-            of echo related problems, consider reporting either a low
-            value (12 dB) or "undefined" (127).
+    ```
+    TELR(A) = SRL(A) + ERL(B) + ERLE(B) + RLR(A)
 
-   Gmin
-         See Configuration Parameters (Section 4.7.6, below).
+    TELR(B) = SRL(B) + ERL(A) + ERLE(A) + RLR(B)
+    ```
 
-4.7.5.  Call Quality or Transmission Quality Metrics
+    Hence, in order to incorporate echo into a voice quality estimate at the A end of a VoIP connection, it is desirable to send the ERL + ERLE value from B to A using a format such as RTCP XR.
 
-   The following metrics are direct measures of the call quality or
-   transmission quality, and incorporate the effects of codec type,
-   packet loss, discard, burstiness, delay etc.  These metrics may not
-   be available in all systems, however, they SHOULD be provided in
-   order to support problem diagnosis.
-
-   R factor: 8 bits
-         The R factor is a voice quality metric describing the segment
-         of the call that is carried over this RTP session.  It is
-         expressed as an integer in the range 0 to 100, with a value of
-         94 corresponding to "toll quality" and values of 50 or less
-         regarded as unusable.  This metric is defined as including the
-         effects of delay, consistent with ITU-T G.107 [6] and ETSI TS
-         101 329-5 [3].
-
-         A value of 127 indicates that this parameter is unavailable.
-         Values other than 127 and the valid range defined above MUST
-         not be sent and MUST be ignored by the receiving system.
-
-   ext. R factor: 8 bits
-         The external R factor is a voice quality metric describing the
-         segment of the call that is carried over a network segment
-         external to the RTP segment, for example a cellular network.
-         Its values are interpreted in the same manner as for the RTP R
-         factor.  This metric is defined as including the effects of
-         delay, consistent with ITU-T G.107 [6] and ETSI TS 101 329-5
-         [3], and relates to the outward voice path from the Voice over
-         IP termination for which this metrics block applies.
-
-
-
-         A value of 127 indicates that this parameter is unavailable.
-         Values other than 127 and the valid range defined above MUST
-         not be sent and MUST be ignored by the receiving system.
-
-   Note that an overall R factor may be estimated from the RTP segment R
-   factor and the external R factor, as follows:
-
-   R total = RTP R factor + ext. R factor - 94
-
-   MOS-LQ: 8 bits
-         The estimated mean opinion score for listening quality (MOS-LQ)
-         is a voice quality metric on a scale from 1 to 5, in which 5
-         represents excellent and 1 represents unacceptable.  This
-         metric is defined as not including the effects of delay and can
-         be compared to MOS scores obtained from listening quality (ACR)
-         tests.  It is expressed as an integer in the range 10 to 50,
-         corresponding to MOS x 10.  For example, a value of 35 would
-         correspond to an estimated MOS score of 3.5.
-
-         A value of 127 indicates that this parameter is unavailable.
-         Values other than 127 and the valid range defined above MUST
-         not be sent and MUST be ignored by the receiving system.
-
-   MOS-CQ: 8 bits
-         The estimated mean opinion score for conversational quality
-         (MOS-CQ) is defined as including the effects of delay and other
-         effects that would affect conversational quality.  The metric
-         may be calculated by converting an R factor determined
-         according to ITU-T G.107 [6] or ETSI TS 101 329-5 [3] into an
-         estimated MOS using the equation specified in G.107.  It is
-         expressed as an integer in the range 10 to 50, corresponding to
-         MOS x 10, as for MOS-LQ.
-
-         A value of 127 indicates that this parameter is unavailable.
-         Values other than 127 and the valid range defined above MUST
-         not be sent and MUST be ignored by the receiving system.
-
-4.7.6.  Configuration Parameters
-
-   Gmin: 8 bits
-         The gap threshold.  This field contains the value used for this
-         report block to determine if a gap exists.  The recommended
-         value of 16 corresponds to a burst period having a minimum
-         density of 6.25% of lost or discarded packets, which may cause
-         noticeable degradation in call quality; during gap periods, if
-         packet loss or discard occurs, each lost or discarded packet
-         would be preceded by and followed by a sequence of at least 16
-         received non-discarded packets.  Note that lost or discarded
-
-
-
-         packets that occur within Gmin packets of a report being
-         generated may be reclassified as part of a burst or gap in
-         later reports.  ETSI TS 101 329-5 [3] defines a computationally
-         efficient algorithm for measuring burst and gap density using a
-         packet loss/discard event driven approach.  This algorithm is
-         reproduced in Appendix A.2 of the present document.  Gmin MUST
-         not be zero, MUST be provided, and MUST remain constant across
-         VoIP Metrics report blocks for the duration of the RTP session.
-
-   receiver configuration byte (RX config): 8 bits
-         This byte consists of the following fields:
-
-             0 1 2 3 4 5 6 7
-            +-+-+-+-+-+-+-+-+
-            |PLC|JBA|JB rate|
-            +-+-+-+-+-+-+-+-+
-
-   packet loss concealment (PLC): 2 bits
-         Standard (11) / enhanced (10) / disabled (01) / unspecified
-         (00).  When PLC = 11, then a simple replay or interpolation
-         algorithm is being used to fill-in the missing packet; this
-         approach is typically able to conceal isolated lost packets at
-         low packet loss rates.  When PLC = 10, then an enhanced
-         interpolation algorithm is being used; algorithms of this type
-         are able to conceal high packet loss rates effectively.  When
-         PLC = 01, then silence is being inserted in place of lost
-         packets.  When PLC = 00, then no information is available
-         concerning the use of PLC; however, for some codecs this may be
-         inferred.
-
-   jitter buffer adaptive (JBA): 2 bits
-         Adaptive (11) / non-adaptive (10) / reserved (01)/ unknown
-         (00).  When the jitter buffer is adaptive, then its size is
-         being dynamically adjusted to deal with varying levels of
-         jitter.  When non-adaptive, the jitter buffer size is
-         maintained at a fixed level.  When either adaptive or non-
-         adaptive modes are specified, then the jitter buffer size
-         parameters below MUST be specified.
-
-   jitter buffer rate (JB rate): 4 bits
-         J = adjustment rate (0-15).  This represents the implementation
-         specific adjustment rate of a jitter buffer in adaptive mode.
-         This parameter is defined in terms of the approximate time
-         taken to fully adjust to a step change in peak to peak jitter
-         from 30 ms to 100 ms such that:
+    Echo related information may not be available in all VoIP end systems.  As echo does have a significant effect on conversational quality, it is recommended that estimated values for echo return loss and terminal coupling loss be provided (if sensible estimates can be reasonably determined).
 
+    Typical values for end systems are given below to provide guidance:
+
+    -  IP Phone with handset: typically 45 dB.
+    -  PC softphone or speakerphone: extremely variable, consider reporting "undefined" (127).
+    -  IP gateway with line echo canceller: typically has ERL and ERLE available.
+    -  IP gateway without line echo canceller: frequently a source of echo related problems, consider reporting either a low value (12 dB) or "undefined" (127).
+
+- **Gmin**
+
+    See Configuration Parameters (Section 4.7.6, below).
+
+#### 4.7.5.  Call Quality or Transmission Quality Metrics
+
+The following metrics are direct measures of the call quality or transmission quality, and incorporate the effects of codec type, packet loss, discard, burstiness, delay etc.  These metrics may not be available in all systems, however, they SHOULD be provided in order to support problem diagnosis.
+
+- **R factor**: 8 bits
+
+    The R factor is a voice quality metric describing the segment of the call that is carried over this RTP session.  It is expressed as an integer in the range 0 to 100, with a value of 94 corresponding to "toll quality" and values of 50 or less regarded as unusable.  This metric is defined as including the effects of delay, consistent with ITU-T G.107 [6] and ETSI TS 101 329-5 [3].
+
+    A value of 127 indicates that this parameter is unavailable. Values other than 127 and the valid range defined above MUST not be sent and MUST be ignored by the receiving system.
+- **ext. R factor**: 8 bits
+
+    The external R factor is a voice quality metric describing the segment of the call that is carried over a network segment external to the RTP segment, for example a cellular network. Its values are interpreted in the same manner as for the RTP R factor.  This metric is defined as including the effects of delay, consistent with ITU-T G.107 [6] and ETSI TS 101 329-5 [3], and relates to the outward voice path from the Voice over IP termination for which this metrics block applies.
+
+    A value of 127 indicates that this parameter is unavailable. Values other than 127 and the valid range defined above MUST not be sent and MUST be ignored by the receiving system.
+
+    Note that an overall R factor may be estimated from the RTP segment R factor and the external R factor, as follows:
+
+    ```
+    R total = RTP R factor + ext. R factor - 94
+    ```
+- **MOS-LQ**: 8 bits
+
+    The estimated mean opinion score for listening quality (MOS-LQ) is a voice quality metric on a scale from 1 to 5, in which 5 represents excellent and 1 represents unacceptable.  This metric is defined as not including the effects of delay and can be compared to MOS scores obtained from listening quality (ACR) tests.  It is expressed as an integer in the range 10 to 50, corresponding to MOS x 10.  For example, a value of 35 would correspond to an estimated MOS score of 3.5.
+
+    A value of 127 indicates that this parameter is unavailable. Values other than 127 and the valid range defined above MUST not be sent and MUST be ignored by the receiving system.
+- **MOS-CQ**: 8 bits
+
+    The estimated mean opinion score for conversational quality (MOS-CQ) is defined as including the effects of delay and other effects that would affect conversational quality.  The metric may be calculated by converting an R factor determined according to ITU-T G.107 [6] or ETSI TS 101 329-5 [3] into an estimated MOS using the equation specified in G.107.  It is expressed as an integer in the range 10 to 50, corresponding to MOS x 10, as for MOS-LQ.
+
+    A value of 127 indicates that this parameter is unavailable. Values other than 127 and the valid range defined above MUST not be sent and MUST be ignored by the receiving system.
+
+#### 4.7.6.  Configuration Parameters
+
+- **Gmin**: 8 bits
+
+    The gap threshold.  This field contains the value used for this report block to determine if a gap exists.  The recommended value of 16 corresponds to a burst period having a minimum density of 6.25% of lost or discarded packets, which may cause noticeable degradation in call quality; during gap periods, if packet loss or discard occurs, each lost or discarded packet would be preceded by and followed by a sequence of at least 16 received non-discarded packets.  Note that lost or discarded packets that occur within Gmin packets of a report being generated may be reclassified as part of a burst or gap in later reports.  ETSI TS 101 329-5 [3] defines a computationally efficient algorithm for measuring burst and gap density using a packet loss/discard event driven approach.  This algorithm is reproduced in Appendix A.2 of the present document.  Gmin MUST not be zero, MUST be provided, and MUST remain constant across VoIP Metrics report blocks for the duration of the RTP session.
+- **receiver configuration byte (RX config)**: 8 bits
+
+    This byte consists of the following fields:
+
+    ```
+         0 1 2 3 4 5 6 7
+        +-+-+-+-+-+-+-+-+
+        |PLC|JBA|JB rate|
+        +-+-+-+-+-+-+-+-+
+    ```
+- **packet loss concealment (PLC)**: 2 bits
+
+    Standard (11) / enhanced (10) / disabled (01) / unspecified (00).  When PLC = 11, then a simple replay or interpolation algorithm is being used to fill-in the missing packet; this approach is typically able to conceal isolated lost packets at low packet loss rates.  When PLC = 10, then an enhanced interpolation algorithm is being used; algorithms of this type are able to conceal high packet loss rates effectively.  When PLC = 01, then silence is being inserted in place of lost packets.  When PLC = 00, then no information is available concerning the use of PLC; however, for some codecs this may be inferred.
+- **jitter buffer adaptive (JBA)**: 2 bits
+
+    Adaptive (11) / non-adaptive (10) / reserved (01)/ unknown (00).  When the jitter buffer is adaptive, then its size is being dynamically adjusted to deal with varying levels of jitter.  When non-adaptive, the jitter buffer size is maintained at a fixed level.  When either adaptive or non- adaptive modes are specified, then the jitter buffer size parameters below MUST be specified.
+- **jitter buffer rate (JB rate)**: 4 bits
+
+    J = adjustment rate (0-15).  This represents the implementation specific adjustment rate of a jitter buffer in adaptive mode. This parameter is defined in terms of the approximate time taken to fully adjust to a step change in peak to peak jitter from 30 ms to 100 ms such that:
+
+    ```
          adjustment time = 2 * J * frame size (ms)
+    ```
 
+    This parameter is intended only to provide a guide to the degree of "aggressiveness" of an adaptive jitter buffer and may be estimated.  A value of 0 indicates that the adjustment time is unknown for this implementation.
+- **reserved**: 8 bits
 
+    This field is reserved for future definition.  In the absence of such a definition, the bits in this field MUST be set to zero and MUST be ignored by the receiver.
 
-         This parameter is intended only to provide a guide to the
-         degree of "aggressiveness" of an adaptive jitter buffer and may
-         be estimated.  A value of 0 indicates that the adjustment time
-         is unknown for this implementation.
+#### 4.7.7.  Jitter Buffer Parameters
 
-   reserved: 8 bits
-         This field is reserved for future definition.  In the absence
-         of such a definition, the bits in this field MUST be set to
-         zero and MUST be ignored by the receiver.
+The values reported in these fields SHOULD be the most recently obtained values at the time of reporting.
 
-4.7.7.  Jitter Buffer Parameters
+- **jitter buffer nominal delay (JB nominal)**: 16 bits
 
-   The values reported in these fields SHOULD be the most recently
-   obtained values at the time of reporting.
+    This is the current nominal jitter buffer delay in milliseconds, which corresponds to the nominal jitter buffer delay for packets that arrive exactly on time.  This parameter MUST be provided for both fixed and adaptive jitter buffer implementations.
+- **jitter buffer maximum delay (JB maximum)**: 16 bits
 
-   jitter buffer nominal delay (JB nominal): 16 bits
-         This is the current nominal jitter buffer delay in
-         milliseconds, which corresponds to the nominal jitter buffer
-         delay for packets that arrive exactly on time.  This parameter
-         MUST be provided for both fixed and adaptive jitter buffer
-         implementations.
+    This is the current maximum jitter buffer delay in milliseconds which corresponds to the earliest arriving packet that would not be discarded.  In simple queue implementations this may correspond to the nominal size.  In adaptive jitter buffer implementations, this value may dynamically vary up to JB abs max (see below).  This parameter MUST be provided for both fixed and adaptive jitter buffer implementations.
+- **jitter buffer absolute maximum delay (JB abs max)**: 16 bits
 
-   jitter buffer maximum delay (JB maximum): 16 bits
-         This is the current maximum jitter buffer delay in milliseconds
-         which corresponds to the earliest arriving packet that would
-         not be discarded.  In simple queue implementations this may
-         correspond to the nominal size.  In adaptive jitter buffer
-         implementations, this value may dynamically vary up to JB abs
-         max (see below).  This parameter MUST be provided for both
-         fixed and adaptive jitter buffer implementations.
+    This is the absolute maximum delay in milliseconds that the adaptive jitter buffer can reach under worst case conditions. If this value exceeds 65535 milliseconds, then this field SHALL convey the value 65535.  This parameter MUST be provided for adaptive jitter buffer implementations and its value MUST be set to JB maximum for fixed jitter buffer implementations.
 
-   jitter buffer absolute maximum delay (JB abs max): 16 bits
-         This is the absolute maximum delay in milliseconds that the
-         adaptive jitter buffer can reach under worst case conditions.
-         If this value exceeds 65535 milliseconds, then this field SHALL
-         convey the value 65535.  This parameter MUST be provided for
-         adaptive jitter buffer implementations and its value MUST be
-         set to JB maximum for fixed jitter buffer implementations.
-
-1.  SDP Signaling
+## 5.  SDP Signaling
 
    This section defines Session Description Protocol (SDP) [4] signaling
    for XR blocks that can be employed by applications that utilize SDP.
