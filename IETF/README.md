@@ -66,6 +66,7 @@ RFC | 名称
 ---|---
 [RFC3550](https://datatracker.ietf.org/doc/html/rfc3550) | RTP: A Transport Protocol for Real-Time Applications
 [RFC4585](https://datatracker.ietf.org/doc/html/rfc4585) | Extended RTP Profile for Real-time Transport Control Protocol (RTCP)-Based Feedback (RTP/AVPF)
+[RFC4588](https://datatracker.ietf.org/doc/html/rfc4588) | RTP Retransmission Payload Format
 [RFC3611](https://datatracker.ietf.org/doc/html/rfc3611) | RTP Control Protocol Extended Reports (RTCP XR)
 [RFC3711](https://datatracker.ietf.org/doc/html/rfc3711) | The Secure Real-time Transport Protocol (SRTP)
 [RFC8285](https://datatracker.ietf.org/doc/html/rfc8285) | A General Mechanism for RTP Header Extensions

@@ -2,8 +2,6 @@
 
 > Origin [https://datatracker.ietf.org/doc/html/rfc4585](https://datatracker.ietf.org/doc/html/rfc4585)
 
-
-
 ## Status of This Memo
 
 This document specifies an Internet standards track protocol for the Internet community, and requests discussion and suggestions for improvements.  Please refer to the current edition of the "Internet Official Protocol Standards" (STD 1) for the standardization state and status of this protocol.  Distribution of this memo is unlimited.
