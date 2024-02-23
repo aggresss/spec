@@ -769,7 +769,7 @@ When N > 0:
   p*_snb, p*_snb+(Mx1), p*_snb+(Mx2),..., p*_snb+(Mx(N-1)), p*_snb+(MxN)
 ```
 
-6.3.2.  Recovering the RTP Header
+#### 6.3.2.  Recovering the RTP Header
 
 For a given set T, the procedure for the recovery of the RTP header of the missing packet, whose sequence number is denoted by SEQNUM, is as follows:
 
@@ -789,7 +789,6 @@ For a given set T, the procedure for the recovery of the RTP header of the missi
 14. Set the SSRC of the new packet to the SSRC of the source RTP stream.
 
 This procedure recovers the header of an RTP packet up to (and including) the SSRC field.
-
 
 #### 6.3.3.  Recovering the RTP Payload
 
