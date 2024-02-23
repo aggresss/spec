@@ -374,7 +374,6 @@ The FEC header consists of the following fields:
 
                           Figure 11: F-bit values
 ```
-
 - The P, X, CC, M and PT recovery fields are used to determine the corresponding fields of the recovered packets.
 - The Length recovery (16 bits) field is used to determine the length of the recovered packets.
 - The TS recovery (32 bits) field is used to determine the timestamp of the recovered packets.
@@ -385,7 +384,8 @@ The FEC header consists of the following fields:
 - If the F-bit is set to 0, it represents that the source packets of all the SSRCs protected by this particular repair packet are indicated by using a flexible bitmask.  Mask is a run-length encoding of packets for a particular SSRC_i protected by the FEC packet.  Where a bit j set to 1 indicates that the source packet with sequence number (SN base_i + j + 1) is protected by this FEC packet.
 - The k-bit in the bitmasks indicates if it is 15-, 46-, or a 109-bitmask.  k=0 denotes that there is one more k-bit set, and k=1 denotes that it is the last block of bit mask.  While parsing the header, the current count of the number of k-bit gives the size of the bit mask v = count(k).  Size of next bitmask = 2^(v+3)-1.
 - Editor's note: If we limit the number of k-bits to 3, we could essentially remove the last k-bit.
-- ```
+-
+    ```
         0                   1                   2                   3
         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -410,10 +410,10 @@ The FEC header consists of the following fields:
 
 
                     Figure 12: Protocol format for F=0
-```
+    ```
 - If the F-bit is set to 1, it represents that the source packets of all the SSRCs protected by this particular repair packet are indicated by using fixed offsets.
 
-```
+    ```
         0                   1                   2                   3
         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -431,8 +431,9 @@ The FEC header consists of the following fields:
 
 
                     Figure 13: Protocol format for F=1
-```
-      Consequently, the following conditions occur for M and N values:
+    ```
+
+Consequently, the following conditions occur for M and N values:
 
 ```
    If M>0, N=0,  is Row FEC, and no column FEC will follow
@@ -481,657 +482,348 @@ It should be noted that a mask-based approach (similar to the ones specified in 
 
 This section provides the media subtype registration for the non-interleaved and interleaved parity FEC.  The parameters that are required to configure the FEC encoding and decoding operations are also defined in this section.  If no specific FEC code is specified in the subtype, then the FEC code defaults to the parity code defined in this specification.
 
-5.1.  Media Type Registration - Parity Codes
+### 5.1.  Media Type Registration - Parity Codes
 
-   This registration is done using the template defined in [RFC6838] and
-   following the guidance provided in [RFC3555].
+This registration is done using the template defined in [RFC6838] and following the guidance provided in [RFC3555].
 
-   Note to the RFC Editor: In the following sections, please replace
-   "XXXX" with the number of this document prior to publication as an
-   RFC.
+Note to the RFC Editor: In the following sections, please replace "XXXX" with the number of this document prior to publication as an RFC.
 
-5.1.1.  Registration of audio/flexfec
+#### 5.1.1.  Registration of audio/flexfec
 
-   Type name: audio
+Type name: audio
 
-   Subtype name: flexfec
+Subtype name: flexfec
 
-   Required parameters:
+Required parameters:
+- rate: The RTP timestamp (clock) rate.  The rate SHALL be larger than 1000 Hz to provide sufficient resolution to RTCP operations. However, it is RECOMMENDED to select the rate that matches the rate of the protected source RTP stream.
+- repair-window: The time that spans the source packets and the corresponding repair packets.  The size of the repair window is specified in microseconds.
 
-   o  rate: The RTP timestamp (clock) rate.  The rate SHALL be larger
-      than 1000 Hz to provide sufficient resolution to RTCP operations.
-      However, it is RECOMMENDED to select the rate that matches the
-      rate of the protected source RTP stream.
+Optional parameters:
+- L: indicates the number of columns of the source block that are protected by this FEC block and it applies to all the source SSRCs.  L is a positive integer.
+- D: indicates the number of rows of the source block that are protected by this FEC block and it applies to all the source SSRCs.  D is a positive integer.
+- ToP: indicates the type of protection applied by the sender: 0 for 1-D interleaved FEC protection, 1 for 1-D non-interleaved FEC protection, and 2 for 2-D parity FEC protection.  The ToP value of 3 is reserved for future uses.
 
-   o  repair-window: The time that spans the source packets and the
-      corresponding repair packets.  The size of the repair window is
-      specified in microseconds.
+Encoding considerations: This media type is framed (See Section 4.8 in the template document [RFC6838]) and contains binary data.
 
-   Optional parameters:
+Security considerations: See Section 9 of [RFCXXXX].
 
-   o  L: indicates the number of columns of the source block that are
-      protected by this FEC block and it applies to all the source
-      SSRCs.  L is a positive integer.
+Interoperability considerations: None.
 
-   o  D: indicates the number of rows of the source block that are
-      protected by this FEC block and it applies to all the source
-      SSRCs.  D is a positive integer.
+Published specification: [RFCXXXX].
 
-   o  ToP: indicates the type of protection applied by the sender: 0 for
-      1-D interleaved FEC protection, 1 for 1-D non-interleaved FEC
-      protection, and 2 for 2-D parity FEC protection.  The ToP value of
-      3 is reserved for future uses.
+Applications that use this media type: Multimedia applications that want to improve resiliency against packet loss by sending redundant data in addition to the source media.
 
-   Encoding considerations: This media type is framed (See Section 4.8
-   in the template document [RFC6838]) and contains binary data.
+Fragment identifier considerations: None.
 
-   Security considerations: See Section 9 of [RFCXXXX].
+Additional information: None.
 
-   Interoperability considerations: None.
+Person & email address to contact for further information: Varun Singh <varun@callstats.io> and IETF Audio/Video Transport Payloads Working Group.
 
-   Published specification: [RFCXXXX].
+Intended usage: COMMON.
 
-   Applications that use this media type: Multimedia applications that
-   want to improve resiliency against packet loss by sending redundant
-   data in addition to the source media.
+Restriction on usage: This media type depends on RTP framing, and hence, is only defined for transport via RTP [RFC3550].
 
-   Fragment identifier considerations: None.
+Author: Varun Singh <varun@callstats.io>.
 
-   Additional information: None.
+Change controller: IETF Audio/Video Transport Working Group delegated from the IESG.
 
-   Person & email address to contact for further information: Varun
-   Singh <varun@callstats.io> and IETF Audio/Video Transport Payloads
-   Working Group.
+Provisional registration? (standards tree only): Yes.
 
-   Intended usage: COMMON.
+#### 5.1.2.  Registration of video/flexfec
 
-   Restriction on usage: This media type depends on RTP framing, and
-   hence, is only defined for transport via RTP [RFC3550].
+Type name: video
 
-   Author: Varun Singh <varun@callstats.io>.
+Subtype name: flexfec
 
-   Change controller: IETF Audio/Video Transport Working Group delegated
-   from the IESG.
+Required parameters:
+- rate: The RTP timestamp (clock) rate.  The rate SHALL be larger than 1000 Hz to provide sufficient resolution to RTCP operations. However, it is RECOMMENDED to select the rate that matches the rate of the protected source RTP stream.
+- repair-window: The time that spans the source packets and the corresponding repair packets.  The size of the repair window is specified in microseconds.
 
-   Provisional registration? (standards tree only): Yes.
+Optional parameters:
+- L: indicates the number of columns of the source block that are protected by this FEC block and it applies to all the source SSRCs.  L is a positive integer.
+- D: indicates the number of rows of the source block that are protected by this FEC block and it applies to all the source SSRCs.  D is a positive integer.
+- ToP: indicates the type of protection applied by the sender: 0 for 1-D interleaved FEC protection, 1 for 1-D non-interleaved FEC protection, and 2 for 2-D parity FEC protection.  The ToP value of 3 is reserved for future uses.
 
-5.1.2.  Registration of video/flexfec
+Encoding considerations: This media type is framed (See Section 4.8 in the template document [RFC6838]) and contains binary data.
 
-   Type name: video
+Security considerations: See Section 9 of [RFCXXXX].
 
-   Subtype name: flexfec
+Interoperability considerations: None.
 
-   Required parameters:
+Published specification: [RFCXXXX].
 
-   o  rate: The RTP timestamp (clock) rate.  The rate SHALL be larger
-      than 1000 Hz to provide sufficient resolution to RTCP operations.
-      However, it is RECOMMENDED to select the rate that matches the
-      rate of the protected source RTP stream.
+Applications that use this media type: Multimedia applications that want to improve resiliency against packet loss by sending redundant data in addition to the source media.
 
-   o  repair-window: The time that spans the source packets and the
-      corresponding repair packets.  The size of the repair window is
-      specified in microseconds.
+Fragment identifier considerations: None.
 
-   Optional parameters:
+Additional information: None.
 
-   o  L: indicates the number of columns of the source block that are
-      protected by this FEC block and it applies to all the source
-      SSRCs.  L is a positive integer.
+Person & email address to contact for further information: Varun Singh <varun@callstats.io> and IETF Audio/Video Transport Payloads Working Group.
 
-   o  D: indicates the number of rows of the source block that are
-      protected by this FEC block and it applies to all the source
-      SSRCs.  D is a positive integer.
+Intended usage: COMMON.
 
-   o  ToP: indicates the type of protection applied by the sender: 0 for
-      1-D interleaved FEC protection, 1 for 1-D non-interleaved FEC
-      protection, and 2 for 2-D parity FEC protection.  The ToP value of
-      3 is reserved for future uses.
+Restriction on usage: This media type depends on RTP framing, and hence, is only defined for transport via RTP [RFC3550].
 
-   Encoding considerations: This media type is framed (See Section 4.8
-   in the template document [RFC6838]) and contains binary data.
+Author: Varun Singh <varun@callstats.io>.
 
-   Security considerations: See Section 9 of [RFCXXXX].
+Change controller: IETF Audio/Video Transport Working Group delegated from the IESG.
 
-   Interoperability considerations: None.
+Provisional registration? (standards tree only): Yes.
 
-   Published specification: [RFCXXXX].
+#### 5.1.3.  Registration of text/flexfec
 
-   Applications that use this media type: Multimedia applications that
-   want to improve resiliency against packet loss by sending redundant
-   data in addition to the source media.
+Type name: text
 
-   Fragment identifier considerations: None.
+Subtype name: flexfec
 
-   Additional information: None.
+Required parameters:
+- rate: The RTP timestamp (clock) rate.  The rate SHALL be larger than 1000 Hz to provide sufficient resolution to RTCP operations.
 
-   Person & email address to contact for further information: Varun
-   Singh <varun@callstats.io> and IETF Audio/Video Transport Payloads
-   Working Group.
+However, it is RECOMMENDED to select the rate that matches the rate of the protected source RTP stream.
+- repair-window: The time that spans the source packets and the corresponding repair packets.  The size of the repair window is specified in microseconds.
 
-   Intended usage: COMMON.
+Optional parameters:
+- L: indicates the number of columns of the source block that are protected by this FEC block and it applies to all the source SSRCs.  L is a positive integer.
+- D: indicates the number of rows of the source block that are protected by this FEC block and it applies to all the source SSRCs.  D is a positive integer.
+- ToP: indicates the type of protection applied by the sender: 0 for 1-D interleaved FEC protection, 1 for 1-D non-interleaved FEC protection, and 2 for 2-D parity FEC protection.  The ToP value of 3 is reserved for future uses.
 
-   Restriction on usage: This media type depends on RTP framing, and
-   hence, is only defined for transport via RTP [RFC3550].
+Encoding considerations: This media type is framed (See Section 4.8 in the template document [RFC6838]) and contains binary data.
 
-   Author: Varun Singh <varun@callstats.io>.
+Security considerations: See Section 9 of [RFCXXXX].
 
-   Change controller: IETF Audio/Video Transport Working Group delegated
-   from the IESG.
+Interoperability considerations: None.
 
-   Provisional registration? (standards tree only): Yes.
+Published specification: [RFCXXXX].
 
-5.1.3.  Registration of text/flexfec
+Applications that use this media type: Multimedia applications that want to improve resiliency against packet loss by sending redundant data in addition to the source media.
 
-   Type name: text
+Fragment identifier considerations: None.
 
-   Subtype name: flexfec
+Additional information: None.
 
-   Required parameters:
+Person & email address to contact for further information: Varun Singh <vvarun@callstats.io> and IETF Audio/Video Transport Payloads Working Group.
 
-   o  rate: The RTP timestamp (clock) rate.  The rate SHALL be larger
-      than 1000 Hz to provide sufficient resolution to RTCP operations.
+Intended usage: COMMON.
 
-      However, it is RECOMMENDED to select the rate that matches the
-      rate of the protected source RTP stream.
+Restriction on usage: This media type depends on RTP framing, and hence, is only defined for transport via RTP [RFC3550].
 
-   o  repair-window: The time that spans the source packets and the
-      corresponding repair packets.  The size of the repair window is
-      specified in microseconds.
+Author: Varun Singh <varun@callstats.io>.
 
-   Optional parameters:
+Change controller: IETF Audio/Video Transport Working Group delegated from the IESG.
 
-   o  L: indicates the number of columns of the source block that are
-      protected by this FEC block and it applies to all the source
-      SSRCs.  L is a positive integer.
+Provisional registration? (standards tree only): Yes.
 
-   o  D: indicates the number of rows of the source block that are
-      protected by this FEC block and it applies to all the source
-      SSRCs.  D is a positive integer.
+#### 5.1.4.  Registration of application/flexfec
 
-   o  ToP: indicates the type of protection applied by the sender: 0 for
-      1-D interleaved FEC protection, 1 for 1-D non-interleaved FEC
-      protection, and 2 for 2-D parity FEC protection.  The ToP value of
-      3 is reserved for future uses.
+Type name: application
 
-   Encoding considerations: This media type is framed (See Section 4.8
-   in the template document [RFC6838]) and contains binary data.
+Subtype name: flexfec
 
-   Security considerations: See Section 9 of [RFCXXXX].
+Required parameters:
+- rate: The RTP timestamp (clock) rate.  The rate SHALL be larger than 1000 Hz to provide sufficient resolution to RTCP operations.
 
-   Interoperability considerations: None.
+However, it is RECOMMENDED to select the rate that matches the rate of the protected source RTP stream.
+- repair-window: The time that spans the source packets and the corresponding repair packets.  The size of the repair window is specified in microseconds.
 
-   Published specification: [RFCXXXX].
+Optional parameters:
+- L: indicates the number of columns of the source block that are protected by this FEC block and it applies to all the source SSRCs.  L is a positive integer.
+- D: indicates the number of rows of the source block that are protected by this FEC block and it applies to all the source SSRCs.  D is a positive integer.
+- ToP: indicates the type of protection applied by the sender: 0 for 1-D interleaved FEC protection, 1 for 1-D non-interleaved FEC protection, and 2 for 2-D parity FEC protection.  The ToP value of 3 is reserved for future uses.
 
-   Applications that use this media type: Multimedia applications that
-   want to improve resiliency against packet loss by sending redundant
-   data in addition to the source media.
+Encoding considerations: This media type is framed (See Section 4.8 in the template document [RFC6838]) and contains binary data.
 
-   Fragment identifier considerations: None.
+Security considerations: See Section 9 of [RFCXXXX].
 
-   Additional information: None.
+Interoperability considerations: None.
 
-   Person & email address to contact for further information: Varun
-   Singh <vvarun@callstats.io> and IETF Audio/Video Transport Payloads
-   Working Group.
+Published specification: [RFCXXXX].
 
-   Intended usage: COMMON.
+Applications that use this media type: Multimedia applications that want to improve resiliency against packet loss by sending redundant data in addition to the source media.
 
-   Restriction on usage: This media type depends on RTP framing, and
-   hence, is only defined for transport via RTP [RFC3550].
+Fragment identifier considerations: None.
 
-   Author: Varun Singh <varun@callstats.io>.
+Additional information: None.
 
-   Change controller: IETF Audio/Video Transport Working Group delegated
-   from the IESG.
+Person & email address to contact for further information: Varun Singh <varun@callstats.io> and IETF Audio/Video Transport Payloads Working Group.
 
-   Provisional registration? (standards tree only): Yes.
+Intended usage: COMMON.
 
-5.1.4.  Registration of application/flexfec
+Restriction on usage: This media type depends on RTP framing, and hence, is only defined for transport via RTP [RFC3550].
 
-   Type name: application
+Author: Varun Singh <varun@callstats.io>.
 
-   Subtype name: flexfec
+Change controller: IETF Audio/Video Transport Working Group delegated from the IESG.
 
-   Required parameters:
+Provisional registration? (standards tree only): Yes.
 
-   o  rate: The RTP timestamp (clock) rate.  The rate SHALL be larger
-      than 1000 Hz to provide sufficient resolution to RTCP operations.
-      However, it is RECOMMENDED to select the rate that matches the
-      rate of the protected source RTP stream.
+### 5.2.  Mapping to SDP Parameters
 
-   o  repair-window: The time that spans the source packets and the
-      corresponding repair packets.  The size of the repair window is
-      specified in microseconds.
+Applications that are using RTP transport commonly use Session Description Protocol (SDP) [RFC4566] to describe their RTP sessions. The information that is used to specify the media types in an RTP session has specific mappings to the fields in an SDP description. In this section, we provide these mappings for the media subtypes registered by this document.  Note that if an application does not use SDP to describe the RTP sessions, an appropriate mapping must be defined and used to specify the media types and their parameters for the control/description protocol employed by the application.
 
-   Optional parameters:
+The mapping of the media type specification for "non-interleaved-parityfec" and "interleaved-parityfec" and their parameters in SDP is as follows:
 
-   o  L: indicates the number of columns of the source block that are
-      protected by this FEC block and it applies to all the source
-      SSRCs.  L is a positive integer.
+- o  The media type (e.g., "application") goes into the "m=" line as the media name.
+- o  The media subtype goes into the "a=rtpmap" line as the encoding name.  The RTP clock rate parameter ("rate") also goes into the "a=rtpmap" line as the clock rate.
+- o  The remaining required payload-format-specific parameters go into the "a=fmtp" line by copying them directly from the media type string as a semicolon-separated list of parameter=value pairs.
 
-   o  D: indicates the number of rows of the source block that are
-      protected by this FEC block and it applies to all the source
-      SSRCs.  D is a positive integer.
+SDP examples are provided in Section 7.
 
-   o  ToP: indicates the type of protection applied by the sender: 0 for
-      1-D interleaved FEC protection, 1 for 1-D non-interleaved FEC
-      protection, and 2 for 2-D parity FEC protection.  The ToP value of
-      3 is reserved for future uses.
+#### 5.2.1.  Offer-Answer Model Considerations
 
-   Encoding considerations: This media type is framed (See Section 4.8
-   in the template document [RFC6838]) and contains binary data.
+When offering 1-D interleaved parity FEC over RTP using SDP in an Offer/Answer model [RFC3264], the following considerations apply:
 
-   Security considerations: See Section 9 of [RFCXXXX].
+- Each combination of the L and D parameters produces a different FEC data and is not compatible with any other combination.  A sender application may desire to offer multiple offers with different sets of L and D values as long as the parameter values are valid.  The receiver SHOULD normally choose the offer that has a sufficient amount of interleaving.  If multiple such offers exist, the receiver may choose the offer that has the lowest overhead or the one that requires the smallest amount of buffering.  The selection depends on the application requirements.
+- The value for the repair-window parameter depends on the L and D values and cannot be chosen arbitrarily.  More specifically, L and D values determine the lower limit for the repair-window size. The upper limit of the repair-window size does not depend on the L and D values.
+- Although combinations with the same L and D values but with different repair-window sizes produce the same FEC data, such combinations are still considered different offers.  The size of the repair-window is related to the maximum delay between the transmission of a source packet and the associated repair packet. This directly impacts the buffering requirement on the receiver side and the receiver must consider this when choosing an offer.
+- There are no optional format parameters defined for this payload. Any unknown option in the offer MUST be ignored and deleted from the answer.  If FEC is not desired by the receiver, it can be deleted from the answer.
 
-   Interoperability considerations: None.
+#### 5.2.2.  Declarative Considerations
 
-   Published specification: [RFCXXXX].
+In declarative usage, like SDP in the Real-time Streaming Protocol (RTSP) [RFC2326] or the Session Announcement Protocol (SAP) [RFC2974], the following considerations apply:
 
-   Applications that use this media type: Multimedia applications that
-   want to improve resiliency against packet loss by sending redundant
-   data in addition to the source media.
+- The payload format configuration parameters are all declarative and a participant MUST use the configuration that is provided for the session.
+- More than one configuration may be provided (if desired) by declaring multiple RTP payload types.  In that case, the receivers should choose the repair flow that is best for them.
 
-   Fragment identifier considerations: None.
+## 6.  Protection and Recovery Procedures - Parity Codes
 
-   Additional information: None.
+This section provides a complete specification of the 1-D and 2-D parity codes and their RTP payload formats.
 
-   Person & email address to contact for further information: Varun
-   Singh <varun@callstats.io> and IETF Audio/Video Transport Payloads
-   Working Group.
+### 6.1.  Overview
 
-   Intended usage: COMMON.
+The following sections specify the steps involved in generating the repair packets and reconstructing the missing source packets from the repair packets.
 
-   Restriction on usage: This media type depends on RTP framing, and
-   hence, is only defined for transport via RTP [RFC3550].
+### 6.2.  Repair Packet Construction
 
-   Author: Varun Singh <varun@callstats.io>.
+The RTP header of a repair packet is formed based on the guidelines given in Section 4.2.
 
-   Change controller: IETF Audio/Video Transport Working Group delegated
-   from the IESG.
+The FEC header includes 12 octets (or upto 28 octets when the longer optional masks are used).  It is constructed by applying the XOR operation on the bit strings that are generated from the individual source packets protected by this particular repair packet.  The set of the source packets that are associated with a given repair packet can be computed by the formula given in Section 6.3.1.
 
-   Provisional registration? (standards tree only): Yes.
+The bit string is formed for each source packet by concatenating the following fields together in the order specified:
 
-5.2.  Mapping to SDP Parameters
+- The first 64 bits of the RTP header (64 bits).
+- Unsigned network-ordered 16-bit representation of the source packet length in bytes minus 12 (for the fixed RTP header), i.e., the sum of the lengths of all the following if present: the CSRC list, extension header, RTP payload and RTP padding (16 bits).
 
-   Applications that are using RTP transport commonly use Session
-   Description Protocol (SDP) [RFC4566] to describe their RTP sessions.
-   The information that is used to specify the media types in an RTP
-   session has specific mappings to the fields in an SDP description.
-   In this section, we provide these mappings for the media subtypes
-   registered by this document.  Note that if an application does not
-   use SDP to describe the RTP sessions, an appropriate mapping must be
-   defined and used to specify the media types and their parameters for
-   the control/description protocol employed by the application.
+By applying the parity operation on the bit strings produced from the source packets, we generate the FEC bit string.  The FEC header is generated from the FEC bit string as follows:
 
-   The mapping of the media type specification for "non-interleaved-
-   parityfec" and "interleaved-parityfec" and their parameters in SDP is
-   as follows:
+- The first (most significant) 2 bits in the FEC bit string are skipped.  The MSK bits in the FEC header are set to the appropriate value, i.e., it depends on the chosen bitmask length.
+- The next bit in the FEC bit string is written into the P recovery bit in the FEC header.
+- The next bit in the FEC bit string is written into the X recovery bit in the FEC header.
+- The next 4 bits of the FEC bit string are written into the CC recovery field in the FEC header.
+- The next bit is written into the M recovery bit in the FEC header.
+- The next 7 bits of the FEC bit string are written into the PT recovery field in the FEC header.
+- The next 16 bits are skipped.
+- The next 32 bits of the FEC bit string are written into the TS recovery field in the FEC header.
+- The next 16 bits are written into the length recovery field in the FEC header.
+- Depending on the chosen MSK value, the bit mask of appropriate length will be set to the appropriate values.
 
-   o  The media type (e.g., "application") goes into the "m=" line as
-      the media name.
+As described in Section 4.2, the SN base field of the FEC header MUST be set to the lowest sequence number of the source packets protected by this repair packet.  When MSK represents a bitmask (MSK=00,01,10), the SN base field corresponds to the lowest sequence number indicated in the bitmask.  When MSK=11, the following considerations apply: 1> for the interleaved FEC packets, this corresponds to the lowest sequence number of the source packets that forms the column, 2> for the non-interleaved FEC packets, the SN base field MUST be set to the lowest sequence number of the source packets that forms the row.
 
-   o  The media subtype goes into the "a=rtpmap" line as the encoding
-      name.  The RTP clock rate parameter ("rate") also goes into the
-      "a=rtpmap" line as the clock rate.
+The repair packet payload consists of the bits that are generated by applying the XOR operation on the payloads of the source RTP packets. If the payload lengths of the source packets are not equal, each shorter packet MUST be padded to the length of the longest packet by adding octet 0's at the end.
 
-   o  The remaining required payload-format-specific parameters go into
-      the "a=fmtp" line by copying them directly from the media type
-      string as a semicolon-separated list of parameter=value pairs.
+Due to this possible padding and mandatory FEC header, a repair packet has a larger size than the source packets it protects.  This may cause problems if the resulting repair packet size exceeds the Maximum Transmission Unit (MTU) size of the path over which the repair flow is sent.
 
-   SDP examples are provided in Section 7.
+### 6.3.  Source Packet Reconstruction
 
-5.2.1.  Offer-Answer Model Considerations
+This section describes the recovery procedures that are required to reconstruct the missing source packets.  The recovery process has two steps.  In the first step, the FEC decoder determines which source and repair packets should be used in order to recover a missing packet.  In the second step, the decoder recovers the missing packet, which consists of an RTP header and RTP payload.
 
-   When offering 1-D interleaved parity FEC over RTP using SDP in an
-   Offer/Answer model [RFC3264], the following considerations apply:
+In the following, we describe the RECOMMENDED algorithms for the first and second steps.  Based on the implementation, different algorithms MAY be adopted.  However, the end result MUST be identical to the one produced by the algorithms described below.
 
-   o  Each combination of the L and D parameters produces a different
-      FEC data and is not compatible with any other combination.  A
-      sender application may desire to offer multiple offers with
-      different sets of L and D values as long as the parameter values
-      are valid.  The receiver SHOULD normally choose the offer that has
-      a sufficient amount of interleaving.  If multiple such offers
-      exist, the receiver may choose the offer that has the lowest
-      overhead or the one that requires the smallest amount of
-      buffering.  The selection depends on the application requirements.
+Note that the same algorithms are used by the 1-D parity codes, regardless of whether the FEC protection is applied over a column or a row.  The 2-D parity codes, on the other hand, usually require multiple iterations of the procedures described here.  This iterative decoding algorithm is further explained in Section 6.3.4.
 
-   o  The value for the repair-window parameter depends on the L and D
-      values and cannot be chosen arbitrarily.  More specifically, L and
-      D values determine the lower limit for the repair-window size.
-      The upper limit of the repair-window size does not depend on the L
-      and D values.
+#### 6.3.1.  Associating the Source and Repair Packets
 
-   o  Although combinations with the same L and D values but with
-      different repair-window sizes produce the same FEC data, such
-      combinations are still considered different offers.  The size of
-      the repair-window is related to the maximum delay between the
-      transmission of a source packet and the associated repair packet.
-      This directly impacts the buffering requirement on the receiver
-      side and the receiver must consider this when choosing an offer.
+We denote the set of the source packets associated with repair packet p* by set T(p*).  Note that in a source block whose size is L columns by D rows, set T includes D source packets plus one repair packet for the FEC protection applied over a column, and L source packets plus one repair packet for the FEC protection applied over a row.  Recall that 1-D interleaved and non-interleaved FEC protection can fully recover the missing information if there is only one source packet missing in set T.  If there are more than one source packets missing in set T, 1-D FEC protection will not work.
 
-   o  There are no optional format parameters defined for this payload.
-      Any unknown option in the offer MUST be ignored and deleted from
-      the answer.  If FEC is not desired by the receiver, it can be
-      deleted from the answer.
+##### 6.3.1.1.  Signaled in SDP
 
-5.2.2.  Declarative Considerations
+The first step is associating the source and repair packets.  If the endpoint relies entirely on out-of-band signaling (MSK=11, and M=N=0), then this information may be inferred from the media type parameters specified in the SDP description.  Furthermore, the payload type field in the RTP header, assists the receiver distinguish an interleaved or non-interleaved FEC packet.
 
-   In declarative usage, like SDP in the Real-time Streaming Protocol
-   (RTSP) [RFC2326] or the Session Announcement Protocol (SAP)
-   [RFC2974], the following considerations apply:
+Mathematically, for any received repair packet, p*, we can determine the sequence numbers of the source packets that are protected by this repair packet as follows:
 
-   o  The payload format configuration parameters are all declarative
-      and a participant MUST use the configuration that is provided for
-      the session.
-
-   o  More than one configuration may be provided (if desired) by
-      declaring multiple RTP payload types.  In that case, the receivers
-      should choose the repair flow that is best for them.
-
-1.  Protection and Recovery Procedures - Parity Codes
-
-   This section provides a complete specification of the 1-D and 2-D
-   parity codes and their RTP payload formats.
-
-6.1.  Overview
-
-   The following sections specify the steps involved in generating the
-   repair packets and reconstructing the missing source packets from the
-   repair packets.
-
-6.2.  Repair Packet Construction
-
-   The RTP header of a repair packet is formed based on the guidelines
-   given in Section 4.2.
-
-   The FEC header includes 12 octets (or upto 28 octets when the longer
-   optional masks are used).  It is constructed by applying the XOR
-   operation on the bit strings that are generated from the individual
-   source packets protected by this particular repair packet.  The set
-   of the source packets that are associated with a given repair packet
-   can be computed by the formula given in Section 6.3.1.
-
-   The bit string is formed for each source packet by concatenating the
-   following fields together in the order specified:
-
-   o  The first 64 bits of the RTP header (64 bits).
-
-   o  Unsigned network-ordered 16-bit representation of the source
-      packet length in bytes minus 12 (for the fixed RTP header), i.e.,
-      the sum of the lengths of all the following if present: the CSRC
-      list, extension header, RTP payload and RTP padding (16 bits).
-
-   By applying the parity operation on the bit strings produced from the
-   source packets, we generate the FEC bit string.  The FEC header is
-   generated from the FEC bit string as follows:
-
-   o  The first (most significant) 2 bits in the FEC bit string are
-      skipped.  The MSK bits in the FEC header are set to the
-      appropriate value, i.e., it depends on the chosen bitmask length.
-
-   o  The next bit in the FEC bit string is written into the P recovery
-      bit in the FEC header.
-
-   o  The next bit in the FEC bit string is written into the X recovery
-      bit in the FEC header.
-
-   o  The next 4 bits of the FEC bit string are written into the CC
-      recovery field in the FEC header.
-
-   o  The next bit is written into the M recovery bit in the FEC header.
-
-   o  The next 7 bits of the FEC bit string are written into the PT
-      recovery field in the FEC header.
-
-   o  The next 16 bits are skipped.
-
-   o  The next 32 bits of the FEC bit string are written into the TS
-      recovery field in the FEC header.
-
-   o  The next 16 bits are written into the length recovery field in the
-      FEC header.
-
-   o  Depending on the chosen MSK value, the bit mask of appropriate
-      length will be set to the appropriate values.
-
-   As described in Section 4.2, the SN base field of the FEC header MUST
-   be set to the lowest sequence number of the source packets protected
-   by this repair packet.  When MSK represents a bitmask (MSK=00,01,10),
-   the SN base field corresponds to the lowest sequence number indicated
-   in the bitmask.  When MSK=11, the following considerations apply: 1)
-   for the interleaved FEC packets, this corresponds to the lowest
-   sequence number of the source packets that forms the column, 2) for
-   the non-interleaved FEC packets, the SN base field MUST be set to the
-   lowest sequence number of the source packets that forms the row.
-
-   The repair packet payload consists of the bits that are generated by
-   applying the XOR operation on the payloads of the source RTP packets.
-   If the payload lengths of the source packets are not equal, each
-   shorter packet MUST be padded to the length of the longest packet by
-   adding octet 0's at the end.
-
-   Due to this possible padding and mandatory FEC header, a repair
-   packet has a larger size than the source packets it protects.  This
-   may cause problems if the resulting repair packet size exceeds the
-   Maximum Transmission Unit (MTU) size of the path over which the
-   repair flow is sent.
-
-6.3.  Source Packet Reconstruction
-
-   This section describes the recovery procedures that are required to
-   reconstruct the missing source packets.  The recovery process has two
-   steps.  In the first step, the FEC decoder determines which source
-   and repair packets should be used in order to recover a missing
-   packet.  In the second step, the decoder recovers the missing packet,
-   which consists of an RTP header and RTP payload.
-
-   In the following, we describe the RECOMMENDED algorithms for the
-   first and second steps.  Based on the implementation, different
-   algorithms MAY be adopted.  However, the end result MUST be identical
-   to the one produced by the algorithms described below.
-
-   Note that the same algorithms are used by the 1-D parity codes,
-   regardless of whether the FEC protection is applied over a column or
-   a row.  The 2-D parity codes, on the other hand, usually require
-   multiple iterations of the procedures described here.  This iterative
-   decoding algorithm is further explained in Section 6.3.4.
-
-6.3.1.  Associating the Source and Repair Packets
-
-   We denote the set of the source packets associated with repair packet
-   p* by set T(p*).  Note that in a source block whose size is L columns
-   by D rows, set T includes D source packets plus one repair packet for
-   the FEC protection applied over a column, and L source packets plus
-   one repair packet for the FEC protection applied over a row.  Recall
-   that 1-D interleaved and non-interleaved FEC protection can fully
-   recover the missing information if there is only one source packet
-   missing in set T.  If there are more than one source packets missing
-   in set T, 1-D FEC protection will not work.
-
-6.3.1.1.  Signaled in SDP
-
-   The first step is associating the source and repair packets.  If the
-   endpoint relies entirely on out-of-band signaling (MSK=11, and
-   M=N=0), then this information may be inferred from the media type
-   parameters specified in the SDP description.  Furthermore, the
-   payload type field in the RTP header, assists the receiver
-   distinguish an interleaved or non-interleaved FEC packet.
-
-   Mathematically, for any received repair packet, p*, we can determine
-   the sequence numbers of the source packets that are protected by this
-   repair packet as follows:
-
-
+```
                         p*_snb + i * X_1 (modulo 65536)
+```
 
-   where p*_snb denotes the value in the SN base field of p*'s FEC
-   header, X_1 is set to L and 1 for the interleaved and non-interleaved
-   FEC packets, respectively, and
+where p*_snb denotes the value in the SN base field of p*'s FEC header, X_1 is set to L and 1 for the interleaved and non-interleaved FEC packets, respectively, and
 
-
+```
                                  0 <= i < X_2
+```
 
-   where X_2 is set to D and L for the interleaved and non-interleaved
-   FEC packets, respectively.
+where X_2 is set to D and L for the interleaved and non-interleaved FEC packets, respectively.
 
-6.3.1.2.  Using bitmasks
+##### 6.3.1.2.  Using bitmasks
 
-   When using fixed size bitmasks (16-, 48-, 112-bits), the SN base
-   field in the FEC header indicates the lowest sequence number of the
-   source packets that forms the FEC packet.  Finally, the bits maked by
-   "1" in the bitmask are offsets from the SN base and make up the rest
-   of the packets protected by the FEC packet.  The bitmasks are able to
-   represent arbitrary protection patterns, for example, 1-D
-   interleaved, 1-D non-interleaved, 2-D, staircase.
+When using fixed size bitmasks (16-, 48-, 112-bits), the SN base field in the FEC header indicates the lowest sequence number of the source packets that forms the FEC packet.  Finally, the bits maked by "1" in the bitmask are offsets from the SN base and make up the rest of the packets protected by the FEC packet.  The bitmasks are able to represent arbitrary protection patterns, for example, 1-D interleaved, 1-D non-interleaved, 2-D, staircase.
 
-6.3.1.3.  Using M and N Offsets
+##### 6.3.1.3.  Using M and N Offsets
 
-   When value of M is non-zero, the 8-bit fields indicate the offset of
-   packets protected by an interleaved (N>0) or non-interleaved (N=0)
-   FEC packet.  Using a combination of interleaved and non-interleaved
-   FEC packets can form 2-D protection patterns.
+When value of M is non-zero, the 8-bit fields indicate the offset of packets protected by an interleaved (N>0) or non-interleaved (N=0) FEC packet.  Using a combination of interleaved and non-interleaved FEC packets can form 2-D protection patterns.
 
-   Mathematically, for any received repair packet, p*, we can determine
-   the sequence numbers of the source packets that are protected by this
-   repair packet are as follows:
+Mathematically, for any received repair packet, p*, we can determine the sequence numbers of the source packets that are protected by this repair packet are as follows:
 
-
+```
 When N = 0:
   p*_snb, p*_snb+1,..., p*_snb+(M-1), p*_snb+M
 When N > 0:
   p*_snb, p*_snb+(Mx1), p*_snb+(Mx2),..., p*_snb+(Mx(N-1)), p*_snb+(MxN)
+```
 
 6.3.2.  Recovering the RTP Header
 
-   For a given set T, the procedure for the recovery of the RTP header
-   of the missing packet, whose sequence number is denoted by SEQNUM, is
-   as follows:
+For a given set T, the procedure for the recovery of the RTP header of the missing packet, whose sequence number is denoted by SEQNUM, is as follows:
 
-   1.   For each of the source packets that are successfully received in
-        T, compute the 80-bit string by concatenating the first 64 bits
-        of their RTP header and the unsigned network-ordered 16-bit
-        representation of their length in bytes minus 12.
+1.  For each of the source packets that are successfully received in T, compute the 80-bit string by concatenating the first 64 bits of their RTP header and the unsigned network-ordered 16-bit representation of their length in bytes minus 12.
+2.  For the repair packet in T, compute the FEC bit string from the first 80 bits of the FEC header.
+3.  Calculate the recovered bit string as the XOR of the bit strings generated from all source packets in T and the FEC bit string generated from the repair packet in T.
+4.  Create a new packet with the standard 12-byte RTP header and no payload.
+5.  Set the version of the new packet to 2.  Skip the first 2 bits in the recovered bit string.
+6.  Set the Padding bit in the new packet to the next bit in the recovered bit string.
+7.  Set the Extension bit in the new packet to the next bit in the recovered bit string.
+8.  Set the CC field to the next 4 bits in the recovered bit string.
+9.  Set the Marker bit in the new packet to the next bit in the recovered bit string.
+10. Set the Payload type in the new packet to the next 7 bits in the recovered bit string.
+11. Set the SN field in the new packet to SEQNUM.  Skip the next 16 bits in the recovered bit string.
+12. Set the TS field in the new packet to the next 32 bits in the recovered bit string.
+13. Take the next 16 bits of the recovered bit string and set the new variable Y to whatever unsigned integer this represents (assuming network order).  Convert Y to host order.  Y represents the length of the new packet in bytes minus 12 (for the fixed RTP header), i.e., the sum of the lengths of all the following if present: the CSRC list, header extension, RTP payload and RTP padding.
+14. Set the SSRC of the new packet to the SSRC of the source RTP stream.
 
-   2.   For the repair packet in T, compute the FEC bit string from the
-        first 80 bits of the FEC header.
-
-   3.   Calculate the recovered bit string as the XOR of the bit strings
-        generated from all source packets in T and the FEC bit string
-        generated from the repair packet in T.
-
-   4.   Create a new packet with the standard 12-byte RTP header and no
-        payload.
-
-   5.   Set the version of the new packet to 2.  Skip the first 2 bits
-        in the recovered bit string.
-
-   6.   Set the Padding bit in the new packet to the next bit in the
-        recovered bit string.
-
-   7.   Set the Extension bit in the new packet to the next bit in the
-        recovered bit string.
-
-   8.   Set the CC field to the next 4 bits in the recovered bit string.
-
-   9.   Set the Marker bit in the new packet to the next bit in the
-        recovered bit string.
-
-   10.  Set the Payload type in the new packet to the next 7 bits in the
-        recovered bit string.
-
-   11.  Set the SN field in the new packet to SEQNUM.  Skip the next 16
-        bits in the recovered bit string.
-
-   12.  Set the TS field in the new packet to the next 32 bits in the
-        recovered bit string.
-
-   13.  Take the next 16 bits of the recovered bit string and set the
-        new variable Y to whatever unsigned integer this represents
-        (assuming network order).  Convert Y to host order.  Y
-        represents the length of the new packet in bytes minus 12 (for
-        the fixed RTP header), i.e., the sum of the lengths of all the
-        following if present: the CSRC list, header extension, RTP
-        payload and RTP padding.
-
-   14.  Set the SSRC of the new packet to the SSRC of the source RTP
-        stream.
-
-   This procedure recovers the header of an RTP packet up to (and
-   including) the SSRC field.
+This procedure recovers the header of an RTP packet up to (and including) the SSRC field.
 
 
-6.3.3.  Recovering the RTP Payload
+#### 6.3.3.  Recovering the RTP Payload
 
-   Following the recovery of the RTP header, the procedure for the
-   recovery of the RTP payload is as follows:
+Following the recovery of the RTP header, the procedure for the recovery of the RTP payload is as follows:
 
-   1.  Append Y bytes to the new packet.
+1.  Append Y bytes to the new packet.
+2.  For each of the source packets that are successfully received in T, compute the bit string from the Y octets of data starting with the 13th octet of the packet.  If any of the bit strings generated from the source packets has a length shorter than Y, pad them to that length.  The padding of octet 0 MUST be added at the end of the bit string.  Note that the information of the first 8 octets are protected by the FEC header.
+3.  For the repair packet in T, compute the FEC bit string from the repair packet payload, i.e., the Y octets of data following the FEC header.  Note that the FEC header may be 12, 16, 32 octets depending on the length of the bitmask.
+4.  Calculate the recovered bit string as the XOR of the bit strings generated from all source packets in T and the FEC bit string generated from the repair packet in T.
+5.  Append the recovered bit string (Y octets) to the new packet generated in Section 6.3.2.
 
-   2.  For each of the source packets that are successfully received in
-       T, compute the bit string from the Y octets of data starting with
-       the 13th octet of the packet.  If any of the bit strings
-       generated from the source packets has a length shorter than Y,
-       pad them to that length.  The padding of octet 0 MUST be added at
-       the end of the bit string.  Note that the information of the
-       first 8 octets are protected by the FEC header.
+#### 6.3.4.  Iterative Decoding Algorithm for the 2-D Parity FEC Protection
 
-   3.  For the repair packet in T, compute the FEC bit string from the
-       repair packet payload, i.e., the Y octets of data following the
-       FEC header.  Note that the FEC header may be 12, 16, 32 octets
-       depending on the length of the bitmask.
+In 2-D parity FEC protection, the sender generates both non-interleaved and interleaved FEC packets to combat with the mixed loss patterns (random and bursty).  At the receiver side, these FEC packets are used iteratively to overcome the shortcomings of the 1-D non-interleaved/interleaved FEC protection and improve the chances of full error recovery.
 
-   4.  Calculate the recovered bit string as the XOR of the bit strings
-       generated from all source packets in T and the FEC bit string
-       generated from the repair packet in T.
-
-   5.  Append the recovered bit string (Y octets) to the new packet
-       generated in Section 6.3.2.
-
-6.3.4.  Iterative Decoding Algorithm for the 2-D Parity FEC Protection
-
-   In 2-D parity FEC protection, the sender generates both non-
-   interleaved and interleaved FEC packets to combat with the mixed loss
-   patterns (random and bursty).  At the receiver side, these FEC
-   packets are used iteratively to overcome the shortcomings of the 1-D
-   non-interleaved/interleaved FEC protection and improve the chances of
-   full error recovery.
-
-   The iterative decoding algorithm runs as follows:
-
-   1.  Set num_recovered_until_this_iteration to zero
-
-   2.  Set num_recovered_so_far to zero
-
-   3.  Recover as many source packets as possible by using the non-
-       interleaved FEC packets as outlined in Section 6.3.2 and
-       Section 6.3.3, and increase the value of num_recovered_so_far by
-       the number of recovered source packets.
-
-   4.  Recover as many source packets as possible by using the
-       interleaved FEC packets as outlined in Section 6.3.2 and
-       Section 6.3.3, and increase the value of num_recovered_so_far by
-       the number of recovered source packets.
-
-   5.  If num_recovered_so_far > num_recovered_until_this_iteration
+The iterative decoding algorithm runs as follows:
+1.  Set num_recovered_until_this_iteration to zero
+2.  Set num_recovered_so_far to zero
+3.  Recover as many source packets as possible by using the non-interleaved FEC packets as outlined in Section 6.3.2 and Section 6.3.3, and increase the value of num_recovered_so_far by the number of recovered source packets.
+4.  Recover as many source packets as possible by using the interleaved FEC packets as outlined in Section 6.3.2 and Section 6.3.3, and increase the value of num_recovered_so_far by the number of recovered source packets.
+5.  ```
+    If num_recovered_so_far > num_recovered_until_this_iteration
        ---num_recovered_until_this_iteration = num_recovered_so_far
        ---Go to step 3
-       Else
-       ---Terminate
+    Else
+       ---Terminate```
 
-   The algorithm terminates either when all missing source packets are
-   fully recovered or when there are still remaining missing source
-   packets but the FEC packets are not able to recover any more source
-   packets.  For the example scenarios when the 2-D parity FEC
-   protection fails full recovery, refer to Section 1.1.2.  Upon
-   termination, variable num_recovered_so_far has a value equal to the
-   total number of recovered source packets.
+The algorithm terminates either when all missing source packets are fully recovered or when there are still remaining missing source packets but the FEC packets are not able to recover any more source packets.  For the example scenarios when the 2-D parity FEC protection fails full recovery, refer to Section 1.1.2.  Upon termination, variable num_recovered_so_far has a value equal to the total number of recovered source packets.
 
-   Example:
+Example:
 
-   Suppose that the receiver experienced the loss pattern sketched in
-   Figure 16.
+Suppose that the receiver experienced the loss pattern sketched in Figure 16.
 
-
+```
                                    +---+  +---+  +===+
                        X      X    | 3 |  | 4 |  |R_1|
                                    +---+  +---+  +===+
@@ -1149,12 +841,11 @@ When N > 0:
                      +===+  +===+  +===+  +===+
 
    Figure 16: Example loss pattern for the iterative decoding algorithm
+```
 
-   The receiver executes the iterative decoding algorithm and recovers
-   source packets #1 and #11 in the first iteration.  The resulting
-   pattern is sketched in Figure 17.
+The receiver executes the iterative decoding algorithm and recovers source packets #1 and #11 in the first iteration.  The resulting pattern is sketched in Figure 17.
 
-
+```
                      +---+         +---+  +---+  +===+
                      | 1 |    X    | 3 |  | 4 |  |R_1|
                      +---+         +---+  +---+  +===+
@@ -1172,12 +863,11 @@ When N > 0:
                      +===+  +===+  +===+  +===+
 
         Figure 17: The resulting pattern after the first iteration
+```
 
-   Since the if condition holds true, the receiver runs a new iteration.
-   In the second iteration, source packets #2 and #10 are recovered,
-   resulting in a full recovery as sketched in Figure 18.
+Since the if condition holds true, the receiver runs a new iteration. In the second iteration, source packets #2 and #10 are recovered, resulting in a full recovery as sketched in Figure 18.
 
-
+```
                      +---+  +---+  +---+  +---+  +===+
                      | 1 |  | 2 |  | 3 |  | 4 |  |R_1|
                      +---+  +---+  +---+  +---+  +===+
@@ -1195,19 +885,17 @@ When N > 0:
                      +===+  +===+  +===+  +===+
 
         Figure 18: The resulting pattern after the second iteration
+```
 
-1.  SDP Examples
+## 7.  SDP Examples
 
-   This section provides two SDP [RFC4566] examples.  The examples use
-   the FEC grouping semantics defined in [RFC5956].
+This section provides two SDP [RFC4566] examples.  The examples use the FEC grouping semantics defined in [RFC5956].
 
-7.1.  Example SDP for Flexible FEC Protection with in-band SSRC mapping
+### 7.1.  Example SDP for Flexible FEC Protection with in-band SSRC mapping
 
-   In this example, we have one source video stream and one FEC repair
-   stream.  The source and repair streams are multiplexed on different
-   SSRCs.  The repair window is set to 200 ms.
+In this example, we have one source video stream and one FEC repair stream.  The source and repair streams are multiplexed on different SSRCs.  The repair window is set to 200 ms.
 
-
+```
         v=0
         o=mo 1122334455 1122334466 IN IP4 fec.example.com
         s=FlexFEC minimal SDP signalling Example
@@ -1217,18 +905,13 @@ When N > 0:
         a=rtpmap:96 VP8/90000
         a=rtpmap:98 flexfec/90000
         a=fmtp:98; repair-window=200ms
+```
 
+### 7.2.  Example SDP for Flex FEC Protection with explicit signalling in the SDP
 
-7.2.  Example SDP for Flex FEC Protection with explicit signalling in
-      the SDP
+In this example, we have one source video stream (ssrc:1234) and one FEC repair streams (ssrc:2345).  We form one FEC group with the "a=ssrc-group:FEC-FR 1234 2345" line.  The source and repair streams are multiplexed on different SSRCs.  The repair window is set to 200 ms.
 
-   In this example, we have one source video stream (ssrc:1234) and one
-   FEC repair streams (ssrc:2345).  We form one FEC group with the
-   "a=ssrc-group:FEC-FR 1234 2345" line.  The source and repair streams
-   are multiplexed on different SSRCs.  The repair window is set to 200
-   ms.
-
-
+```
         v=0
         o=ali 1122334455 1122334466 IN IP4 fec.example.com
         s=2-D Parity FEC with no in band signalling Example
@@ -1241,253 +924,116 @@ When N > 0:
         a=ssrc:1234
         a=ssrc:2345
         a=ssrc-group:FEC-FR 1234 2345
+```
 
+## 8.  Congestion Control Considerations
 
-1.  Congestion Control Considerations
+FEC is an effective approach to provide applications resiliency against packet losses.  However, in networks where the congestion is a major contributor to the packet loss, the potential impacts of using FEC SHOULD be considered carefully before injecting the repair flows into the network.  In particular, in bandwidth-limited networks, FEC repair flows may consume most or all of the available bandwidth and consequently may congest the network.  In such cases, the applications MUST NOT arbitrarily increase the amount of FEC protection since doing so may lead to a congestion collapse.  If desired, stronger FEC protection MAY be applied only after the source rate has been reduced [I-D.singh-rmcat-adaptive-fec].
 
-   FEC is an effective approach to provide applications resiliency
-   against packet losses.  However, in networks where the congestion is
-   a major contributor to the packet loss, the potential impacts of
-   using FEC SHOULD be considered carefully before injecting the repair
+In a network-friendly implementation, an application SHOULD NOT send/ receive FEC repair flows if it knows that sending/receiving those FEC repair flows would not help at all in recovering the missing packets. However, it MAY still continue to use FEC if considered for bandwidth estimation instead of speculatively probe for additional capacity [Holmer13][Nagy14].  It is RECOMMENDED that the amount of FEC protection is adjusted dynamically based on the packet loss rate observed by the applications.
 
-   flows into the network.  In particular, in bandwidth-limited
-   networks, FEC repair flows may consume most or all of the available
-   bandwidth and consequently may congest the network.  In such cases,
-   the applications MUST NOT arbitrarily increase the amount of FEC
-   protection since doing so may lead to a congestion collapse.  If
-   desired, stronger FEC protection MAY be applied only after the source
-   rate has been reduced [I-D.singh-rmcat-adaptive-fec].
+In multicast scenarios, it may be difficult to optimize the FEC protection per receiver.  If there is a large variation among the levels of FEC protection needed by different receivers, it is RECOMMENDED that the sender offers multiple repair flows with different levels of FEC protection and the receivers join the corresponding multicast sessions to receive the repair flow(s) that is best for them.
 
-   In a network-friendly implementation, an application SHOULD NOT send/
-   receive FEC repair flows if it knows that sending/receiving those FEC
-   repair flows would not help at all in recovering the missing packets.
-   However, it MAY still continue to use FEC if considered for bandwidth
-   estimation instead of speculatively probe for additional capacity
-   [Holmer13][Nagy14].  It is RECOMMENDED that the amount of FEC
-   protection is adjusted dynamically based on the packet loss rate
-   observed by the applications.
+Editor's note: Additional congestion control considerations regarding the use of 2-D parity codes should be added here.
 
-   In multicast scenarios, it may be difficult to optimize the FEC
-   protection per receiver.  If there is a large variation among the
-   levels of FEC protection needed by different receivers, it is
-   RECOMMENDED that the sender offers multiple repair flows with
-   different levels of FEC protection and the receivers join the
-   corresponding multicast sessions to receive the repair flow(s) that
-   is best for them.
+## 9. Security Considerations
 
-   Editor's note: Additional congestion control considerations regarding
-   the use of 2-D parity codes should be added here.
+RTP packets using the payload format defined in this specification are subject to the security considerations discussed in the RTP specification [RFC3550] and in any applicable RTP profile.  The main security considerations for the RTP packet carrying the RTP payload format defined within this memo are confidentiality, integrity and source authenticity.  Confidentiality is achieved by encrypting the RTP payload.  Integrity of the RTP packets is achieved through a suitable cryptographic integrity protection mechanism.  Such a cryptographic system may also allow the authentication of the source of the payload.  A suitable security mechanism for this RTP payload format should provide confidentiality, integrity protection, and at least source authentication capable of determining if an RTP packet is from a member of the RTP session.
 
-2.  Security Considerations
+Note that the appropriate mechanism to provide security to RTP and payloads following this memo may vary.  It is dependent on the application, transport and signaling protocol employed.  Therefore, a single mechanism is not sufficient, although if suitable, using the
 
-   RTP packets using the payload format defined in this specification
-   are subject to the security considerations discussed in the RTP
-   specification [RFC3550] and in any applicable RTP profile.  The main
-   security considerations for the RTP packet carrying the RTP payload
-   format defined within this memo are confidentiality, integrity and
-   source authenticity.  Confidentiality is achieved by encrypting the
-   RTP payload.  Integrity of the RTP packets is achieved through a
-   suitable cryptographic integrity protection mechanism.  Such a
-   cryptographic system may also allow the authentication of the source
-   of the payload.  A suitable security mechanism for this RTP payload
-   format should provide confidentiality, integrity protection, and at
-   least source authentication capable of determining if an RTP packet
-   is from a member of the RTP session.
+Secure Real-time Transport Protocol (SRTP) [RFC3711] is recommended. Other mechanisms that may be used are IPsec [RFC4301] and Transport Layer Security (TLS) [RFC5246] (RTP over TCP); other alternatives may exist.
 
-   Note that the appropriate mechanism to provide security to RTP and
-   payloads following this memo may vary.  It is dependent on the
-   application, transport and signaling protocol employed.  Therefore, a
-   single mechanism is not sufficient, although if suitable, using the
+## 10. IANA Considerations
 
-   Secure Real-time Transport Protocol (SRTP) [RFC3711] is recommended.
-   Other mechanisms that may be used are IPsec [RFC4301] and Transport
-   Layer Security (TLS) [RFC5246] (RTP over TCP); other alternatives may
-   exist.
+New media subtypes are subject to IANA registration.  For the registration of the payload formats and their parameters introduced in this document, refer to Section 5.
 
-3.   IANA Considerations
+## 11. Acknowledgments
 
-   New media subtypes are subject to IANA registration.  For the
-   registration of the payload formats and their parameters introduced
-   in this document, refer to Section 5.
+Some parts of this document are borrowed from [RFC5109].  Thus, the author would like to thank the editor of [RFC5109] and those who contributed to [RFC5109].
 
-4.   Acknowledgments
+Thanks to Bernard Aboba , Rasmus Brandt , Roni Even , Stefan Holmer , Jonathan Lennox , and Magnus Westerlund for providing valuable feedback on earlier versions of this draft.
 
-   Some parts of this document are borrowed from [RFC5109].  Thus, the
-   author would like to thank the editor of [RFC5109] and those who
-   contributed to [RFC5109].
+# 12. Change Log
 
-   Thanks to Bernard Aboba , Rasmus Brandt , Roni Even , Stefan Holmer ,
-   Jonathan Lennox , and Magnus Westerlund for providing valuable
-   feedback on earlier versions of this draft.
+Note to the RFC-Editor: please remove this section prior to publication as an RFC.
 
-5.   Change Log
+### 12.1.  draft-ietf-payload-flexible-fec-scheme-03
 
-   Note to the RFC-Editor: please remove this section prior to
-   publication as an RFC.
+FEC packet format changed as per discussions in IETF96, Berlin.
 
-12.1.  draft-ietf-payload-flexible-fec-scheme-03
+Removed section on non-parity codes and flexfec-raptor.
 
-   FEC packet format changed as per discussions in IETF96, Berlin.
+### 12.2.  draft-ietf-payload-flexible-fec-scheme-02
 
-   Removed section on non-parity codes and flexfec-raptor.
+FEC packet format changed as per discussions in IETF94, Tokyo.
 
-12.2.  draft-ietf-payload-flexible-fec-scheme-02
+Added section on non-parity codes.
 
-   FEC packet format changed as per discussions in IETF94, Tokyo.
+Registration of application/flexfec-raptor.
 
-   Added section on non-parity codes.
+### 12.3.  draft-ietf-payload-flexible-fec-scheme-01
 
-   Registration of application/flexfec-raptor.
+FEC packet format changed as per discussions in IETF93, Prague.
 
-12.3.  draft-ietf-payload-flexible-fec-scheme-01
+Replaced non-interleaved-parityfec and interleaved-parity-fec with flexfec.
 
-   FEC packet format changed as per discussions in IETF93, Prague.
+SDP simplified for the case when association to RTP is made in the FEC header and not in the SDP.
 
-   Replaced non-interleaved-parityfec and interleaved-parity-fec with
-   flexfec.
+### 12.4.  draft-ietf-payload-flexible-fec-scheme-00
 
-   SDP simplified for the case when association to RTP is made in the
-   FEC header and not in the SDP.
+Initial WG version, based on draft-singh-payload-1d2d-parity-scheme-00.
 
-12.4.  draft-ietf-payload-flexible-fec-scheme-00
+### 12.5.  draft-singh-payload-1d2d-parity-scheme-00
 
-   Initial WG version, based on draft-singh-payload-1d2d-parity-scheme-
-   00.
+This is the initial version, which is based on draft-ietf-fecframe-1d2d-parity-scheme-00.  The following are the major changes compared to that document:
 
-12.5.  draft-singh-payload-1d2d-parity-scheme-00
+- Updated packet format with 16-, 48-, 112- bitmask.
+- Updated the sections on: repair packet construction, source packet construction.
+- Updated the media type registration and aligned to RFC6838.
 
-   This is the initial version, which is based on draft-ietf-fecframe-
-   1d2d-parity-scheme-00.  The following are the major changes compared
-   to that document:
+### 12.6.  draft-ietf-fecframe-1d2d-parity-scheme-00
 
-   o  Updated packet format with 16-, 48-, 112- bitmask.
+- Some details were added regarding the use of CNAME field.
+- Offer-Answer and Declarative Considerations sections have been completed.
+- Security Considerations section has been completed.
+- The timestamp field definition has changed.
 
-   o  Updated the sections on: repair packet construction, source packet
-      construction.
+## 13. References
 
-   o  Updated the media type registration and aligned to RFC6838.
+### 13.1.  Normative References
 
-12.6.  draft-ietf-fecframe-1d2d-parity-scheme-00
+- [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/ RFC2119, March 1997, <http://www.rfc-editor.org/info/rfc2119>.
+- [RFC3264]  Rosenberg, J. and H. Schulzrinne, "An Offer/Answer Model with Session Description Protocol (SDP)", RFC 3264, DOI 10.17487/RFC3264, June 2002, <http://www.rfc-editor.org/info/rfc3264>.
+- [RFC3550]  Schulzrinne, H., Casner, S., Frederick, R., and V. Jacobson, "RTP: A Transport Protocol for Real-Time Applications", STD 64, RFC 3550, DOI 10.17487/RFC3550, July 2003, <http://www.rfc-editor.org/info/rfc3550>.
+- [RFC3555]  Casner, S. and P. Hoschka, "MIME Type Registration of RTP Payload Formats", RFC 3555, DOI 10.17487/RFC3555, July 2003, <http://www.rfc-editor.org/info/rfc3555>.
+- [RFC4566]  Handley, M., Jacobson, V., and C. Perkins, "SDP: Session Description Protocol", RFC 4566, DOI 10.17487/RFC4566, July 2006, <http://www.rfc-editor.org/info/rfc4566>.
+- [RFC5956]  Begen, A., "Forward Error Correction Grouping Semantics in the Session Description Protocol", RFC 5956, DOI 10.17487/ RFC5956, September 2010, <http://www.rfc-editor.org/info/rfc5956>.
+- [RFC6363]  Watson, M., Begen, A., and V. Roca, "Forward Error Correction (FEC) Framework", RFC 6363, DOI 10.17487/ RFC6363, October 2011, <http://www.rfc-editor.org/info/rfc6363>.
+- [RFC6709]  Carpenter, B., Aboba, B., Ed., and S. Cheshire, "Design Considerations for Protocol Extensions", RFC 6709, DOI 10.17487/RFC6709, September 2012, <http://www.rfc-editor.org/info/rfc6709>.
+- [RFC6838]  Freed, N., Klensin, J., and T. Hansen, "Media Type Specifications and Registration Procedures", BCP 13, RFC 6838, DOI 10.17487/RFC6838, January 2013, <http://www.rfc-editor.org/info/rfc6838>.
+- [RFC7022]  Begen, A., Perkins, C., Wing, D., and E. Rescorla, "Guidelines for Choosing RTP Control Protocol (RTCP) Canonical Names (CNAMEs)", RFC 7022, DOI 10.17487/RFC7022, September 2013, <http://www.rfc-editor.org/info/rfc7022>.
 
-   o  Some details were added regarding the use of CNAME field.
+### 13.2.  Informative References
 
-   o  Offer-Answer and Declarative Considerations sections have been
-      completed.
+- [Holmer13] Holmer, S., Shemer, M., and M. Paniconi, "Handling Packet Loss in WebRTC", Proc. of IEEE International Conference on Image Processing (ICIP 2013) , 9 2013.
 
-   o  Security Considerations section has been completed.
+- [I-D.singh-rmcat-adaptive-fec] Varun, V., Nagy, M., Ott, J., and L. Eggert, "Congestion Control Using FEC for Conversational Media", draft-singh- rmcat-adaptive-fec-03 (work in progress), March 2016.
+- [Nagy14]   Nagy, M., Singh, V., Ott, J., and L. Eggert, "Congestion Control using FEC for Conversational Multimedia Communication", Proc. of 5th ACM Internation Conference on Multimedia Systems (MMSys 2014) , 3 2014.
+- [RFC2326]  Schulzrinne, H., Rao, A., and R. Lanphier, "Real Time Streaming Protocol (RTSP)", RFC 2326, DOI 10.17487/ RFC2326, April 1998, <http://www.rfc-editor.org/info/rfc2326>.
+- [RFC2733]  Rosenberg, J. and H. Schulzrinne, "An RTP Payload Format for Generic Forward Error Correction", RFC 2733, DOI 10.17487/RFC2733, December 1999, <http://www.rfc-editor.org/info/rfc2733>.
+- [RFC2974]  Handley, M., Perkins, C., and E. Whelan, "Session Announcement Protocol", RFC 2974, DOI 10.17487/RFC2974, October 2000, <http://www.rfc-editor.org/info/rfc2974>.
+- [RFC3711]  Baugher, M., McGrew, D., Naslund, M., Carrara, E., and K. Norrman, "The Secure Real-time Transport Protocol (SRTP)", RFC 3711, DOI 10.17487/RFC3711, March 2004, <http://www.rfc-editor.org/info/rfc3711>.
+- [RFC4301]  Kent, S. and K. Seo, "Security Architecture for the Internet Protocol", RFC 4301, DOI 10.17487/RFC4301, December 2005, <http://www.rfc-editor.org/info/rfc4301>.
+- [RFC5109]  Li, A., Ed., "RTP Payload Format for Generic Forward Error Correction", RFC 5109, DOI 10.17487/RFC5109, December 2007, <http://www.rfc-editor.org/info/rfc5109>.
+- [RFC5246]  Dierks, T. and E. Rescorla, "The Transport Layer Security (TLS) Protocol Version 1.2", RFC 5246, DOI 10.17487/ RFC5246, August 2008, <http://www.rfc-editor.org/info/rfc5246>.
+- [SMPTE2022-1] SMPTE 2022-1-2007, , "Forward Error Correction for Real-Time Video/Audio Transport over IP Networks", 2007.
 
-   o  The timestamp field definition has changed.
+---
 
-1.   References
+**Authors' Addresses**
 
-13.1.  Normative References
-
-   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
-              Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/
-              RFC2119, March 1997,
-              <http://www.rfc-editor.org/info/rfc2119>.
-
-   [RFC3264]  Rosenberg, J. and H. Schulzrinne, "An Offer/Answer Model
-              with Session Description Protocol (SDP)", RFC 3264, DOI
-              10.17487/RFC3264, June 2002,
-              <http://www.rfc-editor.org/info/rfc3264>.
-
-
-   [RFC3550]  Schulzrinne, H., Casner, S., Frederick, R., and V.
-              Jacobson, "RTP: A Transport Protocol for Real-Time
-              Applications", STD 64, RFC 3550, DOI 10.17487/RFC3550,
-              July 2003, <http://www.rfc-editor.org/info/rfc3550>.
-
-   [RFC3555]  Casner, S. and P. Hoschka, "MIME Type Registration of RTP
-              Payload Formats", RFC 3555, DOI 10.17487/RFC3555, July
-              2003, <http://www.rfc-editor.org/info/rfc3555>.
-
-   [RFC4566]  Handley, M., Jacobson, V., and C. Perkins, "SDP: Session
-              Description Protocol", RFC 4566, DOI 10.17487/RFC4566,
-              July 2006, <http://www.rfc-editor.org/info/rfc4566>.
-
-   [RFC5956]  Begen, A., "Forward Error Correction Grouping Semantics in
-              the Session Description Protocol", RFC 5956, DOI 10.17487/
-              RFC5956, September 2010,
-              <http://www.rfc-editor.org/info/rfc5956>.
-
-   [RFC6363]  Watson, M., Begen, A., and V. Roca, "Forward Error
-              Correction (FEC) Framework", RFC 6363, DOI 10.17487/
-              RFC6363, October 2011,
-              <http://www.rfc-editor.org/info/rfc6363>.
-
-   [RFC6709]  Carpenter, B., Aboba, B., Ed., and S. Cheshire, "Design
-              Considerations for Protocol Extensions", RFC 6709, DOI
-              10.17487/RFC6709, September 2012,
-              <http://www.rfc-editor.org/info/rfc6709>.
-
-   [RFC6838]  Freed, N., Klensin, J., and T. Hansen, "Media Type
-              Specifications and Registration Procedures", BCP 13, RFC
-              6838, DOI 10.17487/RFC6838, January 2013,
-              <http://www.rfc-editor.org/info/rfc6838>.
-
-   [RFC7022]  Begen, A., Perkins, C., Wing, D., and E. Rescorla,
-              "Guidelines for Choosing RTP Control Protocol (RTCP)
-              Canonical Names (CNAMEs)", RFC 7022, DOI 10.17487/RFC7022,
-              September 2013, <http://www.rfc-editor.org/info/rfc7022>.
-
-13.2.  Informative References
-
-   [Holmer13]
-              Holmer, S., Shemer, M., and M. Paniconi, "Handling Packet
-              Loss in WebRTC", Proc. of IEEE International Conference on
-              Image Processing (ICIP 2013) , 9 2013.
-
-
-   [I-D.singh-rmcat-adaptive-fec]
-              Varun, V., Nagy, M., Ott, J., and L. Eggert, "Congestion
-              Control Using FEC for Conversational Media", draft-singh-
-              rmcat-adaptive-fec-03 (work in progress), March 2016.
-
-   [Nagy14]   Nagy, M., Singh, V., Ott, J., and L. Eggert, "Congestion
-              Control using FEC for Conversational Multimedia
-              Communication", Proc. of 5th ACM Internation Conference on
-              Multimedia Systems (MMSys 2014) , 3 2014.
-
-   [RFC2326]  Schulzrinne, H., Rao, A., and R. Lanphier, "Real Time
-              Streaming Protocol (RTSP)", RFC 2326, DOI 10.17487/
-              RFC2326, April 1998,
-              <http://www.rfc-editor.org/info/rfc2326>.
-
-   [RFC2733]  Rosenberg, J. and H. Schulzrinne, "An RTP Payload Format
-              for Generic Forward Error Correction", RFC 2733, DOI
-              10.17487/RFC2733, December 1999,
-              <http://www.rfc-editor.org/info/rfc2733>.
-
-   [RFC2974]  Handley, M., Perkins, C., and E. Whelan, "Session
-              Announcement Protocol", RFC 2974, DOI 10.17487/RFC2974,
-              October 2000, <http://www.rfc-editor.org/info/rfc2974>.
-
-   [RFC3711]  Baugher, M., McGrew, D., Naslund, M., Carrara, E., and K.
-              Norrman, "The Secure Real-time Transport Protocol (SRTP)",
-              RFC 3711, DOI 10.17487/RFC3711, March 2004,
-              <http://www.rfc-editor.org/info/rfc3711>.
-
-   [RFC4301]  Kent, S. and K. Seo, "Security Architecture for the
-              Internet Protocol", RFC 4301, DOI 10.17487/RFC4301,
-              December 2005, <http://www.rfc-editor.org/info/rfc4301>.
-
-   [RFC5109]  Li, A., Ed., "RTP Payload Format for Generic Forward Error
-              Correction", RFC 5109, DOI 10.17487/RFC5109, December
-              2007, <http://www.rfc-editor.org/info/rfc5109>.
-
-   [RFC5246]  Dierks, T. and E. Rescorla, "The Transport Layer Security
-              (TLS) Protocol Version 1.2", RFC 5246, DOI 10.17487/
-              RFC5246, August 2008,
-              <http://www.rfc-editor.org/info/rfc5246>.
-
-   [SMPTE2022-1]
-              SMPTE 2022-1-2007, , "Forward Error Correction for Real-
-              Time Video/Audio Transport over IP Networks", 2007.
-
-
-Authors' Addresses
-
+```
    Varun Singh
    CALLSTATS I/O Oy
    Runeberginkatu 4c A 4
@@ -1522,3 +1068,4 @@ Authors' Addresses
 
    Phone: +1 858 651 7200
    Email: mandyam@qti.qualcomm.com
+```
