@@ -814,7 +814,8 @@ The iterative decoding algorithm runs as follows:
        ---num_recovered_until_this_iteration = num_recovered_so_far
        ---Go to step 3
     Else
-       ---Terminate```
+       ---Terminate
+    ```
 
 The algorithm terminates either when all missing source packets are fully recovered or when there are still remaining missing source packets but the FEC packets are not able to recover any more source packets.  For the example scenarios when the 2-D parity FEC protection fails full recovery, refer to Section 1.1.2.  Upon termination, variable num_recovered_so_far has a value equal to the total number of recovered source packets.
 
