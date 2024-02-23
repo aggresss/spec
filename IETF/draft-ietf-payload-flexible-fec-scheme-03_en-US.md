@@ -384,8 +384,7 @@ The FEC header consists of the following fields:
 - If the F-bit is set to 0, it represents that the source packets of all the SSRCs protected by this particular repair packet are indicated by using a flexible bitmask.  Mask is a run-length encoding of packets for a particular SSRC_i protected by the FEC packet.  Where a bit j set to 1 indicates that the source packet with sequence number (SN base_i + j + 1) is protected by this FEC packet.
 - The k-bit in the bitmasks indicates if it is 15-, 46-, or a 109-bitmask.  k=0 denotes that there is one more k-bit set, and k=1 denotes that it is the last block of bit mask.  While parsing the header, the current count of the number of k-bit gives the size of the bit mask v = count(k).  Size of next bitmask = 2^(v+3)-1.
 - Editor's note: If we limit the number of k-bits to 3, we could essentially remove the last k-bit.
--
-    ```
+-   ```
         0                   1                   2                   3
         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
