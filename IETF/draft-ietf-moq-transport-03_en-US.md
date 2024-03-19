@@ -556,7 +556,7 @@ The CLIENT_SETUP and SERVER_SETUP messages are the first messages exchanged by t
 The wire format of the Setup messages are as follows:
 
 ```
-CLIENT_SETUP Message Payload {
+   CLIENT_SETUP Message Payload {
      Number of Supported Versions (i),
      Supported Version (i) ...,
      Number of Parameters (i) ...,
