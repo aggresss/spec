@@ -173,25 +173,15 @@ This document uses the conventions detailed in ([RFC9000], Section 1.3) when des
 
 As a quick reference, the following list provides a non normative summary of the parts of RFC9000 field syntax that are used in this specification.
 
-x (L):
-Indicates that x is L bits long
-
-x (i):
-Indicates that x holds an integer value using the variable-length encoding as described in ([RFC9000], Section 16)
-
-x (..):
-Indicates that x can be any length including zero bits long. Values in this format always end on a byte boundary.
-
-[x (L)]:
-Indicates that x is optional and has a length of L
-
-x (L) ...:
-Indicates that x is repeated zero or more times and that each instance has a length of L
+- **x (L)**: Indicates that x is L bits long
+- **x (i)**: Indicates that x holds an integer value using the variable-length encoding as described in ([RFC9000], Section 16)
+- **x (..)**: Indicates that x can be any length including zero bits long. Values in this format always end on a byte boundary.
+- **[x (L)]**: Indicates that x is optional and has a length of L
+- **x (L) ...**: Indicates that x is repeated zero or more times and that each instance has a length of L
 
 This document extends the RFC9000 syntax and with the additional field types:
 
-x (b):
-Indicates that x consists of a variable length integer encoding as described in ([RFC9000], Section 16), followed by that many bytes of binary data
+- x (b): Indicates that x consists of a variable length integer encoding as described in ([RFC9000], Section 16), followed by that many bytes of binary data
 
 To reduce unnecessary use of bandwidth, variable length integers SHOULD be encoded using the least number of bytes possible to represent the required value.
 
