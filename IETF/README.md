@@ -93,6 +93,8 @@ VP9 | https://datatracker.ietf.org/doc/html/draft-ietf-payload-vp9-16
 HEVC | https://datatracker.ietf.org/doc/html/rfc7798
 AV1 | https://aomediacodec.github.io/av1-rtp-spec/
 
+- [https://en.wikipedia.org/wiki/RTP_payload_formats](https://en.wikipedia.org/wiki/RTP_payload_formats)
+
 ### Transfer Encoding
 
 RFC | 名称
