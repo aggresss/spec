@@ -2079,7 +2079,8 @@ Stephan Wenger, Miska Hannuksela, Thomas Stockhammer, Magnus Westerlund, and Dav
 
 ## 17.  References
 
-17.1.  Normative References
+### 17.1.  Normative References
+
 - [1]   ITU-T Recommendation H.264, "Advanced video coding for generic audiovisual services", March 2010.
 - [2]   ISO/IEC International Standard 14496-10:2008.
 - [3]   ITU-T Recommendation H.241, "Extended video procedures and control signals for H.300-series terminals", May 2006.
@@ -2090,7 +2091,8 @@ Stephan Wenger, Miska Hannuksela, Thomas Stockhammer, Magnus Westerlund, and Dav
 - [8]   Rosenberg, J. and H. Schulzrinne, "An Offer/Answer Model with Session Description Protocol (SDP)", RFC 3264, June 2002.
 - [9]   Lennox, J., Ott, J., and T. Schierl, "Source-Specific Media Attributes in the Session Description Protocol (SDP)", RFC 5576, June 2009.
 
-17.2.  Informative References
+### 17.2.  Informative References
+
 - [10]  Luthra, A., Sullivan, G.J., and T. Wiegand (eds.), "Introduction to the special issue on the H.264/AVC video coding standard", IEEE Transactions on Circuits and Systems for Video Technology, Vol. 13, No. 7, July 2003.
 - [11]  Ott, J., Bormann, C., Sullivan, G., Wenger, S., and R. Even, Ed., "RTP Payload Format for ITU-T Rec. H.263 Video", RFC 4629, January 2007.
 - [12]  ISO/IEC International Standard 14496-2:2004.
