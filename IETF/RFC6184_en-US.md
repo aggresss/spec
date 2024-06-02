@@ -1711,7 +1711,7 @@ The loss probability should be reduced using the mechanisms discussed above.  In
 
 When a sender with a video encoder according to [1] receives a request for a decoder refresh point, the encoder shall enter the fast update mode by using one of the procedures specified in Sections 8.5.1 or 8.5.2.  The procedure in Section 8.5.1 is the preferred response in a lossless transmission environment.  Both procedures satisfy the requirement to enter the fast update mode for H.264 video encoding.
 
-### 8.5.1.  IDR Procedure to Respond to a Request for a Decoder Refresh Point
+#### 8.5.1.  IDR Procedure to Respond to a Request for a Decoder Refresh Point
 
 This section gives one possible way to respond to a request for a decoder refresh point.
 
