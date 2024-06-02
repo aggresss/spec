@@ -1730,7 +1730,7 @@ The encoder shall, in the order presented here:
 1. Send a recovery point SEI message (see Sections D.1.7 and D.2.7 of [1]).
 2. Repeat any sequence and picture parameter sets that were sent before the recovery point SEI message, prior to their reference by a NAL unit.
 
-The encoder shall ensure that the decoder has access to all reference pictures for inter prediction of pictures at or after the recovery point, which is indicated by the recovery point SEI message, in output order, assuming that the transmission from now on is error- free.
+The encoder shall ensure that the decoder has access to all reference pictures for inter prediction of pictures at or after the recovery point, which is indicated by the recovery point SEI message, in output order, assuming that the transmission from now on is error-free.
 
 The value of the recovery_frame_cnt syntax element in the recovery point SEI message should be small enough to ensure a fast recovery.
 
@@ -1738,4 +1738,420 @@ As needed, such parameter sets may be re-sent in a batch, one at a time, or in a
 
 ## 9.  Security Considerations
 
-RTP packets using the payload format defined in this specification are subject to the security considerations discussed in the RTP specification [5] and in any appropriate RTP profile (for example, [16]).  This implies that confidentiality of the media streams is achieved by encryption, for example, through the application of SRTP [26].  Because the data compression used with this payload format is
+RTP packets using the payload format defined in this specification are subject to the security considerations discussed in the RTP specification [5] and in any appropriate RTP profile (for example, [16]).  This implies that confidentiality of the media streams is achieved by encryption, for example, through the application of SRTP [26].  Because the data compression used with this payload format is applied end-to-end, any encryption needs to be performed after compression.  A potential denial-of-service threat exists for data encodings using compression techniques that have non-uniform receiver-end computational load.  The attacker can inject pathological datagrams into the stream that are complex to decode and that cause the receiver to be overloaded.  H.264 is particularly vulnerable to such attacks, as it is extremely simple to generate datagrams containing NAL units that affect the decoding process of many future NAL units.  Therefore, the usage of data origin authentication and data integrity protection of at least the RTP packet is RECOMMENDED, for example, with SRTP [26].
+
+Note that the appropriate mechanism to ensure confidentiality and integrity of RTP packets and their payloads is very dependent on the application and on the transport and signaling protocols employed. Thus, although SRTP is given as an example above, other possible choices exist.
+
+Decoders MUST exercise caution with respect to the handling of user data SEI messages, particularly if they contain active elements, and MUST restrict their domain of applicability to the presentation containing the stream.
+
+End-to-end security with either authentication, integrity, or confidentiality protection will prevent a MANE from performing media-aware operations other than discarding complete packets.  In the case of confidentiality protection, it will even be prevented from discarding packets in a media-aware way.  To be allowed to perform its operations, a MANE is required to be a trusted entity that is included in the security context establishment.
+
+## 10.  Congestion Control
+
+Congestion control for RTP SHALL be used in accordance with RFC 3550 [5] and with any applicable RTP profile, e.g., RFC 3551 [16].  If best-effort service is being used, an additional requirement is that users of this payload format MUST monitor packet loss to ensure that the packet loss rate is within acceptable parameters.  Packet loss is considered acceptable if a TCP flow across the same network path, and experiencing the same network conditions, would achieve an average throughput, measured on a reasonable timescale, that is not less than the RTP flow is achieving.  This condition can be satisfied by implementing congestion control mechanisms to adapt the transmission rate (or the number of layers subscribed for a layered multicast session) or by arranging for a receiver to leave the session if the loss rate is unacceptably high.
+
+The bitrate adaptation necessary for obeying the congestion control principle is easily achievable when real-time encoding is used. However, when pre-encoded content is being transmitted, bandwidth adaptation requires the availability of more than one coded representation of the same content, at different bitrates, or the existence of non-reference pictures or sub-sequences [22] in the bitstream.  The switching between the different representations can normally be performed in the same RTP session, e.g., by employing a concept known as SI/SP slices of the Extended profile or by switching streams at IDR picture boundaries.  Only when non-downgradable parameters (such as the profile part of the profile/level ID) are required to be changed does it become necessary to terminate and restart the media stream.  This may be accomplished by using a different RTP payload type.
+
+MANEs MAY follow the suggestions outlined in Section 7.3 and remove certain unusable packets from the packet stream when that stream was damaged due to previous packet losses.  This can help reduce the network load in certain special cases.
+
+## 11.  IANA Considerations
+
+The H264 media subtype name specified by RFC 3984 has been updated as defined in Section 8.1 of this memo.
+
+## 12.  Informative Appendix: Application Examples
+
+This payload specification is very flexible in its use, in order to cover the extremely wide application space anticipated for H.264. However, this great flexibility also makes it difficult for an implementer to decide on a reasonable packetization scheme.  Some information on how to apply this specification to real-world scenarios is likely to appear in the form of academic publications and a test model software and description in the near future. However, some preliminary usage scenarios are described here as well.
+
+### 12.1.  Video Telephony According to Annex A of ITU-T Recommendation H.241
+
+H.323-based video telephony systems that use H.264 as an optional video compression scheme are required to support Annex A of H.241 [3] as a packetization scheme.  The packetization mechanism defined in this Annex is technically identical with a small subset of this specification.
+
+When a system operates according to Annex A of H.241, parameter set NAL units are sent in-band.  Only single NAL unit packets are used. Many such systems are not sending IDR pictures regularly, but only when required by user interaction or by control protocol means, e.g., when switching between video channels in a Multipoint Control Unit or for error recovery requested by feedback.
+
+### 12.2.  Video Telephony, No Slice Data Partitioning, No NAL Unit Aggregation
+
+The RTP part of this scheme is implemented and tested (though not the control-protocol part; see below).
+
+In most real-world video telephony applications, picture parameters such as picture size or optional modes never change during the lifetime of a connection.  Therefore, all necessary parameter sets (usually only one) are sent as a side effect of the capability exchange/announcement process, e.g., according to the SDP syntax specified in Section 8.2 of this document.  As all necessary parameter set information is established before the RTP session starts, there is no need for sending any parameter set NAL units. Slice data partitioning is not used either.  Thus, the RTP packet stream basically consists of NAL units that carry single coded slices.
+
+The encoder chooses the size of coded slice NAL units so that they offer the best performance.  Often, this is done by adapting the coded slice size to the MTU size of the IP network.  For small picture sizes, this may result in a one-picture-per-one-packet strategy.  Intra refresh algorithms clean up the loss of packets and the resulting drift-related artifacts.
+
+### 12.3.  Video Telephony, Interleaved Packetization Using NAL Unit Aggregation
+
+This scheme allows better error concealment and is used in H.263-based designs using RFC 4629 packetization [11].  It has been implemented, and good results were reported [13].
+
+The VCL encoder codes the source picture so that all macroblocks (MBs) of one MB line are assigned to one slice.  All slices with even MB row addresses are combined into one STAP, and all slices with odd MB row addresses are combined into another.  Those STAPs are transmitted as RTP packets.  The establishment of the parameter sets is performed as discussed above.
+
+Note that the use of STAPs is essential here, as the high number of individual slices (18 for a Common Intermediate Format (CIF) picture) would lead to unacceptably high IP/UDP/RTP header overhead (unless the source coding tool FMO is used, which is not assumed in this scenario).  Furthermore, some wireless video transmission systems, such as H.324M and the IP-based video telephony specified in 3GPP, are likely to use relatively small transport packet size.  For example, a typical MTU size of H.223 AL3 SDU is around 100 bytes [17].  Coding individual slices according to this packetization scheme provides further advantage in communication between wired and wireless networks, as individual slices are likely to be smaller than the preferred maximum packet size of wireless systems.  Consequently, a gateway can convert the STAPs used in a wired network into several RTP packets with only one NAL unit, which are preferred in a wireless network, and vice versa.
+
+### 12.4.  Video Telephony with Data Partitioning
+
+This scheme has been implemented and has been shown to offer good performance, especially at higher packet loss rates [13].
+
+Data partitioning is known to be useful only when some form of unequal error protection is available.  Normally, in single-session RTP environments, even error characteristics are assumed; that is, the packet loss probability of all packets of the session is the same statistically.  However, there are means to reduce the packet loss probability of individual packets in an RTP session.  A FEC packet according to RFC 5109 [18], for example, specifies which media packets are associated with the FEC packet.
+
+In all cases, the incurred overhead is substantial but is in the same order of magnitude as the number of bits that have otherwise been spent for intra information.  However, this mechanism does not add any delay to the system.
+
+Again, the complete parameter set establishment is performed through control protocol means.
+
+### 12.5.  Video Telephony or Streaming with FUs and Forward Error Correction
+
+This scheme has been implemented and has been shown to provide good performance, especially at higher packet loss rates [19].
+
+The most efficient means to combat packet losses for scenarios where retransmissions are not applicable is forward error correction (FEC). Although application layer, end-to-end use of FEC is often less efficient than a FEC-based protection of individual links (especially when links of different characteristics are in the transmission path), application layer, end-to-end FEC is unavoidable in some scenarios.  RFC 5109 [18] provides means to use generic, application layer, end-to-end FEC in packet loss environments.  A binary forward error correcting code is generated by applying the XOR operation to the bits at the same bit position in different packets.  The binary code can be specified by the parameters (n,k), in which k is the number of information packets used in the connection and n is the total number of packets generated for k information packets; that is, n-k parity packets are generated for k information packets.
+
+When a code is used with parameters (n,k) within the RFC 5109 framework, the following properties are well known:
+- a. If applied over one RTP packet, RFC 5109 provides only packet repetition.
+- b. RFC 5109 is most bitrate efficient if XOR-connected packets have equal length.
+- c. At the same packet loss probability p and for a fixed k, the greater the value of n, the smaller the residual error probability becomes.  For example, for a packet loss probability of 10%, k=1, and n=2, the residual error probability is about 1%, whereas for n=3, the residual error probability is about 0.1%.
+- d. At the same packet loss probability p and for a fixed code rate k/n, the greater the value of n, the smaller the residual error probability becomes.  For example, at a packet loss probability of p=10%, k=1, and n=2, the residual error rate is about 1%, whereas for an extended Golay code with k=12 and n=24, the residual error rate is about 0.01%.
+
+For applying RFC 5109 in combination with H.264 baseline-coded video without using FUs, several options might be considered:
+1. The video encoder produces NAL units for which each video frame is coded in a single slice.  Applying FEC, one could use a simple code, e.g., (n=2, k=1).  That is, each NAL unit would basically just be repeated.  The disadvantage is obviously the bad code performance according to d), above, and the low flexibility, as only (n, k=1) codes can be used.
+2. The video encoder produces NAL units for which each video frame is encoded in one or more consecutive slices.  Applying FEC, one could use a better code, e.g., (n=24, k=12), over a sequence of NAL units.  Depending on the number of RTP packets per frame, a loss may introduce a significant delay, which is reduced when more RTP packets are used per frame.  Packets of completely different lengths might also be connected, which decreases bitrate efficiency according to b, above.  However, with some care and for slices of 1 kb or larger, similar length (100-200 bytes difference) may be produced, which will not lower the bit efficiency catastrophically.
+3. The video encoder produces NAL units, for which a certain frame contains k slices of possibly almost equal length.  Then, applying FEC, a better code, e.g., (n=24, k=12), can be used over the sequence of NAL units for each frame.  The delay compared to that of 2, above, may be reduced, but several disadvantages are obvious.  First, the coding efficiency of the encoded video is lowered significantly, as slice-structured coding reduces intra-frame prediction and additional slice overhead is necessary. Second, pre-encoded content or, when operating over a gateway, the video is usually not appropriately coded with k slices such that FEC can be applied.  Finally, the encoding of video producing k slices of equal length is not straightforward and might require more than one encoding pass.
+
+Many of the mentioned disadvantages can be avoided by applying FUs in combination with FEC.  Each NAL unit can be split into any number of FUs of basically equal length; therefore, FEC, with a reasonable k and n, can be applied, even if the encoder made no effort to produce slices of equal length.  For example, a coded slice NAL unit containing an entire frame can be split to k FUs, and a parity check code (n=k+1, k) can be applied.  However, this has the disadvantage that unless all created fragments can be recovered, the whole slice will be lost.  Thus, a larger section is lost than would be if the frame had been split into several slices.
+
+The presented technique makes it possible to achieve good transmission error tolerance, even if no additional source coding layer redundancy (such as periodic intra frames) is present. Consequently, the same coded video sequence can be used to achieve the maximum compression efficiency and quality over error-free transmission and for transmission over error-prone networks. Furthermore, the technique allows the application of FEC to pre-encoded sequences without adding delay.  In this case, pre-encoded sequences that are not encoded for error-prone networks can still be transmitted almost reliably without adding extensive delays.  In addition, FUs of equal length result in a bitrate efficient use of RFC 5109.
+
+If the error probability depends on the length of the transmitted packet (e.g., in case of mobile transmission [15]), the benefits of applying FUs with FEC are even more obvious.  Basically, the flexibility of the size of FUs allows appropriate FEC to be applied for each NAL unit and unequal error protection of NAL units.
+
+When FUs and FEC are used, the incurred overhead is substantial but is in the same order of magnitude as the number of bits that have to be spent for intra-coded macroblocks if no FEC is applied.  In [19], it was shown that the overall performance of the FEC-based approach enhanced quality when using the same error rate and same overall bitrate, including the overhead.
+
+### 12.6.  Low Bitrate Streaming
+
+This scheme has been implemented with H.263 and non-standard RTP packetization and has given good results [20].  There is no technical reason why similarly good results could not be achievable with H.264.
+
+In today's Internet streaming, some of the offered bitrates are relatively low in order to allow terminals with dial-up modems to access the content.  In wired IP networks, relatively large packets, say 500 - 1500 bytes, are preferred to smaller and more frequently occurring packets in order to reduce network congestion.  Moreover, use of large packets decreases the amount of RTP/UDP/IP header overhead.  For low bitrate video, the use of large packets means that sometimes up to few pictures should be encapsulated in one packet.
+
+However, the loss of a packet including many coded pictures would have drastic consequences for visual quality, as there is practically no way to conceal the loss of an entire picture other than repeating the previous one.  One way to construct relatively large packets and maintain possibilities for successful loss concealment is to construct MTAPs that contain interleaved slices from several pictures.  An MTAP should not contain spatially adjacent slices from the same picture or spatially overlapping slices from any picture. If a packet is lost, it is likely that a lost slice is surrounded by spatially adjacent slices of the same picture and spatially corresponding slices of the temporally previous and succeeding pictures.  Consequently, concealment of the lost slice is likely to be relatively successful.
+
+### 12.7.  Robust Packet Scheduling in Video Streaming
+
+Robust packet scheduling has been implemented with MPEG-4 Part 2 and simulated in a wireless streaming environment [21].  There is no technical reason why similar or better results could not be achievable with H.264.
+
+Streaming clients typically have a receiver buffer that is capable of storing a relatively large amount of data.  Initially, when a streaming session is established, a client does not start playing the stream back immediately.  Rather, it typically buffers the incoming data for a few seconds.  This buffering helps maintain continuous playback, as, in case of occasional increased transmission delays or network throughput drops, the client can decode and play buffered data.  Otherwise, without initial buffering, the client has to freeze the display, stop decoding, and wait for incoming data.  The buffering is also necessary for either automatic or selective retransmission in any protocol level.  If any part of a picture is lost, a retransmission mechanism may be used to resend the lost data. If the retransmitted data is received before its scheduled decoding or playback time, the loss is recovered perfectly.  Coded pictures can be ranked according to their importance in the subjective quality of the decoded sequence.  For example, non-reference pictures, such as conventional B pictures, are subjectively least important, as their absence does not affect decoding of any other pictures.  In addition to non-reference pictures, the ITU-T H.264 | ISO/IEC 14496-10 standard includes a temporal scalability method called sub-sequences [22].  Subjective ranking can also be made on coded slice data partition or slice group basis.  Coded slices and coded slice data partitions that are subjectively the most important can be sent earlier than their decoding order indicates, whereas coded slices and coded slice data partitions that are subjectively the least important can be sent later than their natural coding order indicates. Consequently, any retransmitted parts of the most important slices and coded slice data partitions are more likely to be received before their scheduled decoding or playback time compared to the least important slices and slice data partitions.
+
+## 13.  Informative Appendix: Rationale for Decoding Order Number
+
+### 13.1.  Introduction
+
+The Decoding Order Number (DON) concept was introduced mainly to enable efficient multi-picture slice interleaving (see Section 12.6) and robust packet scheduling (see Section 12.7).  In both of these applications, NAL units are transmitted out of decoding order.  DON indicates the decoding order of NAL units and should be used in the receiver to recover the decoding order.  Example use cases for efficient multi-picture slice interleaving and for robust packet scheduling are given in Sections 13.2 and 13.3, respectively. Section 13.4 describes the benefits of the DON concept in error resiliency achieved by redundant coded pictures.  Section 13.5 summarizes considered alternatives to DON and justifies why DON was chosen for this RTP payload specification.
+
+### 13.2.  Example of Multi-Picture Slice Interleaving
+
+An example of multi-picture slice interleaving follows.  A subset of a coded video sequence is depicted below in output order.  R denotes a reference picture, N denotes a non-reference picture, and the number indicates a relative output time.
+
+```
+    ... R1 N2 R3 N4 R5 ...
+```
+
+The decoding order of these pictures from left to right is as follows:
+
+```
+    ... R1 R3 N2 R5 N4 ...
+```
+
+The NAL units of pictures R1, R3, N2, R5, and N4 are marked with a DON equal to 1, 2, 3, 4, and 5, respectively.
+
+Each reference picture consists of three slice groups that are scattered as follows (a number denotes the slice group number for each macroblock in a Quarter Common Intermediate Format (QCIF) frame):
+
+```
+    0 1 2 0 1 2 0 1 2 0 1
+    2 0 1 2 0 1 2 0 1 2 0
+    1 2 0 1 2 0 1 2 0 1 2
+    0 1 2 0 1 2 0 1 2 0 1
+    2 0 1 2 0 1 2 0 1 2 0
+    1 2 0 1 2 0 1 2 0 1 2
+    0 1 2 0 1 2 0 1 2 0 1
+    2 0 1 2 0 1 2 0 1 2 0
+    1 2 0 1 2 0 1 2 0 1 2
+```
+
+For the sake of simplicity, we assume that all the macroblocks of a slice group are included in one slice.  Three MTAPs are constructed from three consecutive reference pictures so that each MTAP contains three aggregation units, each of which contains all the macroblocks from one slice group.  The first MTAP contains slice group 0 of picture R1, slice group 1 of picture R3, and slice group 2 of picture R5.  The second MTAP contains slice group 1 of picture R1, slice group 2 of picture R3, and slice group 0 of picture R5.  The third MTAP contains slice group 2 of picture R1, slice group 0 of picture R3, and slice group 1 of picture R5.  Each non-reference picture is encapsulated into an STAP-B.
+
+Consequently, the transmission order of NAL units is the following:
+
+```
+    R1, slice group 0, DON 1, carried in MTAP,RTP SN: N
+    R3, slice group 1, DON 2, carried in MTAP,RTP SN: N
+    R5, slice group 2, DON 4, carried in MTAP,RTP SN: N
+    R1, slice group 1, DON 1, carried in MTAP,RTP SN: N+1
+    R3, slice group 2, DON 2, carried in MTAP,RTP SN: N+1
+    R5, slice group 0, DON 4, carried in MTAP,RTP SN: N+1
+    R1, slice group 2, DON 1, carried in MTAP,RTP SN: N+2
+    R3, slice group 1, DON 2, carried in MTAP,RTP SN: N+2
+    R5, slice group 0, DON 4, carried in MTAP,RTP SN: N+2
+    N2, DON 3, carried in STAP-B, RTP SN: N+3
+    N4, DON 5, carried in STAP-B, RTP SN: N+4
+```
+
+The receiver is able to organize the NAL units back in decoding order based on the value of DON associated with each NAL unit.
+
+If one of the MTAPs is lost, the spatially adjacent and temporally co-located macroblocks are received and can be used to conceal the loss efficiently.  If one of the STAPs is lost, the effect of the loss does not propagate temporally.
+
+### 13.3.  Example of Robust Packet Scheduling
+
+An example of robust packet scheduling follows.  The communication system used in the example consists of the following components in the order that the video is processed from source to sink:
+- camera and capturing
+- pre-encoding buffer
+- encoder
+- encoded picture buffer
+- transmitter
+- transmission channel
+- receiver
+- receiver buffer
+- decoder
+- decoded picture buffer
+- display
+
+The video communication system used in this example operates as follows.  Note that processing of the video stream happens gradually and at the same time in all components of the system.  The source video sequence is shot and captured to a pre-encoding buffer.  The pre-encoding buffer can be used to order pictures from sampling order to encoding order or to analyze multiple uncompressed frames for bitrate control purposes, for example.  In some cases, the pre-encoding buffer may not exist; instead, the sampled pictures are encoded right away.  The encoder encodes pictures from the pre-encoding buffer and stores the output (i.e., coded pictures) to the encoded picture buffer.  The transmitter encapsulates the coded pictures from the encoded picture buffer to transmission packets and sends them to a receiver through a transmission channel.  The receiver stores the received packets to the receiver buffer.  The receiver buffering process typically includes buffering for transmission delay jitter.  The receiver buffer can also be used to recover correct decoding order of coded data.  The decoder reads coded data from the receiver buffer and produces decoded pictures as output into the decoded picture buffer.  The decoded picture buffer is used to recover the output (or display) order of pictures. Finally, pictures are displayed.
+
+In the following example figures, I denotes an IDR picture, R denotes a reference picture, N denotes a non-reference picture, and the number after I, R, or N indicates the sampling time relative to the previous IDR picture in decoding order.  Values below the sequence of pictures indicate scaled system clock timestamps.  The system clock is initialized arbitrarily in this example, and time runs from left to right.  Each I, R, and N picture is mapped into the same timeline compared to the previous processing step, if any, assuming that encoding, transmission, and decoding take no time.  Thus, events happening at the same time are located in the same column throughout all example figures.
+
+A subset of a sequence of coded pictures is depicted below in sampling order.
+
+```
+    ...  N58 N59 I00 N01 N02 R03 N04 N05 R06 ... N58 N59 I00 N01 ...
+    ... --|---|---|---|---|---|---|---|---|- ... -|---|---|---|- ...
+    ...  58  59  60  61  62  63  64  65  66  ... 128 129 130 131 ...
+
+    Figure 16.  Sequence of pictures in sampling order
+```
+
+The sampled pictures are buffered in the pre-encoding buffer to arrange them in encoding order.  In this example, we assume that the non-reference pictures are predicted from both the previous and the next reference picture in output order, except for the non-reference pictures immediately preceding an IDR picture, which are predicted only from the previous reference picture in output order.  Thus, the pre-encoding buffer has to contain at least two pictures, and the buffering causes a delay of two picture intervals.  The output of the pre-encoding buffering process and the encoding (and decoding) order of the pictures are as follows:
+
+```
+    ... N58 N59 I00 R03 N01 N02 R06 N04 N05 ...
+    ... -|---|---|---|---|---|---|---|---|- ...
+    ... 60  61  62  63  64  65  66  67  68  ...
+
+    Figure 17.  Reordered pictures in the pre-encoding buffer
+```
+
+The encoder or the transmitter can set the value of DON for each picture to a value of DON for the previous picture in decoding order plus one.
+
+For the sake of simplicity, let us assume that:
+- the frame rate of the sequence is constant,
+- each picture consists of only one slice,
+- each slice is encapsulated in a single NAL unit packet,
+- there is no transmission delay, and
+- pictures are transmitted at constant intervals (that is, 1 / (frame rate)).
+
+When pictures are transmitted in decoding order, they are received as follows:
+
+```
+    ... N58 N59 I00 R03 N01 N02 R06 N04 N05 ...
+    ... -|---|---|---|---|---|---|---|---|- ...
+    ... 60  61  62  63  64  65  66  67  68  ...
+
+    Figure 18.  Received pictures in decoding order
+```
+
+The OPTIONAL sprop-interleaving-depth media type parameter is set to 0, as the transmission (or reception) order is identical to the decoding order.
+
+Initially, the decoder has to buffer for one picture interval in its decoded picture buffer to organize pictures from decoding order to output order, as depicted below:
+
+```
+    ... N58 N59 I00 N01 N02 R03 N04 N05 R06 ...
+    ... -|---|---|---|---|---|---|---|---|- ...
+    ... 61  62  63  64  65  66  67  68  69  ...
+
+    Figure 19.  Output order
+```
+
+The amount of required initial buffering in the decoded picture buffer can be signaled in the buffering period SEI message or with the num_reorder_frames syntax element of H.264 video usability information.  num_reorder_frames indicates the maximum number of frames, complementary field pairs, or non-paired fields that precede any frame, complementary field pair, or non-paired field in the sequence in decoding order and that follow it in output order.  For the sake of simplicity, we assume that num_reorder_frames is used to indicate the initial buffer in the decoded picture buffer.  In this example, num_reorder_frames is equal to 1.
+
+It can be observed that if the IDR picture I00 is lost during transmission and a retransmission request is issued when the value of the system clock is 62, there is one picture interval of time (until the system clock reaches timestamp 63) to receive the retransmitted IDR picture I00.
+
+Let us then assume that IDR pictures are transmitted two frame intervals earlier than their decoding position; that is, the pictures are transmitted as follows:
+
+```
+    ...  I00 N58 N59 R03 N01 N02 R06 N04 N05 ...
+    ... --|---|---|---|---|---|---|---|---|- ...
+    ...  62  63  64  65  66  67  68  69  70  ...
+
+    Figure 20.  Interleaving: Early IDR pictures in sending order
+```
+
+The OPTIONAL sprop-interleaving-depth media type parameter is set equal to 1 according to its definition.  (The value of sprop-interleaving-depth in this example can be derived as follows: picture I00 is the only picture preceding picture N58 or N59 in transmission order and following it in decoding order.  Except for pictures I00, N58, and N59, the transmission order is the same as the decoding order of pictures.  As a coded picture is encapsulated into exactly one NAL unit, the value of sprop-interleaving-depth is equal to the maximum number of pictures preceding any picture in transmission order and following the picture in decoding order).
+
+The receiver buffering process contains two pictures at a time according to the value of the sprop-interleaving-depth parameter and orders pictures from the reception order to the correct decoding order based on the value of DON associated with each picture.  The output of the receiver buffering process is as follows:
+
+```
+       ... N58 N59 I00 R03 N01 N02 R06 N04 N05 ...
+       ... -|---|---|---|---|---|---|---|---|- ...
+       ... 63  64  65  66  67  68  69  70  71  ...
+
+       Figure 21.  Interleaving: Receiver buffer
+```
+
+Again, an initial buffering delay of one picture interval is needed to organize pictures from decoding order to output order, as depicted below:
+
+```
+        ... N58 N59 I00 N01 N02 R03 N04 N05 ...
+        ... -|---|---|---|---|---|---|---|- ...
+        ... 64  65  66  67  68  69  70  71  ...
+
+        Figure 22.  Interleaving: Receiver buffer after reordering
+```
+
+Note that the maximum delay that IDR pictures can undergo during transmission, including possible application, transport, or link layer retransmission, is equal to three picture intervals.  Thus, the loss resiliency of IDR pictures is improved in systems supporting retransmission compared to the case in which pictures are transmitted in their decoding order.
+
+### 13.4.  Robust Transmission Scheduling of Redundant Coded Slices
+
+A redundant coded picture is a coded representation of a picture or a part of a picture that is not used in the decoding process if the corresponding primary coded picture is correctly decoded.  There should be no noticeable difference between any area of the decoded primary picture and a corresponding area that would result from application of the H.264 decoding process for any redundant picture in the same access unit.  A redundant coded slice is a coded slice that is a part of a redundant coded picture.
+
+Redundant coded pictures can be used to provide unequal error protection in error-prone video transmission.  If a primary coded representation of a picture is decoded incorrectly, a corresponding redundant coded picture can be decoded.  Examples of applications and coding techniques using the redundant codec picture feature include the video redundancy coding [23] and the protection of "key pictures" in multicast streaming [24].
+
+One property of many error-prone video communications systems is that transmission errors are often bursty.  Therefore, they may affect more than one consecutive transmission packet in transmission order. In low bitrate video communication, it is relatively common for an entire coded picture to be encapsulated into one transmission packet. Consequently, a primary coded picture and the corresponding redundant coded pictures may be transmitted in consecutive packets in transmission order.  To make the transmission scheme more tolerant of bursty transmission errors, it is beneficial to transmit the primary coded picture and redundant coded picture separated by more than a single packet.  The DON concept enables this.
+
+### 13.5.  Remarks on Other Design Possibilities
+
+The slice header syntax structure of the H.264 coding standard contains the frame_num syntax element that can indicate the decoding order of coded frames.  However, the usage of the frame_num syntax element is not feasible or desirable to recover the decoding order, due to the following reasons:
+- The receiver is required to parse at least one slice header per coded picture (before passing the coded data to the decoder).
+- Coded slices from multiple coded video sequences cannot be interleaved, as the frame number syntax element is reset to 0 in each IDR picture.
+- The coded fields of a complementary field pair share the same value of the frame_num syntax element.  Thus, the decoding order of the coded fields of a complementary field pair cannot be recovered based on the frame_num syntax element or any other syntax element of the H.264 coding syntax.
+
+The RTP payload format for transport of MPEG-4 elementary streams [25] enables interleaving of access units and transmission of multiple access units in the same RTP packet.  An access unit is specified in the H.264 coding standard to comprise all NAL units associated with a primary coded picture according to Subclause 7.4.1.2 of [1].  Consequently, slices of different pictures cannot be interleaved, and the multi-picture slice interleaving technique (see Section 12.6) for improved error resilience cannot be used.
+
+## 14.  Changes from RFC 3984
+
+Following is the list of technical changes (including bug fixes) from RFC 3984.  Besides this list of technical changes, numerous editorial changes have been made, but not documented in this section.  Note that Section 8.2.2 is where much of the important changes in this memo occurs and deserves particular attention.
+
+1. In Sections 5.4, 5.5, 6.2, 6.3, and 6.4, removed that the packetization mode in use may be signaled by external means.
+2. In Section 7.2.2, changed the sentence
+    ```
+    There are N VCL NAL units in the de-interleaving buffer.
+    to
+    There are N or more VCL NAL units in the de-interleaving buffer.
+    ```
+3. In Section 8.1, the semantics of sprop-init-buf-time (paragraph 2), changed the sentence
+    ```
+    The parameter is the maximum value of (transmission time of a NAL unit - decoding time of the NAL unit), assuming reliable and instantaneous transmission, the same timeline for transmission and decoding, and that decoding starts when the first packet arrives.
+    to
+    The parameter is the maximum value of (decoding time of the NAL unit - transmission time of a NAL unit), assuming reliable and instantaneous transmission, the same timeline for transmission and decoding, and that decoding starts when the first packet arrives.
+    ```
+4. Added media type parameters max-smbps, sprop-level-parameter-sets, use-level-src-parameter-sets, in-band-parameter-sets, sar-understood, and sar-supported.
+5. In Section 8.1, removed the specification of parameter-add. Other descriptions of parameter-add (in Sections 8.2 and 8.4) were also removed.
+6. In Section 8.1, added a constraint to sprop-parameter-sets such that it can only contain parameter sets for the same profile and level as indicated by profile-level-id.
+7. In Section 8.2.1, added that sprop-parameter-sets and sprop-level-parameter-sets may be either included in the "a=fmtp" line of SDP or conveyed using the "fmtp" source attribute as specified in Section 6.3 of [9].
+8. In Section 8.2.2, removed sprop-deint-buf-req from being part of the media format configuration in usage with the SDP Offer/Answer model.
+9. In Section 8.2.2, made it clear that level is downgradable in the SDP Offer/Answer model, i.e., the use of the level part of profile-level-id does not need to be symmetric (the level included in the answer can be lower than or equal to the level included in the offer).
+10. In Section 8.2.2, removed that the capability parameters may be used to declare encoding capabilities.
+11. In Section 8.2.2, added rules on how to use sprop-parameter-sets and sprop-level-parameter-sets for out-of-band transport of parameter sets, with or without level downgrading.
+12. In Section 8.2.2, clarified the rules of using the media type parameters with SDP Offer/Answer for multicast.
+13. In Section 8.2.2, completed and corrected the list of how different media type parameters shall be interpreted in the different combinations of offer or answer and direction attribute.
+14. In Section 8.4, changed the text such that both out-of-band and in-band transport of parameter sets are allowed, and neither is recommended or required.
+15. Added Section 8.5 (informative) providing example methods for decoder refresh to handle parameter set losses.
+16. Added media type parameters max-recv-level and level-asymmetry-allowed and adjusted associated text and examples for level upgrade and asymmetry.
+
+## 15.  Backward Compatibility to RFC 3984
+
+The current document is a revision of RFC 3984 and obsoletes it.  The technical changes relative to RFC 3984 are listed in Section 14. This section addresses the backward compatibility issues.
+
+It should be noted that for the majority of cases, there will be no compatibility issues for legacy implementations per RFC 3984 and new implementations per this document to interwork.  Compatibility issues may only occur when both of the following conditions are true:
+1. legacy implementations and new implementations are interworking, and
+2. parameter sets are transported out-of-band.  When such compatibility issues occur, it is easy to debug and find the reason for the incompatibility using the following analyses.
+
+Items 1, 2, 3, 7, 9, 10, 12, and 13 are bug-fix types of changes and do not incur any backward compatibility issues.
+
+Item 4 (addition of six new media type parameters) does not incur any backward compatibility issues for SDP Offer/Answer-based applications, as legacy RFC 3984 receivers ignore these parameters, and it is fine for legacy RFC 3984 senders not to use these parameters as they are optional.  However, there is a backward compatibility issue for declarative-usage-based applications (only for the parameter sprop-level-parameter-sets as the other five parameters are not usable in declarative usage).  For example, declarative-usage-based applications using RTSP and SAP have a backward compatibility issue because the SDP receiver per RFC 3984 cannot accept a session for which the SDP includes an unrecognized parameter.  Therefore, the RTSP or SAP server may have to prepare two sets of streams, one for legacy RFC 3984 receivers and one for receivers according to this memo.
+
+Items 5, 6, and 11 are related to out-of-band transport of parameter sets.  There are following backward compatibility issues.
+
+1. When a legacy sender per RFC 3984 includes parameter sets for a level different than the default level indicated by profile-level-id to sprop-parameter-sets, the parameter value of sprop-parameter-sets is invalid to the receiver per this memo; therefore, the session may be rejected.
+2. In SDP Offer/Answer between a legacy offerer per RFC 3984 and an answerer per this memo, when the answerer includes in the answer parameter sets that are not a superset of the parameter sets included in the offer, the parameter value of sprop-parameter-sets is invalid to the offerer, and the session may not be initiated properly (related to change item 11).
+3. When one endpoint A per this memo includes in-band-parameter-sets equal to 1, the other side B per RFC 3984 does not understand that it must transmit parameter sets in-band, and B may still exclude parameter sets in the in-band stream it is sending. Consequently, endpoint A cannot decode the stream it receives.
+
+Item 7 (allowance of conveying sprop-parameter-sets and sprop-level-parameter-sets using the "fmtp" source attribute as specified in Section 6.3 of [9]) is similar to item 4.  It does not incur any backward compatibility issues for SDP Offer/Answer-based applications, as legacy RFC 3984 receivers ignore the "fmtp" source attribute, and it is fine for legacy RFC 3984 senders not to use the "fmtp" source attribute as it is optional.  However, there is a backward compatibility issue for SDP declarative-usage-based applications, e.g., those using RTSP and SAP, because the SDP receiver per RFC 3984 cannot accept a session for which the SDP includes an unrecognized parameter (i.e., the "fmtp" source attribute).  Therefore, the RTSP or SAP server may have to prepare two sets of streams, one for legacy RFC 3984 receivers and one for receivers according to this memo.
+
+Item 14 does not incur any backward compatibility issues, as out-of-band transport of parameter sets is still allowed.
+
+Item 15 does not incur any backward compatibility issues, as the added Section 8.5 is informative.
+
+Item 16 does not create any backward compatibility issues as the handling of the default level is the same if either end is RFC 3984 compliant, and, furthermore, RFC-3984-compliant ends would simply ignore the new media type parameters, if present.
+
+## 16.  Acknowledgements
+
+Stephan Wenger, Miska Hannuksela, Thomas Stockhammer, Magnus Westerlund, and David Singer are thanked as the authors of RFC 3984. Dave Lindbergh, Philippe Gentric, Gonzalo Camarillo, Gary Sullivan, Joerg Ott, and Colin Perkins are thanked for careful review during the development of RFC 3984. Stephen Botzko, Magnus Westerlund, Alex Eleftheriadis, Thomas Schierl, Tom Taylor, Ali Begen, Aaron Wells, Stuart Taylor, Robert Sparks, Dan Romascanu, and Niclas Comstedt are thanked for their valuable comments and input during the development of this memo.
+
+## 17.  References
+
+17.1.  Normative References
+- [1]   ITU-T Recommendation H.264, "Advanced video coding for generic audiovisual services", March 2010.
+- [2]   ISO/IEC International Standard 14496-10:2008.
+- [3]   ITU-T Recommendation H.241, "Extended video procedures and control signals for H.300-series terminals", May 2006.
+- [4]   Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, March 1997.
+- [5]   Schulzrinne, H., Casner, S., Frederick, R., and V. Jacobson, "RTP: A Transport Protocol for Real-Time Applications", STD 64, RFC 3550, July 2003.
+- [6]   Handley, M., Jacobson, V., and C. Perkins, "SDP: Session Description Protocol", RFC 4566, July 2006.
+- [7]   Josefsson, S., "The Base16, Base32, and Base64 Data Encodings", RFC 4648, October 2006.
+- [8]   Rosenberg, J. and H. Schulzrinne, "An Offer/Answer Model with Session Description Protocol (SDP)", RFC 3264, June 2002.
+- [9]   Lennox, J., Ott, J., and T. Schierl, "Source-Specific Media Attributes in the Session Description Protocol (SDP)", RFC 5576, June 2009.
+
+17.2.  Informative References
+- [10]  Luthra, A., Sullivan, G.J., and T. Wiegand (eds.), "Introduction to the special issue on the H.264/AVC video coding standard", IEEE Transactions on Circuits and Systems for Video Technology, Vol. 13, No. 7, July 2003.
+- [11]  Ott, J., Bormann, C., Sullivan, G., Wenger, S., and R. Even, Ed., "RTP Payload Format for ITU-T Rec. H.263 Video", RFC 4629, January 2007.
+- [12]  ISO/IEC International Standard 14496-2:2004.
+- [13]  Wenger, S., "H.264/AVC over IP", IEEE Transaction on Circuits and Systems for Video Technology, Vol. 13, No. 7, July 2003.
+- [14]  Wenger, S., "H.26L over IP: The IP-Network Adaptation Layer", Proceedings Packet Video Workshop, April 2002.
+- [15]  Stockhammer, T., Hannuksela, M.M., and S. Wenger, "H.26L/JVT Coding Network Abstraction Layer and IP-Based Transport", IEEE International Conference on Image Processing (ICIP 2002), Rochester, NY, September 2002.
+- [16]  Schulzrinne, H. and S. Casner, "RTP Profile for Audio and Video Conferences with Minimal Control", STD 65, RFC 3551, July 2003.
+- [17]  ITU-T Recommendation H.223, "Multiplexing protocol for low bit rate multimedia communication", July 2001.
+- [18]  Li, A., Ed., "RTP Payload Format for Generic Forward Error Correction", RFC 5109, December 2007.
+- [19]  Stockhammer, T., Wiegand, T., Oelbaum, T., and F. Obermeier, "Video Coding and Transport Layer Techniques for H.264/AVC- Based Transmission over Packet-Lossy Networks", IEEE International Conference on Image Processing (ICIP 2003), Barcelona, Spain, September 2003.
+- [20]  Varsa, V. and M. Karczewicz, "Slice interleaving in compressed video packetization", Packet Video Workshop 2000.
+- [21]  Kang, S.H. and A. Zakhor, "Packet scheduling algorithm for wireless video streaming", Packet Video Workshop 2002.
+- [22]  Hannuksela, M.M., "Enhanced Concept of GOP", JVT-B042, available http://ftp3.itu.int/av-arch/video-site/0201_Gen/JVT- B042.doc, January 2002.
+- [23]  Wenger, S., "Video Redundancy Coding in H.263+", 1997 International Workshop on Audio-Visual Services over Packet Networks, September 1997.
+- [24]  Wang, Y.-K., Hannuksela, M.M., and M. Gabbouj, "Error Resilient Video Coding Using Unequally Protected Key Pictures", in Proc. International Workshop VLBV03, September 2003.
+- [25]  van der Meer, J., Mackie, D., Swaminathan, V., Singer, D., and P. Gentric, "RTP Payload Format for Transport of MPEG-4 Elementary Streams", RFC 3640, November 2003.
+- [26]  Baugher, M., McGrew, D., Naslund, M., Carrara, E., and K. Norrman, "The Secure Real-time Transport Protocol (SRTP)", RFC 3711, March 2004.
+- [27]  Schulzrinne, H., Rao, A., and R. Lanphier, "Real Time Streaming Protocol (RTSP)", RFC 2326, April 1998.
+- [28]  Handley, M., Perkins, C., and E. Whelan, "Session Announcement Protocol", RFC 2974, October 2000.
+- [29]  Westerlund, M. and S. Wenger, "RTP Topologies", RFC 5117, January 2008.
+- [30]  Wenger, S., Chandra, U., Westerlund, M., and B. Burman, "Codec Control Messages in the RTP Audio-Visual Profile with Feedback (AVPF)", RFC 5104, February 2008.
+
+**Authors' Addresses**
+
+```
+   Ye-Kui Wang
+   Huawei Technologies
+   400 Crossing Blvd, 2nd Floor
+   Bridgewater, NJ 08807
+   USA
+
+   Phone: +1-908-541-3518
+   EMail: yekui.wang@huawei.com
+
+
+   Roni Even
+   Huawei Technologies
+   14 David Hamelech
+   Tel Aviv 64953
+   Israel
+
+   Phone: +972-545481099
+   EMail: even.roni@huawei.com
+
+
+   Tom Kristensen
+   TANDBERG
+   Philip Pedersens vei 22
+   N-1366 Lysaker
+   Norway
+
+   Phone: +47 67125125
+   EMail: tom.kristensen@tandberg.com, tomkri@ifi.uio.no
+
+
+   Randell Jesup
+   WorldGate Communications
+   3800 Horizon Blvd, Suite #103
+   Trevose, PA 19053-4947
+   USA
+
+   Phone: +1-215-354-5166
+   EMail: rjesup@wgate.com, randell_ietf@jesup.org
+```
