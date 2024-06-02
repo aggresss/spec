@@ -951,14 +951,17 @@ Some parameters provide a receiver with the properties of the stream that will b
 
 The media subtype for the ITU-T H.264 | ISO/IEC 14496-10 codec has been allocated from the IETF tree.
 
-Media Type name:     video
-Media subtype name:  H264
-Required parameters: none
-OPTIONAL parameters:
+**Media Type name**:     video
+**Media subtype name**:  H264
+**Required parameters**: none
+**OPTIONAL parameters**:
 
 - profile-level-id:
 
-    A base16 [7] (hexadecimal) representation of the following three bytes in the sequence parameter set NAL unit is specified in [1]: 1) profile_idc, 2) a byte herein referred to as profile-iop, composed of the values of constraint_set0_flag, constraint_set1_flag, constraint_set2_flag, constraint_set3_flag, constraint_set4_flag, constraint_set5_flag, and reserved_zero_2bits in bit- significance order, starting from the most-significant bit, and 3) level_idc.  Note that reserved_zero_2bits is required to be equal to 0 in [1], but other values for it may be specified in the future by ITU-T or ISO/IEC.
+    A base16 [7] (hexadecimal) representation of the following three bytes in the sequence parameter set NAL unit is specified in [1]:
+    1. profile_idc,
+    2. a byte herein referred to as profile-iop, composed of the values of constraint_set0_flag, constraint_set1_flag, constraint_set2_flag, constraint_set3_flag, constraint_set4_flag, constraint_set5_flag, and reserved_zero_2bits in bit- significance order, starting from the most-significant bit, and
+    3. level_idc.  Note that reserved_zero_2bits is required to be equal to 0 in [1], but other values for it may be specified in the future by ITU-T or ISO/IEC.
 
     The profile-level-id parameter indicates the default sub-profile (i.e., the subset of coding tools that may have been used to generate the stream or that the receiver supports) and the default level of the stream or the receiver supports.
 
@@ -967,28 +970,26 @@ OPTIONAL parameters:
     Table 5 lists all profiles defined in Annex A of [1] and, for each of the profiles, the possible combinations of profile_idc and profile-iop that represent the same sub-profile.
 
     Table 5.  Combinations of profile_idc and profile-iop representing the same sub-profile corresponding to the full set of coding tools supported by one profile.  In the following, x may be either 0 or 1, while the profile names are indicated as follows.  CB: Constrained Baseline profile, B: Baseline profile, M: Main profile, E: Extended profile, H: High profile, H10: High 10 profile, H42: High 4:2:2 profile, H44: High 4:4:4 Predictive profile, H10I: High 10 Intra profile, H42I: High 4:2:2 Intra profile, H44I: High 4:4:4 Intra profile, and C44I: CAVLC 4:4:4 Intra profile.
+    ```
+        Profile     profile_idc        profile-iop
+                    (hexadecimal)      (binary)
 
-```
-    Profile     profile_idc        profile-iop
-                (hexadecimal)      (binary)
-
-    CB          42 (B)             x1xx0000
-        same as: 4D (M)             1xxx0000
-        same as: 58 (E)             11xx0000
-    B           42 (B)             x0xx0000
-        same as: 58 (E)             10xx0000
-    M           4D (M)             0x0x0000
-    E           58                 00xx0000
-    H           64                 00000000
-    H10         6E                 00000000
-    H42         7A                 00000000
-    H44         F4                 00000000
-    H10I        6E                 00010000
-    H42I        7A                 00010000
-    H44I        F4                 00010000
-    C44I        2C                 00010000
-```
-
+        CB          42 (B)             x1xx0000
+            same as: 4D (M)             1xxx0000
+            same as: 58 (E)             11xx0000
+        B           42 (B)             x0xx0000
+            same as: 58 (E)             10xx0000
+        M           4D (M)             0x0x0000
+        E           58                 00xx0000
+        H           64                 00000000
+        H10         6E                 00000000
+        H42         7A                 00000000
+        H44         F4                 00000000
+        H10I        6E                 00010000
+        H42I        7A                 00010000
+        H44I        F4                 00010000
+        C44I        2C                 00010000
+    ```
     For example, in the table above, profile_idc equal to 58 (Extended) with profile-iop equal to 11xx0000 indicates the same sub-profile corresponding to profile_idc equal to 42 (Baseline) with profile-iop equal to x1xx0000.  Note that other combinations of profile_idc and profile-iop (not listed in Table 5) may represent a sub-profile equivalent to the common subset of coding tools for more than one profile.  Note also that a decoder conforming to a certain profile may be able to decode bitstreams conforming to other profiles.
 
     If the profile-level-id parameter is used to indicate properties of a NAL unit stream, it indicates that, to decode the stream, the minimum subset of coding tools a decoder has to support is the default sub-profile, and the lowest level the decoder has to support is the default level.
@@ -1017,25 +1018,22 @@ OPTIONAL parameters:
 
     When max-mbps is signaled, the receiver MUST be able to decode NAL unit streams that conform to the signaled highest level, with the exception that the MaxMBPS value in Table A-1 of [1] for the signaled highest level is replaced with the value of max-mbps.  The value of max-mbps MUST be greater than or equal to the value of MaxMBPS given in Table A-1 of [1] for the highest level.  Senders MAY use this knowledge to send pictures of a given size at a higher picture rate than is indicated in the signaled highest level.
 - max-smbps: The value of max-smbps is an integer indicating the maximum static macroblock processing rate in units of static macroblocks per second, under the hypothetical assumption that all macroblocks are static macroblocks.  When max-smbps is signaled, the MaxMBPS value in Table A-1 of [1] should be replaced with the result of the following computation:
-
     - If the parameter max-mbps is signaled, set a variable MaxMacroblocksPerSecond to the value of max-mbps. Otherwise, set MaxMacroblocksPerSecond equal to the value of MaxMBPS in Table A-1 [1] for the signaled highest level conveyed in the value of the profile-level-id parameter or the max-recv-level parameter.
     - Set a variable P_non-static to the proportion of non-static macroblocks in picture n.
     - Set a variable P_static to the proportion of static macroblocks in picture n.
     - The value of MaxMBPS in Table A-1 of [1] should be considered by the encoder to be equal to:
-
-    MaxMacroblocksPerSecond * max-smbps / (P_non-static * max-smbps + P_static * MaxMacroblocksPerSecond)
-
+    ```
+        MaxMacroblocksPerSecond * max-smbps / (P_non-static * max-smbps + P_static * MaxMacroblocksPerSecond)
+    ```
     The encoder should recompute this value for each picture.  The value of max-smbps MUST be greater than or equal to the value of MaxMBPS given explicitly as the value of the max-mbps parameter or implicitly in Table A-1 of [1] for the signaled highest level.  Senders MAY use this knowledge to send pictures of a given size at a higher picture rate than is indicated in the signaled highest level.
 - max-fs: The value of max-fs is an integer indicating the maximum frame size in units of macroblocks.  The max-fs parameter signals that the receiver is capable of decoding larger picture sizes than are required by the signaled highest level conveyed in the value of the profile-level-id parameter or the max-recv-level parameter.  When max-fs is signaled, the receiver MUST be able to decode NAL unit streams that conform to the signaled highest level, with the exception that the MaxFS value in Table A-1 of [1] for the signaled highest level is replaced with the value of max-fs.  The value of max-fs MUST be greater than or equal to the value of MaxFS given in Table A-1 of [1] for the highest level.  Senders MAY use this knowledge to send larger pictures at a proportionally lower frame rate than is indicated in the signaled highest level.
 - max-cpb: The value of max-cpb is an integer indicating the maximum coded picture buffer size in units of 1000 bits for the VCL HRD parameters and in units of 1200 bits for the NAL HRD parameters.  Note that this parameter does not use units of cpbBrVclFactor and cpbBrNALFactor (see Table A-1 of [1]).  The max-cpb parameter signals that the receiver has more memory than the minimum amount of coded picture buffer memory required by the signaled highest level conveyed in the value of the profile-level-id parameter or the max-recv-level parameter. When max-cpb is signaled, the receiver MUST be able to decode NAL unit streams that conform to the signaled highest level, with the exception that the MaxCPB value in Table A-1 of [1] for the signaled highest level is replaced with the value of max-cpb (after taking cpbBrVclFactor and cpbBrNALFactor into consideration when needed).  The value of max-cpb (after taking cpbBrVclFactor and cpbBrNALFactor into consideration when needed) MUST be greater than or equal to the value of MaxCPB given in Table A-1 of [1] for the highest level.  Senders MAY use this knowledge to construct coded video streams with greater variation of bitrate than can be achieved with the MaxCPB value in Table A-1 of [1].
 
     > Informative note: The coded picture buffer is used in the hypothetical reference decoder (Annex C of H.264).  The use of the hypothetical reference decoder is recommended in H.264 encoders to verify that the produced bitstream conforms to the standard and to control the output bitrate. Thus, the coded picture buffer is conceptually independent of any other potential buffers in the receiver, including de-interleaving and de-jitter buffers.  The coded picture buffer need not be implemented in decoders as specified in Annex C of H.264, but rather standard-compliant decoders can have any buffering arrangements provided that they can decode standard-compliant bitstreams.  Thus, in practice, the input buffer for a video decoder can be integrated with de-interleaving and de-jitter buffers of the receiver.
 - max-dpb: The value of max-dpb is an integer indicating the maximum decoded picture buffer size in units of 8/3 macroblocks.  The max-dpb parameter signals that the receiver has more memory than the minimum amount of decoded picture buffer memory required by the signaled highest level conveyed in the value of the profile-level-id parameter or the max-recv-level parameter. When max-dpb is signaled, the receiver MUST be able to decode NAL unit streams that conform to the signaled highest level, with the exception that the MaxDpbMbs value in Table A-1 of [1] for the signaled highest level is replaced with the value of max-dpb * 3 / 8.  Consequently, a receiver that signals max-dpb MUST be capable of storing the following number of decoded frames, complementary field pairs, and non-paired fields in its decoded picture buffer:
-
-```
-    Min(max-dpb * 3 / 8 / ( PicWidthInMbs * FrameHeightInMbs), 16)
-```
-
+    ```
+        Min(max-dpb * 3 / 8 / ( PicWidthInMbs * FrameHeightInMbs), 16)
+    ```
     Wherein PicWidthInMbs and FrameHeightInMbs are defined in [1].
 
     The value of max-dpb MUST be greater than or equal to the value of MaxDpbMbs * 3 / 8, wherein the value of MaxDpbMbs is given in Table A-1 of [1] for the highest level.  Senders MAY use this knowledge to construct coded video streams with improved compression.
@@ -1048,7 +1046,6 @@ OPTIONAL parameters:
     The max-br parameter signals that the video decoder of the receiver is capable of decoding video at a higher bitrate than is required by the signaled highest level conveyed in the value of the profile-level-id parameter or the max-recv-level parameter.
 
     When max-br is signaled, the video codec of the receiver MUST be able to decode NAL unit streams that conform to the signaled highest level, with the following exceptions in the limits specified by the highest level:
-
     - The value of max-br (after taking cpbBrVclFactor and cpbBrNALFactor into consideration when needed) replaces the MaxBR value in Table A-1 of [1] for the highest level.
     - When the max-cpb parameter is not present, the result of the following formula replaces the value of MaxCPB in Table A-1 of [1]: (MaxCPB of the signaled level) * max-br / (MaxBR of the signaled highest level).
 
@@ -1070,11 +1067,9 @@ OPTIONAL parameters:
     Informative note: Even if redundant-pic-cap is equal to 1, the receiver may also choose other error concealment strategies to replace or complement decoding of redundant slices.
 - sprop-parameter-sets:
 
-    This parameter MAY be used to convey any sequence and picture parameter set NAL units (herein referred to as the initial parameter set NAL units) that can be placed in the NAL unit stream to precede any other NAL units in decoding order.  The parameter MUST NOT be used to indicate codec capability in any capability exchange procedure.  The value of the parameter is a comma-separated (',') list of base64 [7] representations of parameter set NAL units as specified in Sections 7.3.2.1 and
+    This parameter MAY be used to convey any sequence and picture parameter set NAL units (herein referred to as the initial parameter set NAL units) that can be placed in the NAL unit stream to precede any other NAL units in decoding order.  The parameter MUST NOT be used to indicate codec capability in any capability exchange procedure.  The value of the parameter is a comma-separated (',') list of base64 [7] representations of parameter set NAL units as specified in Sections 7.3.2.1 and 7.3.2.2 of [1].  Note that the number of bytes in a parameter set NAL unit is typically less than 10, but a picture parameter set NAL unit can contain several hundred bytes.
 
-    7.3.2.2 of [1].  Note that the number of bytes in a parameter set NAL unit is typically less than 10, but a picture parameter set NAL unit can contain several hundred bytes.
-
-    Informative note: When several payload types are offered in the SDP Offer/Answer model, each with its own sprop-parameter-sets parameter, the receiver cannot assume that those parameter sets do not use conflicting storage locations (i.e., identical values of parameter set identifiers).  Therefore, a receiver should buffer all sprop-parameter-sets and make them available to the decoder instance that decodes a certain payload type.
+    > Informative note: When several payload types are offered in the SDP Offer/Answer model, each with its own sprop-parameter-sets parameter, the receiver cannot assume that those parameter sets do not use conflicting storage locations (i.e., identical values of parameter set identifiers).  Therefore, a receiver should buffer all sprop-parameter-sets and make them available to the decoder instance that decodes a certain payload type.
 
     The sprop-parameter-sets parameter MUST only contain parameter sets that are conforming to the profile-level-id, i.e., the subset of coding tools indicated by any of the parameter sets MUST be equal to the default sub-profile, and the level indicated by any of the parameter sets MUST be equal to the default level.
 - sprop-level-parameter-sets:
@@ -1132,61 +1127,48 @@ OPTIONAL parameters:
 - sprop-init-buf-time:
 
     This parameter MAY be used to signal the properties of an RTP packet stream.  The parameter MUST NOT be present if the value of packetization-mode is equal to 0 or 1.
-
     The parameter signals the initial buffering time that a receiver MUST wait before starting decoding to recover the NAL unit decoding order from the transmission order.  The parameter is the maximum value of (decoding time of the NAL unit - transmission time of a NAL unit), assuming reliable and instantaneous transmission, the same timeline for transmission and decoding, and commencement of decoding when the first packet arrives.
-
     An example of specifying the value of sprop-init-buf-time follows.  A NAL unit stream is sent in the following interleaved order, in which the value corresponds to the decoding time and the transmission order is from left to right:
-
-```
-               0  2  1  3  5  4  6  8  7 ...
-```
-
+    ```
+        0  2  1  3  5  4  6  8  7 ...
+    ```
     Assuming a steady transmission rate of NAL units, the transmission times are:
-
-```
-               0  1  2  3  4  5  6  7  8 ...
-```
-
+    ```
+        0  1  2  3  4  5  6  7  8 ...
+    ```
     Subtracting the decoding time from the transmission time column-wise results in the following series:
-
-```
-               0 -1  1  0 -1  1  0 -1  1 ...
-```
-
+    ```
+        0 -1  1  0 -1  1  0 -1  1 ...
+    ```
     Thus, in terms of intervals of NAL unit transmission times, the value of sprop-init-buf-time in this example is 1.  The parameter is coded as a non-negative base10 integer representation in clock ticks of a 90-kHz clock.  If the parameter is not present, then no initial buffering time value is defined.  Otherwise, the value of sprop-init-buf-time MUST be an integer in the range of 0 to 4294967295, inclusive.
-
 
     In addition to the signaled sprop-init-buf-time, receivers SHOULD take into account the transmission delay jitter buffering, including buffering for the delay jitter caused by mixers, translators, gateways, proxies, traffic-shapers, and other network elements.
 - sprop-max-don-diff:
 
     This parameter MAY be used to signal the properties of an RTP packet stream.  It MUST NOT be used to signal transmitter, receiver, or codec capabilities.  The parameter MUST NOT be present if the value of packetization-mode is equal to 0 or 1. sprop-max-don-diff is an integer in the range of 0 to 32767, inclusive.  If sprop-max-don-diff is not present, the value of the parameter is unspecified.  sprop-max-don-diff is calculated as follows:
-
-```
-            sprop-max-don-diff = max{AbsDON(i) - AbsDON(j)}, for any i and any j>i,
-```
-
+    ```
+        sprop-max-don-diff = max{AbsDON(i) - AbsDON(j)}, for any i and any j>i,
+    ```
     where i and j indicate the index of the NAL unit in the transmission order and AbsDON denotes a decoding order number of the NAL unit that does not wrap around to 0 after 65535.  In other words, AbsDON is calculated as follows: let m and n be consecutive NAL units in transmission order.  For the very first NAL unit in transmission order (whose index is 0), AbsDON(0) = DON(0).  For other NAL units, AbsDON is calculated as follows:
+    ```
+        If DON(m) == DON(n), AbsDON(n) = AbsDON(m)
 
-```
-            If DON(m) == DON(n), AbsDON(n) = AbsDON(m)
+        If (DON(m) < DON(n) and DON(n) - DON(m) < 32768),
+            AbsDON(n) = AbsDON(m) + DON(n) - DON(m)
 
-            If (DON(m) < DON(n) and DON(n) - DON(m) < 32768),
-              AbsDON(n) = AbsDON(m) + DON(n) - DON(m)
+        If (DON(m) > DON(n) and DON(m) - DON(n) >= 32768),
+            AbsDON(n) = AbsDON(m) + 65536 - DON(m) + DON(n)
 
-            If (DON(m) > DON(n) and DON(m) - DON(n) >= 32768),
-              AbsDON(n) = AbsDON(m) + 65536 - DON(m) + DON(n)
+        If (DON(m) < DON(n) and DON(n) - DON(m) >= 32768),
+            AbsDON(n) = AbsDON(m) - (DON(m) + 65536 - DON(n))
 
-            If (DON(m) < DON(n) and DON(n) - DON(m) >= 32768),
-              AbsDON(n) = AbsDON(m) - (DON(m) + 65536 - DON(n))
+        If (DON(m) > DON(n) and DON(m) - DON(n) < 32768),
+            AbsDON(n) = AbsDON(m) - (DON(m) - DON(n))
 
-            If (DON(m) > DON(n) and DON(m) - DON(n) < 32768),
-              AbsDON(n) = AbsDON(m) - (DON(m) - DON(n))
-
-         where DON(i) is the decoding order number of the NAL unit
-         having index i in the transmission order.  The decoding order
-         number is specified in Section 5.5.
-```
-
+        where DON(i) is the decoding order number of the NAL unit
+        having index i in the transmission order.  The decoding order
+        number is specified in Section 5.5.
+    ```
     > Informative note: Receivers may use sprop-max-don-diff to trigger which NAL units in the receiver buffer can be passed to the decoder.
 - max-rcmd-nalu-size:
 
@@ -1202,7 +1184,6 @@ OPTIONAL parameters:
     This parameter MAY be used to indicate a receiver capability and nothing else.  The parameter indicates the maximum value of aspect_ratio_idc (specified in [1]) smaller than 255 that the receiver understands.  Table E-1 of [1] specifies aspect_ratio_idc equal to 0 as "unspecified"; 1 to 16, inclusive, as specific Sample Aspect Ratios (SARs); 17 to 254, inclusive, as "reserved"; and 255 as the Extended SAR, for which SAR width and SAR height are explicitly signaled. Therefore, a receiver with a decoder according to [1] understands aspect_ratio_idc in the range of 1 to 16, inclusive, and aspect_ratio_idc equal to 255, in the sense that the receiver knows exactly what the SAR is.  For such a receiver, the value of sar-understood is 16.  In the future, if Table E-1 of [1] is extended, e.g., such that the SAR for aspect_ratio_idc equal to 17 is specified, then for a receiver with a decoder that understands the extension, the value of sar-understood is 17.  For a receiver with a decoder according to the 2003 version of [1], the value of sar-understood is 13, as the minimum reserved aspect_ratio_idc therein is 14.
 
     When sar-understood is not present, the value MUST be inferred to be equal to 13.
-
 - sar-supported:
 
     This parameter MAY be used to indicate a receiver capability and nothing else.  The value of this parameter is an integer in the range of 1 to sar-understood, inclusive, equal to 255.  The value of sar-supported equal to N smaller than 255 indicates that the receiver supports all the SARs corresponding to H.264 aspect_ratio_idc values (see Table E-1 of [1]) in the range from 1 to N, inclusive, without geometric distortion.  The value of sar-supported equal to 255 indicates that the receiver supports all sample aspect ratios that are expressible using two 16-bit integer values as the numerator and denominator, i.e., those that are expressible using the H.264 aspect_ratio_idc value of 255 (Extended_SAR, see Table E-1 of [1]), without geometric distortion.
@@ -1211,1083 +1192,550 @@ OPTIONAL parameters:
 
     Note that the actual sample aspect ratio or extended sample aspect ratio, when present, of the stream is conveyed in the Video Usability Information (VUI) part of the sequence parameter set.
 
-- Encoding considerations:
+**Encoding considerations**:
 
-        This type is only defined for transfer via RTP (RFC 3550).
+- This type is only defined for transfer via RTP (RFC 3550).
 
-- Security considerations:
-         See Section 9 of RFC 6184.
+**Security considerations**:
 
-- Public specification:
-         Please refer to RFC 6184 and its Section 17.
+- See Section 9 of RFC 6184.
 
-- Additional information:
-         None
+**Public specification**:
 
-- File extensions:  none
+- Please refer to RFC 6184 and its Section 17.
 
-- Macintosh file type code:  none
+**Additional information**: None
 
-- Object identifier or OID:  none
+**File extensions**: none
 
-- Person & email address to contact for further information:
-         Ye-Kui Wang, yekui.wang@huawei.com
-- Intended usage:  COMMON
+**Macintosh file type code**: none
 
-- Author:
-        Ye-Kui Wang, yekui.wang@huawei.com
+**Object identifier or OID**: none
 
-- Change controller:
-         IETF Audio/Video Transport working group delegated from the IESG.
+**Person & email address to contact for further information**:
+
+- Ye-Kui Wang, yekui.wang@huawei.com
+
+**Intended usage**:  COMMON
+
+**Author**:
+
+- Ye-Kui Wang, yekui.wang@huawei.com
+
+**Change controller**:
+
+- IETF Audio/Video Transport working group delegated from the IESG.
 
 ### 8.2.  SDP Parameters
 
-   The receiver MUST ignore any parameter unspecified in this memo.
-
-8.2.1.  Mapping of Payload Type Parameters to SDP
-
-   The media type video/H264 string is mapped to fields in the Session
-   Description Protocol (SDP) [6] as follows:
-
-   o  The media name in the "m=" line of SDP MUST be video.
-
-   o  The encoding name in the "a=rtpmap" line of SDP MUST be H264 (the
-      media subtype).
-
-   o  The clock rate in the "a=rtpmap" line MUST be 90000.
-
-   o  The OPTIONAL parameters profile-level-id, max-recv-level, max-
-      mbps, max-smbps, max-fs, max-cpb, max-dpb, max-br, redundant-pic-
-      cap, use-level-src-parameter-sets, in-band-parameter-sets, level-
-      asymmetry-allowed, packetization-mode, sprop-interleaving-depth,
-      sprop-deint-buf-req, deint-buf-cap, sprop-init-buf-time, sprop-
-      max-don-diff, max-rcmd-nalu-size, sar-understood, and sar-
-      supported, when present, MUST be included in the "a=fmtp" line of
-      SDP.  These parameters are expressed as a media type string, in
-      the form of a semicolon-separated list of parameter=value pairs.
-
-   o  The OPTIONAL parameters sprop-parameter-sets and sprop-level-
-      parameter-sets, when present, MUST be included in the "a=fmtp"
-      line of SDP or conveyed using the "fmtp" source attribute as
-      specified in Section 6.3 of [9].  For a particular media format
-      (i.e., RTP payload type), a sprop-parameter-sets or sprop-level-
-      parameter-sets MUST NOT be both included in the "a=fmtp" line of
-
-      SDP and conveyed using the "fmtp" source attribute.  When included
-      in the "a=fmtp" line of SDP, these parameters are expressed as a
-      media type string, in the form of a semicolon-separated list of
-      parameter=value pairs.  When conveyed using the "fmtp" source
-      attribute, these parameters are only associated with the given
-      source and payload type as parts of the "fmtp" source attribute.
-
-         Informative note: Conveyance of sprop-parameter-sets and sprop-
-         level-parameter-sets using the "fmtp" source attribute allows
-         for out-of-band transport of parameter sets in topologies like
-         Topo-Video-switch-MCU [29].
-
-   An example of media representation in SDP is as follows (Baseline
-   profile, Level 3.0, some of the constraints of the Main profile may
-   not be obeyed):
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A01E;
-                packetization-mode=1;
-                sprop-parameter-sets=<parameter sets data>
-
-8.2.2.  Usage with the SDP Offer/Answer Model
-
-   When H.264 is offered over RTP using SDP in an Offer/Answer model [8]
-   for negotiation for unicast usage, the following limitations and
-   rules apply:
-
-   o  The parameters identifying a media format configuration for H.264
-      are profile-level-id and packetization-mode.  These media format
-      configuration parameters (except for the level part of profile-
-      level-id) MUST be used symmetrically; that is, the answerer MUST
-      either maintain all configuration parameters or remove the media
-      format (payload type) completely if one or more of the parameter
-      values are not supported.  Note that the level part of profile-
-      level-id includes level_idc, and, for indication of Level 1b when
-      profile_idc is equal to 66, 77, or 88, bit 4
-      (constraint_set3_flag) of profile-iop.  The level part of profile-
-      level-id is changeable.
-
-         Informative note: The requirement for symmetric use does not
-         apply for the level part of profile-level-id and does not apply
-         for the other stream properties and capability parameters.
-
-         Informative note: In H.264 [1], all the levels except for Level
-         1b are equal to the value of level_idc divided by 10.  Level 1b
-         is a level higher than Level 1.0 but lower than Level 1.1 and
-         is signaled in an ad hoc manner, because the level was
-
-         specified after Level 1.0 and Level 1.1.  For the Baseline,
-         Main, and Extended profiles (with profile_idc equal to 66, 77,
-         and 88, respectively), Level 1b is indicated by level_idc equal
-         to 11 (i.e., same as Level 1.1) and constraint_set3_flag equal
-         to 1.  For other profiles, Level 1b is indicated by level_idc
-         equal to 9 (but note that Level 1b for these profiles are still
-         higher than Level 1, which has level_idc equal to 10 and lower
-         than Level 1.1).  In SDP Offer/Answer, an answer to an offer
-         may indicate a level equal to or lower than the level indicated
-         in the offer.  Due to the ad hoc indication of Level 1b,
-         offerers and answerers must check the value of bit 4
-         (constraint_set3_flag) of the middle octet of the parameter
-         profile-level-id, when profile_idc is equal to 66, 77, or 88
-         and level_idc is equal to 11.
-
-      To simplify the handling and matching of these configurations, the
-      same RTP payload type number used in the offer SHOULD also be used
-      in the answer, as specified in [8].  An answer MUST NOT contain
-      the payload type number used in the offer unless the configuration
-      is exactly the same as in the offer.
-
-         Informative note: When an offerer receives an answer, it has to
-         compare payload types not declared in the offer based on the
-         media type (i.e., video/H264) and the above media configuration
-         parameters with any payload types it has already declared.
-         This will enable it to determine whether the configuration in
-         question is new or if it is equivalent to configuration already
-         offered, since a different payload type number may be used in
-         the answer.
-
-   o  When present, the parameter max-recv-level declares the highest
-      level supported for receiving.  In case max-recv-level is not
-      present, the highest level supported for receiving is equal to the
-      default level indicated by the level part of profile-level-id.
-      When present, max-recv-level MUST be higher than the default
-      level.
-
-   o  The parameter level-asymmetry-allowed indicates whether level
-      asymmetry is allowed.
-
-      If level-asymmetry-allowed is equal to 0 (or not present) in
-      either the offer or the answer, level asymmetry is not allowed.
-      In this case, the level to use in the direction from the offerer
-      to the answerer MUST be the same as the level to use in the
-      opposite direction, and the common level to use is equal to the
-      lower value of the default level in the offer and the default
-      level in the answer.
-
-      Otherwise, level-asymmetry-allowed equals 1 in both the offer and
-      the answer, and level asymmetry is allowed.  In this case, the
-      level to use in the offerer-to-answerer direction MUST be equal to
-      the highest level the answerer supports for receiving, and the
-      level to use in the answerer-to-offerer direction MUST be equal to
-      the highest level the offerer supports for receiving.
-
-      When level asymmetry is not allowed, level upgrade is not allowed,
-      i.e., the default level in the answer MUST be equal to or lower
-      than the default level in the offer.
-
-   o  The parameters sprop-deint-buf-req, sprop-interleaving-depth,
-      sprop-max-don-diff, and sprop-init-buf-time describe the
-      properties of the RTP packet stream that the offerer or answerer
-      is sending for the media format configuration.  This differs from
-      the normal usage of the Offer/Answer parameters: normally such
-      parameters declare the properties of the stream that the offerer
-      or the answerer is able to receive.  When dealing with H.264, the
-      offerer assumes that the answerer will be able to receive media
-      encoded using the configuration being offered.
-
-         Informative note: The above parameters apply for any stream
-         sent by a declaring entity with the same configuration; i.e.,
-         they are dependent on their source.  Rather than being bound to
-         the payload type, the values may have to be applied to another
-         payload type when being sent, as they apply for the
-         configuration.
-
-   o  The capability parameters max-mbps, max-smbps, max-fs, max-cpb,
-      max-dpb, max-br, redundant-pic-cap, max-rcmd-nalu-size, sar-
-      understood, and sar-supported MAY be used to declare further
-      capabilities of the offerer or answerer for receiving.  These
-      parameters MUST NOT be present when the direction attribute is
-      "sendonly" and when the parameters describe the limitations of
-      what the offerer or answerer accepts for receiving streams.
-
-   o  An offerer has to include the size of the de-interleaving buffer,
-      sprop-deint-buf-req, in the offer for an interleaved H.264 stream.
-      To enable the offerer and answerer to inform each other about
-      their capabilities for de-interleaving buffering in receiving
-      streams, both parties are RECOMMENDED to include deint-buf-cap.
-      For interleaved streams, it is also RECOMMENDED to consider
-      offering multiple payload types with different buffering
-      requirements when the capabilities of the receiver are unknown.
-
-   o  The sprop-parameter-sets or sprop-level-parameter-sets parameter,
-      when present (included in the "a=fmtp" line of SDP or conveyed
-      using the "fmtp" source attribute as specified in Section 6.3 of
-
-      [9]), is used for out-of-band transport of parameter sets.
-      However, when out-of-band transport of parameter sets is used,
-      parameter sets MAY still be additionally transported in-band.
-
-      The answerer MAY use either out-of-band or in-band transport of
-      parameter sets for the stream it is sending, regardless of whether
-      out-of-band parameter sets transport has been used in the offerer-
-      to-answerer direction.  Parameter sets included in an answer are
-      independent of those parameter sets included in the offer, as they
-      are used for decoding two different video streams, one from the
-      answerer to the offerer and the other in the opposite direction.
-
-      The following rules apply to transport of parameter sets in the
-      offerer-to-answerer direction.
-
-         o  An offer MAY include either or both of sprop-parameter-sets
-            and sprop-level-parameter-sets.  If neither sprop-parameter-
-            sets nor sprop-level-parameter-sets is present in the offer,
-            then only in-band transport of parameter sets is used.
-
-         o  If the answer includes in-band-parameter-sets equal to 1,
-            then the offerer MUST transmit parameter sets in-band.
-            Otherwise, the following applies.
-
-               o  If the level to use in the offerer-to-answerer
-                  direction is equal to the default level in the offer,
-                  the following applies.
-
-                     When there is a sprop-parameter-sets included in
-                     the "a=fmtp" line in the offer, the answerer MUST
-                     be prepared to use the parameter sets included in
-                     the sprop-parameter-sets for decoding the incoming
-                     NAL unit stream.
-
-                     When there is a sprop-parameter-sets conveyed using
-                     the "fmtp" source attribute in the offer, the
-                     following applies.  If the answer includes use-
-                     level-src-parameter-sets equal to 1 or the "fmtp"
-                     source attribute, the answerer MUST be prepared to
-                     use the parameter sets included in the sprop-
-                     parameter-sets for decoding the incoming NAL unit
-                     stream;  otherwise, the offerer MUST transmit
-                     parameter sets in-band.
-
-                     When sprop-parameter-sets is not present in the
-                     offer, the offerer MUST transmit parameter sets in-
-                     band.
-
-                     The answerer MUST ignore sprop-level-parameter-
-                     sets, when present (either included in the "a=fmtp"
-                     line or conveyed using the "fmtp" source attribute)
-                     in the offer.
-
-               o  Otherwise, the level to use in the offerer-to-answerer
-                  direction is not equal to the default level in the
-                  offer, and the following applies.
-
-                     The answerer MUST ignore sprop-parameter-sets, when
-                     present (either included in the "a=fmtp" line or
-                     conveyed using the "fmtp" source attribute) in the
-                     offer.
-
-                     When neither use-level-src-parameter-sets is equal
-                     to 1 nor the "fmtp" source attribute is present in
-                     the answer, the answerer MUST ignore sprop-level-
-                     parameter-sets, when present in the offer, and the
-                     offerer MUST transmit parameter sets in-band.
-
-                     When either use-level-src-parameter-sets is equal
-                     to 1 or the "fmtp" source attribute is present in
-                     the answer, the answerer MUST be prepared to use
-                     the parameter sets that are included in sprop-
-                     level-parameter-sets for the accepted level (i.e.,
-                     the default level in the answer), when present in
-                     the offer, for decoding the incoming NAL unit
-                     stream, and ignore all other parameter sets
-                     included in sprop-level-parameter-sets.
-
-                     When no parameter sets for the level to use in the
-                     offerer-to-answerer direction are present in sprop-
-                     level-parameter-sets in the offer, the offerer MUST
-                     transmit parameter sets in-band.
-
-      The following rules apply to the transport of parameter sets in
-      the answerer-to-offerer direction.
-
-         o  An answer MAY include either sprop-parameter-sets or sprop-
-            level-parameter-sets but MUST NOT include both.  If neither
-            sprop-parameter-sets nor sprop-level-parameter-sets is
-            present in the answer, then only in-band transport of
-            parameter sets is used.
-
-         o  If the offer includes in-band-parameter-sets equal to 1, the
-            answerer MUST NOT include sprop-parameter-sets or sprop-
-            level-parameter-sets in the answer and MUST transmit
-            parameter sets in-band.  Otherwise, the following applies.
-
-               o  If the level to use in the answerer-to-offerer
-                  direction is equal to the default level in the answer,
-                  the following applies.
-
-                     When there is a sprop-parameter-sets included in
-                     the "a=fmtp" line in the answer, the offerer MUST
-                     be prepared to use the parameter sets included in
-                     the sprop-parameter-sets for decoding the incoming
-                     NAL unit stream.
-
-                     When there is a sprop-parameter-sets conveyed using
-                     the "fmtp" source attribute in the answer, the
-                     following applies.  If the offer includes use-
-                     level-src-parameter-sets equal to 1 or the "fmtp"
-                     source attribute, the offerer MUST be prepared to
-                     use the parameter sets included in the sprop-
-                     parameter-sets for decoding the incoming NAL unit
-                     stream;  otherwise, the answerer MUST transmit
-                     parameter sets in-band.
-
-                     When sprop-parameter-sets is not present in the
-                     answer, the answerer MUST transmit parameter sets
-                     in-band.
-
-                     The offerer MUST ignore sprop-level-parameter-sets,
-                     when present (either included in the "a=fmtp" line
-                     or conveyed using the "fmtp" source attribute) in
-                     the answer.
-
-               o  Otherwise, the level to use in the answerer-to-offerer
-                  direction is not equal to the default level in the
-                  answer, and the following applies.
-
-                     The offerer MUST ignore sprop-parameter-sets when
-                     present (either included in the "a=fmtp" line of
-                     SDP or conveyed using the "fmtp" source attribute)
-                     in the answer.
-
-                     When neither use-level-src-parameter-sets is equal
-                     to 1 nor the "fmtp" source attribute is present in
-                     the offer, the offerer MUST ignore sprop-level-
-                     parameter-sets, when present, and the answerer MUST
-                     transmit parameter sets in-band.
-
-                     When either use-level-src-parameter-sets is equal
-                     to 1 or the "fmtp" source attribute is present in
-                     the offer, the offerer MUST be prepared to use the
-                     parameter sets that are included in sprop-level-
-
-                     parameter-sets for the level to use in the
-                     answerer-to-offerer direction, when present in the
-                     answer, for decoding the incoming NAL unit stream,
-                     and ignore all other parameter sets included in
-                     sprop-level-parameter-sets in the answer.
-
-                     When no parameter sets for the level to use in the
-                     answerer-to-offerer direction are present in sprop-
-                     level-parameter-sets in the answer, the answerer
-                     MUST transmit parameter sets in-band.
-
-      When sprop-parameter-sets or sprop-level-parameter-sets is
-      conveyed using the "fmtp" source attribute as specified in Section
-      6.3 of [9], the receiver of the parameters MUST store the
-      parameter sets included in the sprop-parameter-sets or sprop-
-      level-parameter-sets for the accepted level and associate them
-      with the source given as a part of the "fmtp" source attribute.
-      Parameter sets associated with one source MUST only be used to
-      decode NAL units conveyed in RTP packets from the same source.
-      When this mechanism is in use, SSRC collision detection and
-      resolution MUST be performed as specified in [9].
-
-         Informative note: Conveyance of sprop-parameter-sets and sprop-
-         level-parameter-sets using the "fmtp" source attribute may be
-         used in topologies like Topo-Video-switch-MCU [29] to enable
-         out-of-band transport of parameter sets.
-
-   For streams being delivered over multicast, the following rules
-   apply:
-
-   o  The media format configuration is identified by "profile-level-
-      id", including the level part, and packetization-mode.  These
-      media format configuration parameters (including the level part of
-      profile-level-id) MUST be used symmetrically; that is, the
-      answerer MUST either maintain all configuration parameters or
-      remove the media format (payload type) completely.  Note that this
-      implies that the level part of profile-level-id for Offer/Answer
-      in multicast is not changeable.
-
-      To simplify the handling and matching of these configurations, the
-      same RTP payload type number used in the offer SHOULD also be used
-      in the answer, as specified in [8].  An answer MUST NOT contain a
-      payload type number used in the offer unless the configuration is
-      the same as in the offer.
-
-   o  Parameter sets received MUST be associated with the originating
-      source and MUST only be used in decoding the incoming NAL unit
-      stream from the same source.
-
-   o  The rules for other parameters are the same as above for unicast
-      as long as the above rules are obeyed.
-
-   Table 6 lists the interpretation of all the media type parameters
-   that MUST be used for the different direction attributes.
-
-       Table 6.  Interpretation of parameters for different direction
-                 attributes
-
-                                              sendonly --+
-                                           recvonly --+  |
-                                        sendrecv --+  |  |
-                                                   |  |  |
-                profile-level-id                   C  C  P
-                max-recv-level                     R  R  -
-                packetization-mode                 C  C  P
-                sprop-deint-buf-req                P  -  P
-                sprop-interleaving-depth           P  -  P
-                sprop-max-don-diff                 P  -  P
-                sprop-init-buf-time                P  -  P
-                max-mbps                           R  R  -
-                max-smbps                          R  R  -
-                max-fs                             R  R  -
-                max-cpb                            R  R  -
-                max-dpb                            R  R  -
-                max-br                             R  R  -
-                redundant-pic-cap                  R  R  -
-                deint-buf-cap                      R  R  -
-                max-rcmd-nalu-size                 R  R  -
-                sar-understood                     R  R  -
-                sar-supported                      R  R  -
-                in-band-parameter-sets             R  R  -
-                use-level-src-parameter-sets       R  R  -
-                level-asymmetry-allowed            O  -  -
-                sprop-parameter-sets               S  -  S
-                sprop-level-parameter-sets         S  -  S
-
-             Legend:
-
-             C: configuration for sending and receiving streams
-             O: offer/answer mode
-             P: properties of the stream to be sent
-             R: receiver capabilities
-             S: out-of-band parameter sets
-             -: not usable (when present, SHOULD be ignored)
-
-   Parameters used for declaring receiver capabilities are in general
-   downgradable; that is, they express the upper limit for a sender's
-   possible behavior.  Thus, a sender MAY select to set its encoder
-   using only lower/less or equal values of these parameters.
-
-   Parameters declaring a configuration point are not changeable, with
-   the exception of the level part of the profile-level-id parameter for
-   unicast usage.
-
-   When a sender's capabilities are declared and non-downgradable
-   parameters are used in this declaration, these parameters express a
-   configuration that is acceptable for the sender to receive streams.
-   In order to achieve high interoperability levels, it is often
-   advisable to offer multiple alternative configurations, e.g., for the
-   packetization mode.  It is impossible to offer multiple
-   configurations in a single payload type.  Thus, when multiple
-   configuration offers are made, each offer requires its own RTP
-   payload type associated with the offer.
-
-   A receiver SHOULD understand all media type parameters, even if it
-   only supports a subset of the payload format's functionality.  This
-   ensures that a receiver is capable of understanding when an offer to
-   receive media can be downgraded to what is supported by the receiver
-   of the offer.
-
-   An answerer MAY extend the offer with additional media format
-   configurations.  However, to enable their usage, in most cases, a
-   second offer is required from the offerer to provide the stream
-   property parameters that the media sender will use.  This also has
-   the effect that the offerer has to be able to receive this media
-   format configuration, not only to send it.
-
-   If an offerer wishes to have non-symmetric capabilities between
-   sending and receiving, the offerer can allow asymmetric levels via
-   level-asymmetry-allowed being equal to 1.  Alternatively, the offerer
-   could offer different RTP sessions, i.e., different media lines
-   declared as "recvonly" and "sendonly", respectively.  This may have
-   further implications on the system and may require additional
-   external semantics to associate the two media lines.
-
-8.2.3.  Usage in Declarative Session Descriptions
-
-   When H.264 over RTP is offered with SDP in a declarative style, as in
-   Real Time Streaming Protocol (RTSP) [27] or Session Announcement
-   Protocol (SAP) [28], the following considerations are necessary.
-
-   o  All parameters capable of indicating both stream properties and
-      receiver capabilities are used to indicate only stream properties.
-      For example, in this case, the parameter profile-level-id declares
-      only the values used by the stream, not the capabilities for
-      receiving streams.  The result of this is that the following
-      interpretation of the parameters MUST be used:
-
-      Declaring actual configuration or stream properties:
-
-         - profile-level-id
-         - packetization-mode
-         - sprop-interleaving-depth
-         - sprop-deint-buf-req
-         - sprop-max-don-diff
-         - sprop-init-buf-time
-
-      Out-of-band transporting of parameter sets:
-
-         - sprop-parameter-sets
-         - sprop-level-parameter-sets
-
-      Not usable (when present, they SHOULD be ignored):
-
-         - max-mbps
-         - max-smbps
-         - max-fs
-         - max-cpb
-         - max-dpb
-         - max-br
-         - max-recv-level
-         - redundant-pic-cap
-         - max-rcmd-nalu-size
-         - deint-buf-cap
-         - sar-understood
-         - sar-supported
-         - in-band-parameter-sets
-         - level-asymmetry-allowed
-         - use-level-src-parameter-sets
-
-   o  A receiver of the SDP is required to support all parameters and
-      values of the parameters provided; otherwise, the receiver MUST
-      reject (RTSP) or not participate in (SAP) the session.  It falls
-      on the creator of the session to use values that are expected to
-      be supported by the receiving application.
-
-8.3.  Examples
-
-   An SDP Offer/Answer exchange wherein both parties are expected to
-   both send and receive could look like the following.  Only the media-
-   codec-specific parts of the SDP are shown.  Some lines are wrapped
-   due to text constraints.
-
-      Offerer -> Answerer SDP message:
-
-      m=video 49170 RTP/AVP 100 99 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A01E; packetization-mode=0;
-        sprop-parameter-sets=<parameter sets data#0>
-      a=rtpmap:99 H264/90000
-      a=fmtp:99 profile-level-id=42A01E; packetization-mode=1;
-        sprop-parameter-sets=<parameter sets data#1>
-      a=rtpmap:100 H264/90000
-      a=fmtp:100 profile-level-id=42A01E; packetization-mode=2;
-        sprop-parameter-sets=<parameter sets data#2>;
-        sprop-interleaving-depth=45; sprop-deint-buf-req=64000;
-        sprop-init-buf-time=102478; deint-buf-cap=128000
-
-   The above offer presents the same codec configuration in three
-   different packetization formats.  Payload type 98 represents single
-   NALU mode, payload type 99 represents non-interleaved mode, and
-   payload type 100 indicates the interleaved mode.  In the interleaved
-   mode case, the interleaving parameters that the offerer would use if
-   the answer indicates support for payload type 100 are also included.
-   In all three cases, the parameter sprop-parameter-sets conveys the
-   initial parameter sets that are required by the answerer when
-   receiving a stream from the offerer when this configuration is
-   accepted.  Note that the value for sprop-parameter-sets could be
-   different for each payload type.
-
-      Answerer -> Offerer SDP message:
-
-      m=video 49170 RTP/AVP 100 99 97
-      a=rtpmap:97 H264/90000
-      a=fmtp:97 profile-level-id=42A01E; packetization-mode=0;
-        sprop-parameter-sets=<parameter sets data#3>
-      a=rtpmap:99 H264/90000
-      a=fmtp:99 profile-level-id=42A01E; packetization-mode=1;
-        sprop-parameter-sets=<parameter sets data#4>;
-        max-rcmd-nalu-size=3980
-      a=rtpmap:100 H264/90000
-      a=fmtp:100 profile-level-id=42A01E; packetization-mode=2;
-        sprop-parameter-sets=<parameter sets data#5>;
-        sprop-interleaving-depth=60;
-        sprop-deint-buf-req=86000; sprop-init-buf-time=156320;
-        deint-buf-cap=128000; max-rcmd-nalu-size=3980
-
-   As the Offer/Answer negotiation covers both sending and receiving
-   streams, an offer indicates the exact parameters for what the offerer
-   is willing to receive, whereas the answer indicates the same for what
-   the answerer is willing to receive.  In this case, the offerer
-   declared that it is willing to receive payload type 98.  The answerer
-   accepts this by declaring an equivalent payload type 97; that is, it
-   has identical values for the two parameters profile-level-id and
-   packetization-mode (since packetization-mode is equal to 0 and sprop-
-   deint-buf-req is not present).  As the offered payload type 98 is
-   accepted, the answerer needs to store parameter sets included in
-   sprop-parameter-sets=<parameter sets data#0> in case the offer
-   finally decides to use this configuration.  In the answer, the
-   answerer includes the parameter sets in sprop-parameter-
-   sets=<parameter sets data#3> that the answerer would use in the
-   stream sent from the answerer if this configuration is finally used.
-
-   The answerer also accepts the reception of the two configurations
-   that payload types 99 and 100 represent.  Again, the answerer needs
-   to store parameter sets included in sprop-parameter-sets=<parameter
-   sets data#1> and sprop-parameter-sets=<parameter sets data#2> in case
-   the offer finally decides to use either of these two configurations.
-   The answerer provides the initial parameter sets for the answerer-to-
-   offerer direction, i.e., the parameter sets in sprop-parameter-
-   sets=<parameter sets data#4> and sprop-parameter-sets=<parameter sets
-   data#5>, for payload types 99 and 100, respectively, that it will use
-   to send the payload types.  The answerer also provides the offerer
-   with its memory limit for de-interleaving operations by providing a
-   deint-buf-cap parameter.  This is only useful if the offerer decides
-   on making a second offer, where it can take the new value into
-
-   account.  The max-rcmd-nalu-size indicates that the answerer can
-   efficiently process NALUs up to the size of 3980 bytes.  However,
-   there is no guarantee that the network supports this size.
-
-   In the following example, the offer is accepted without level
-   downgrading (i.e., the default level, Level 3.0, is accepted), and
-   both sprop-parameter-sets and sprop-level-parameter-sets are present
-   in the offer.  The answerer must ignore sprop-level-parameter-
-   sets=<parameter sets data#1> and store parameter sets in sprop-
-   parameter-sets=<parameter sets data#0> for decoding the incoming NAL
-   unit stream.  The offerer must store the parameter sets in sprop-
-   parameter-sets=<parameter sets data#2> in the answer for decoding the
-   incoming NAL unit stream.  Note that in this example, parameter sets
-   in sprop-parameter-sets=<parameter sets data#2> must be associated
-   with Level 3.0.
-
-      Offer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
-        packetization-mode=1;
-        sprop-parameter-sets=<parameter sets data#0>;
-        sprop-level-parameter-sets=<parameter sets data#1>
-
-      Answer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
-        packetization-mode=1;
-        sprop-parameter-sets=<parameter sets data#2>
-
-   In the following example, the offer (Baseline profile, Level 1.1) is
-   accepted with level downgrading (the accepted level is Level 1b), and
-   both sprop-parameter-sets and sprop-level-parameter-sets are present
-   in the offer.  The answerer must ignore sprop-parameter-
-   sets=<parameter sets data#0> and all parameter sets not for the
-   accepted level (Level 1b) in sprop-level-parameter-sets=<parameter
-   sets data#1> and must store parameter sets for the accepted level
-   (Level 1b) in sprop-level-parameter-sets=<parameter sets data#1> for
-   decoding the incoming NAL unit stream.  The offerer must store the
-   parameter sets in sprop-parameter-sets=<parameter sets data#2> in the
-   answer for decoding the incoming NAL unit stream.  Note that in this
-   example, parameter sets in sprop-parameter-sets=<parameter sets
-   data#2> must be associated with Level 1b.
-
-      Offer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A00B; //Baseline profile, Level 1.1
-        packetization-mode=1;
-        sprop-parameter-sets=<parameter sets data#0>;
-        sprop-level-parameter-sets=<parameter sets data#1>
-
-      Answer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42B00B; //Baseline profile, Level 1b
-        packetization-mode=1;
-        sprop-parameter-sets=<parameter sets data#2>;
-        use-level-src-parameter-sets=1
-
-   In the following example, the offer (Baseline profile, Level 1.1) is
-   accepted with level downgrading (the accepted level is Level 1b), and
-   both sprop-parameter-sets and sprop-level-parameter-sets are present
-   in the offer.  However, the answerer is a legacy RFC 3984
-   implementation and does not understand sprop-level-parameter-sets;
-   hence, it does not include use-level-src-parameter-sets (which the
-   answerer does not understand either) in the answer.  Therefore, the
-   answerer must ignore both sprop-parameter-sets=<parameter sets
-   data#0> and sprop-level-parameter-sets=<parameter sets data#1>, and
-   the offerer must transport parameter sets in-band.
-
-      Offer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A00B; //Baseline profile, Level 1.1
-        packetization-mode=1;
-        sprop-parameter-sets=<parameter sets data#0>;
-        sprop-level-parameter-sets=<parameter sets data#1>
-
-      Answer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42B00B; //Baseline profile, Level 1b
-        packetization-mode=1
-
-   In the following example, the offer is accepted without level
-   downgrading, and sprop-parameter-sets is present in the offer.
-   Parameter sets in sprop-parameter-sets=<parameter sets data#0> must
-
-   be stored and used by the encoder of the offerer and the decoder of
-   the answerer, and parameter sets in sprop-parameter-sets=<parameter
-   sets data#1> must be used by the encoder of the answerer and the
-   decoder of the offerer.  Note that sprop-parameter-sets=<parameter
-   sets data#0> is basically independent of sprop-parameter-
-   sets=<parameter sets data#1>.
-
-      Offer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
-        packetization-mode=1;
-        sprop-parameter-sets=<parameter sets data#0>
-
-      Answer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
-        packetization-mode=1;
-        sprop-parameter-sets=<parameter sets data#1>
-
-   In the following example, the offer is accepted without level
-   downgrading, and neither sprop-parameter-sets nor sprop-level-
-   parameter-sets is present in the offer, meaning that there is no out-
-   of-band transmission of parameter sets, which then have to be
-   transported in-band.
-
-      Offer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
-        packetization-mode=1
-
-      Answer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
-        packetization-mode=1
-
-
-   In the following example, the offer is accepted with level
-   downgrading and sprop-parameter-sets is present in the offer.  As
-   sprop-parameter-sets=<parameter sets data#0> contains level_idc
-   indicating Level 3.0, it therefore cannot be used, as the answerer
-   wants Level 2.0, and must be ignored by the answerer, and in-band
-   parameter sets must be used.
-
-      Offer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
-        packetization-mode=1;
-        sprop-parameter-sets=<parameter sets data#0>
-
-      Answer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A014; //Baseline profile, Level 2.0
-        packetization-mode=1
-
-   In the following example, the offer is also accepted with level
-   downgrading, and neither sprop-parameter-sets nor sprop-level-
-   parameter-sets is present in the offer, meaning that there is no out-
-   of-band transmission of parameter sets, which then have to be
-   transported in-band.
-
-      Offer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
-        packetization-mode=1
-
-      Answer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A014; //Baseline profile, Level 2.0
-        packetization-mode=1
-
-   In the following example, the offer is accepted with level upgrading,
-   and neither sprop-parameter-sets nor sprop-level-parameter-sets is
-   present in the offer or the answer, meaning that there is no out-of-
-   band transmission of parameter sets, which then have to be
-   transported in-band.  The level to use in the offerer-to-answerer
-   direction is Level 3.0, and the level to use in the answerer-to-
-
-   offerer direction is Level 2.0.  The answerer is allowed to send at
-   any level up to and including Level 2.0, and the offerer is allowed
-   to send at any level up to and including Level 3.0.
-
-      Offer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A014; //Baseline profile, Level 2.0
-        packetization-mode=1; level-asymmetry-allowed=1
-
-      Answer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
-        packetization-mode=1; level-asymmetry-allowed=1
-
-   In the following example, the offerer is a Multipoint Control Unit
-   (MCU) in a topology like Topo-Video-switch-MCU [29], offering
-   parameter sets received (using out-of-band transport) from three
-   other participants (B, C, and D) and receiving parameter sets from
-   the participant A, which is the answerer.  The participants are
-   identified by their values of canonical name (CNAME), which are
-   mapped to different SSRC values.  The same codec configuration is
-   used by all four participants.  The participant A stores and
-   associates the parameter sets included in <parameter sets data#B>,
-   <parameter sets data#C>, and <parameter sets data#D> to participants
-   B, C, and D, respectively, and uses <parameter sets data#B> for
-   decoding NAL units carried in RTP packets originating from
-   participant B only, uses <parameter sets data#C> for decoding NAL
-   units carried in RTP packets originating from participant C only, and
-   uses <parameter sets data#D> for decoding NAL units carried in RTP
-   packets originating from participant D only.
-
-      Offer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=ssrc:SSRC-B cname:CNAME-B
-      a=ssrc:SSRC-C cname:CNAME-C
-      a=ssrc:SSRC-D cname:CNAME-D
-      a=ssrc:SSRC-B fmtp:98
-        sprop-parameter-sets=<parameter sets data#B>
-      a=ssrc:SSRC-C fmtp:98
-        sprop-parameter-sets=<parameter sets data#C>
-      a=ssrc:SSRC-D fmtp:98
-        sprop-parameter-sets=<parameter sets data#D>
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
-        packetization-mode=1
-
-      Answer SDP:
-
-      m=video 49170 RTP/AVP 98
-      a=ssrc:SSRC-A cname:CNAME-A
-      a=ssrc:SSRC-A fmtp:98
-        sprop-parameter-sets=<parameter sets data#A>
-      a=rtpmap:98 H264/90000
-      a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
-        packetization-mode=1
-
-8.4.  Parameter Set Considerations
-
-   The H.264 parameter sets are a fundamental part of the video codec
-   and vital to its operation (see Section 1.2).  Due to their
-   characteristics and their importance for the decoding process, lost
-   or erroneously transmitted parameter sets can hardly be concealed
-   locally at the receiver.  A reference to a corrupt parameter set
-   normally has fatal results to the decoding process.  Corruption could
-   occur, for example, due to the erroneous transmission or loss of a
-   parameter set NAL unit but also due to the untimely transmission of a
-   parameter set update.  A parameter set update refers to a change of
-   at least one parameter in a picture parameter set or sequence
-   parameter set for which the picture parameter set or sequence
-   parameter set identifier remains unchanged.  Therefore, the following
-   recommendations are provided as a guideline for the implementer of
-   the RTP sender.
-
-   Parameter set NALUs can be transported using three different
-   principles:
-
-   A.  Using a session control protocol (out-of-band) prior to the
-       actual RTP session.
-
-   B.  Using a session control protocol (out-of-band) during an ongoing
-       RTP session.
-
-   C.  Within the RTP packet stream in the payload (in-band) during an
-       ongoing RTP session.
-
-   It is recommended to implement principles A and B within a session
-   control protocol.  SIP and SDP can be used as described in the SDP
-   Offer/Answer model and in the previous sections of this memo.
-   Section 8.2.2 includes a detailed discussion on transport of
-   parameter sets in-band or out-of-band in SDP Offer/Answer using media
-   type parameters sprop-parameter-sets, sprop-level-parameter-sets,
-   use-level-src-parameter-sets, and in-band-parameter-sets.  This
-   section contains guidelines on how principles A and B should be
-   implemented within session control protocols.  It is independent of
-   the particular protocol used.  Principle C is supported by the RTP
-   payload format defined in this specification.  There are topologies
-   like Topo-Video-switch-MCU [29] for which the use of principle C may
-   be desirable.
-
-   If in-band signaling of parameter sets is used, the picture and
-   sequence parameter set NALUs SHOULD be transmitted in the RTP payload
-   using a reliable method of delivering of RTP (see below), as a loss
-   of a parameter set of either type will likely prevent decoding of a
-   considerable portion of the corresponding RTP packet stream.
-
-   If in-band signaling of parameter sets is used, the sender SHOULD
-   take the error characteristics into account and use mechanisms to
-   provide a high probability for delivering the parameter sets
-   correctly.  Mechanisms that increase the probability for a correct
-   reception include packet repetition, FEC, and retransmission.  The
-   use of an unreliable, out-of-band control protocol has similar
-   disadvantages as the in-band signaling (possible loss) and, in
-   addition, may also lead to difficulties in the synchronization (see
-   below).  Therefore, it is NOT RECOMMENDED.
-
-   Parameter sets MAY be added or updated during the lifetime of a
-   session using principles B and C.  It is required that parameter sets
-   be present at the decoder prior to the NAL units that refer to them.
-   Update or addition of parameter sets can result in further problems;
-   therefore, the following recommendations should be considered.
-
-      -  When parameter sets are added or updated, care SHOULD be taken to
-      ensure that any parameter set is delivered prior to its usage.
-      When new parameter sets are added, previously unused parameter set
-      identifiers are used.  It is common that no synchronization is
-      present between out-of-band signaling and in-band traffic.  If
-      out-of-band signaling is used, it is RECOMMENDED that a sender not
-      start sending NALUs requiring the added or updated parameter sets
-      prior to acknowledgement of delivery from the signaling protocol.
-
-   -  When parameter sets are updated, the following synchronization
-      issue should be taken into account.  When overwriting a parameter
-      set at the receiver, the sender has to ensure that the parameter
-      set in question is not needed by any NALU present in the network
-      or receiver buffers.  Otherwise, decoding with a wrong parameter
-      set may occur.  To lessen this problem, it is RECOMMENDED either
-      to overwrite only those parameter sets that have not been used for
-      a sufficiently long time (to ensure that all related NALUs have
-      been consumed) or to add a new parameter set instead (which may
-      have negative consequences for the efficiency of the video
-      coding).
-
-         Informative note: In some topologies like Topo-Video-switch-
-         MCU [29], the origin of the whole set of parameter sets may
-         come from multiple sources that may use non-unique parameter
-         set identifiers.  In this case, an offer may overwrite an
-         existing parameter set if no other mechanism that enables
-         uniqueness of the parameter sets in the out-of-band channel
-         exists.
-
-   -  In a multiparty session, one participant MUST associate parameter
-      sets coming from different sources with the source identification
-      whenever possible, e.g., by conveying out-of-band transported
-      parameter sets, as different sources typically use independent
-      parameter set identifier value spaces.
-
-   -  Adding or modifying parameter sets by using both principles B and
-      C in the same RTP session may lead to inconsistencies of the
-      parameter sets because of the lack of synchronization between the
-      control and the RTP channel.  Therefore, principles B and C MUST
-      NOT both be used in the same session unless sufficient
-      synchronization can be provided.
-
-   In some scenarios (e.g., when only the subset of this payload format
-   specification corresponding to H.241 is used) or topologies, it is
-   not possible to employ out-of-band parameter set transmission.  In
-   this case, parameter sets have to be transmitted in-band.  Here, the
-   synchronization with the non-parameter-set-data in the bitstream is
-   implicit, but the possibility of a loss has to be taken into account.
-
-   The loss probability should be reduced using the mechanisms discussed
-   above.  In case a loss of a parameter set is detected, recovery may
-   be achieved using a Decoder Refresh Point procedure, for example,
-   using RTCP feedback Full Intra Request (FIR) [30].  Two example
-   Decoder Refresh Point procedures are provided in the informative
-   Section 8.5.
-
-   -  When parameter sets are initially provided using principle A and
-      then later added or updated in-band (principle C), there is a risk
-      associated with updating the parameter sets delivered out-of-band.
-      If receivers miss some in-band updates (for example, because of a
-      loss or a late tune-in), those receivers attempt to decode the
-      bitstream using outdated parameters.  It is therefore RECOMMENDED
-      that parameter set IDs be partitioned between the out-of-band and
-      in-band parameter sets.
-
-8.5.  Decoder Refresh Point Procedure Using In-Band Transport of
-      Parameter Sets (Informative)
-
-   When a sender with a video encoder according to [1] receives a
-   request for a decoder refresh point, the encoder shall enter the fast
-   update mode by using one of the procedures specified in Sections
-   8.5.1 or 8.5.2.  The procedure in Section 8.5.1 is the preferred
-   response in a lossless transmission environment.  Both procedures
-   satisfy the requirement to enter the fast update mode for H.264 video
-   encoding.
-
-8.5.1.  IDR Procedure to Respond to a Request for a Decoder Refresh
-        Point
-
-   This section gives one possible way to respond to a request for a
-   decoder refresh point.
-
-   The encoder shall, in the order presented here:
-
-   1) Immediately prepare to send an IDR picture.
-
-   2) Send a sequence parameter set to be used by the IDR picture to be
-      sent.  The encoder may optionally also send other sequence
-      parameter sets.
-
-   3) Send a picture parameter set to be used by the IDR picture to be
-      sent.  The encoder may optionally also send other picture
-      parameter sets.
-
-   4) Send the IDR picture.
-
-   5) From this point forward in time, send any other sequence or
-      picture parameter sets that have not yet been sent in this
-      procedure, prior to their reference by any NAL unit, regardless of
-      whether such parameter sets were previously sent prior to
-      receiving the request for a decoder refresh point.  As needed,
-      such parameter sets may be sent in a batch, one at a time, or in
-      any combination of these two methods.  Parameter sets may be
-      re-sent at any time for redundancy.  Caution should be taken when
-      parameter set updates are present, as described above in Section
-      8.4.
-
-8.5.2.  Gradual Recovery Procedure to Respond to a Request for a Decoder
-        Refresh Point
-
-   This section gives another possible way to respond to a request for a
-   decoder refresh point.
-
-   The encoder shall, in the order presented here:
-
-   1) Send a recovery point SEI message (see Sections D.1.7 and D.2.7 of
-      [1]).
-
-   2) Repeat any sequence and picture parameter sets that were sent
-      before the recovery point SEI message, prior to their reference by
-      a NAL unit.
-
-   The encoder shall ensure that the decoder has access to all reference
-   pictures for inter prediction of pictures at or after the recovery
-   point, which is indicated by the recovery point SEI message, in
-   output order, assuming that the transmission from now on is error-
-   free.
-
-   The value of the recovery_frame_cnt syntax element in the recovery
-   point SEI message should be small enough to ensure a fast recovery.
-
-   As needed, such parameter sets may be re-sent in a batch, one at a
-   time, or in any combination of these two methods.  Parameter sets may
-   be re-sent at any time for redundancy.  Caution should be taken when
-   parameter set updates are present, as described above in Section 8.4.
-
-9.  Security Considerations
-
-   RTP packets using the payload format defined in this specification
-   are subject to the security considerations discussed in the RTP
-   specification [5] and in any appropriate RTP profile (for example,
-   [16]).  This implies that confidentiality of the media streams is
-   achieved by encryption, for example, through the application of SRTP
-   [26].  Because the data compression used with this payload format is
+The receiver MUST ignore any parameter unspecified in this memo.
+
+#### 8.2.1.  Mapping of Payload Type Parameters to SDP
+
+The media type video/H264 string is mapped to fields in the Session Description Protocol (SDP) [6] as follows:
+- The media name in the "m=" line of SDP MUST be video.
+- The encoding name in the "a=rtpmap" line of SDP MUST be H264 (the media subtype).
+- The clock rate in the "a=rtpmap" line MUST be 90000.
+- The OPTIONAL parameters profile-level-id, max-recv-level, max-mbps, max-smbps, max-fs, max-cpb, max-dpb, max-br, redundant-pic-cap, use-level-src-parameter-sets, in-band-parameter-sets, level-asymmetry-allowed, packetization-mode, sprop-interleaving-depth, sprop-deint-buf-req, deint-buf-cap, sprop-init-buf-time, sprop-max-don-diff, max-rcmd-nalu-size, sar-understood, and sar-supported, when present, MUST be included in the "a=fmtp" line of SDP.  These parameters are expressed as a media type string, in the form of a semicolon-separated list of parameter=value pairs.
+- The OPTIONAL parameters sprop-parameter-sets and sprop-level-parameter-sets, when present, MUST be included in the "a=fmtp" line of SDP or conveyed using the "fmtp" source attribute as specified in Section 6.3 of [9].  For a particular media format (i.e., RTP payload type), a sprop-parameter-sets or sprop-level-parameter-sets MUST NOT be both included in the "a=fmtp" line of SDP and conveyed using the "fmtp" source attribute.  When included in the "a=fmtp" line of SDP, these parameters are expressed as a media type string, in the form of a semicolon-separated list of parameter=value pairs.  When conveyed using the "fmtp" source attribute, these parameters are only associated with the given source and payload type as parts of the "fmtp" source attribute.
+
+> Informative note: Conveyance of sprop-parameter-sets and sprop-level-parameter-sets using the "fmtp" source attribute allows for out-of-band transport of parameter sets in topologies like Topo-Video-switch-MCU [29].
+
+An example of media representation in SDP is as follows (Baseline profile, Level 3.0, some of the constraints of the Main profile may not be obeyed):
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A01E;
+            packetization-mode=1;
+            sprop-parameter-sets=<parameter sets data>
+```
+
+#### 8.2.2.  Usage with the SDP Offer/Answer Model
+
+When H.264 is offered over RTP using SDP in an Offer/Answer model [8] for negotiation for unicast usage, the following limitations and rules apply:
+- The parameters identifying a media format configuration for H.264 are profile-level-id and packetization-mode.  These media format configuration parameters (except for the level part of profile-level-id) MUST be used symmetrically; that is, the answerer MUST either maintain all configuration parameters or remove the media format (payload type) completely if one or more of the parameter values are not supported.  Note that the level part of profile-level-id includes level_idc, and, for indication of Level 1b when profile_idc is equal to 66, 77, or 88, bit 4 (constraint_set3_flag) of profile-iop.  The level part of profile-level-id is changeable.
+
+    > Informative note: The requirement for symmetric use does not apply for the level part of profile-level-id and does not apply for the other stream properties and capability parameters.
+
+    > Informative note: In H.264 [1], all the levels except for Level 1b are equal to the value of level_idc divided by 10.  Level 1b is a level higher than Level 1.0 but lower than Level 1.1 and is signaled in an ad hoc manner, because the level was specified after Level 1.0 and Level 1.1.  For the Baseline, Main, and Extended profiles (with profile_idc equal to 66, 77, and 88, respectively), Level 1b is indicated by level_idc equal to 11 (i.e., same as Level 1.1) and constraint_set3_flag equal to 1.  For other profiles, Level 1b is indicated by level_idc equal to 9 (but note that Level 1b for these profiles are still higher than Level 1, which has level_idc equal to 10 and lower than Level 1.1).  In SDP Offer/Answer, an answer to an offer may indicate a level equal to or lower than the level indicated in the offer.  Due to the ad hoc indication of Level 1b, offerers and answerers must check the value of bit 4 (constraint_set3_flag) of the middle octet of the parameter profile-level-id, when profile_idc is equal to 66, 77, or 88 and level_idc is equal to 11.
+
+    To simplify the handling and matching of these configurations, the same RTP payload type number used in the offer SHOULD also be used in the answer, as specified in [8].  An answer MUST NOT contain the payload type number used in the offer unless the configuration is exactly the same as in the offer.
+
+    > Informative note: When an offerer receives an answer, it has to compare payload types not declared in the offer based on the media type (i.e., video/H264) and the above media configuration parameters with any payload types it has already declared. This will enable it to determine whether the configuration in question is new or if it is equivalent to configuration already offered, since a different payload type number may be used in the answer.
+- When present, the parameter max-recv-level declares the highest level supported for receiving.  In case max-recv-level is not present, the highest level supported for receiving is equal to the default level indicated by the level part of profile-level-id. When present, max-recv-level MUST be higher than the default level.
+- The parameter level-asymmetry-allowed indicates whether level asymmetry is allowed.
+
+    If level-asymmetry-allowed is equal to 0 (or not present) in either the offer or the answer, level asymmetry is not allowed. In this case, the level to use in the direction from the offerer to the answerer MUST be the same as the level to use in the opposite direction, and the common level to use is equal to the lower value of the default level in the offer and the default level in the answer.
+
+    Otherwise, level-asymmetry-allowed equals 1 in both the offer and the answer, and level asymmetry is allowed.  In this case, the level to use in the offerer-to-answerer direction MUST be equal to the highest level the answerer supports for receiving, and the level to use in the answerer-to-offerer direction MUST be equal to the highest level the offerer supports for receiving.
+
+    When level asymmetry is not allowed, level upgrade is not allowed, i.e., the default level in the answer MUST be equal to or lower than the default level in the offer.
+- The parameters sprop-deint-buf-req, sprop-interleaving-depth, sprop-max-don-diff, and sprop-init-buf-time describe the properties of the RTP packet stream that the offerer or answerer is sending for the media format configuration.  This differs from the normal usage of the Offer/Answer parameters: normally such parameters declare the properties of the stream that the offerer or the answerer is able to receive.  When dealing with H.264, the offerer assumes that the answerer will be able to receive media encoded using the configuration being offered.
+
+    > Informative note: The above parameters apply for any stream sent by a declaring entity with the same configuration; i.e., they are dependent on their source.  Rather than being bound to the payload type, the values may have to be applied to another payload type when being sent, as they apply for the configuration.
+- The capability parameters max-mbps, max-smbps, max-fs, max-cpb, max-dpb, max-br, redundant-pic-cap, max-rcmd-nalu-size, sar- understood, and sar-supported MAY be used to declare further capabilities of the offerer or answerer for receiving.  These parameters MUST NOT be present when the direction attribute is "sendonly" and when the parameters describe the limitations of what the offerer or answerer accepts for receiving streams.
+- An offerer has to include the size of the de-interleaving buffer, sprop-deint-buf-req, in the offer for an interleaved H.264 stream. To enable the offerer and answerer to inform each other about their capabilities for de-interleaving buffering in receiving streams, both parties are RECOMMENDED to include deint-buf-cap. For interleaved streams, it is also RECOMMENDED to consider offering multiple payload types with different buffering requirements when the capabilities of the receiver are unknown.
+- The sprop-parameter-sets or sprop-level-parameter-sets parameter, when present (included in the "a=fmtp" line of SDP or conveyed using the "fmtp" source attribute as specified in Section 6.3 of [9]), is used for out-of-band transport of parameter sets. However, when out-of-band transport of parameter sets is used, parameter sets MAY still be additionally transported in-band.
+
+    The answerer MAY use either out-of-band or in-band transport of parameter sets for the stream it is sending, regardless of whether out-of-band parameter sets transport has been used in the offerer-to-answerer direction.  Parameter sets included in an answer are independent of those parameter sets included in the offer, as they are used for decoding two different video streams, one from the answerer to the offerer and the other in the opposite direction.
+
+    The following rules apply to transport of parameter sets in the offerer-to-answerer direction.
+    - An offer MAY include either or both of sprop-parameter-sets and sprop-level-parameter-sets.  If neither sprop-parameter-sets nor sprop-level-parameter-sets is present in the offer, then only in-band transport of parameter sets is used.
+    -If the answer includes in-band-parameter-sets equal to 1, then the offerer MUST transmit parameter sets in-band. Otherwise, the following applies.
+        - If the level to use in the offerer-to-answerer direction is equal to the default level in the offer, the following applies.
+
+            When there is a sprop-parameter-sets included in the "a=fmtp" line in the offer, the answerer MUST be prepared to use the parameter sets included in the sprop-parameter-sets for decoding the incoming NAL unit stream.
+
+            When there is a sprop-parameter-sets conveyed using the "fmtp" source attribute in the offer, the following applies.  If the answer includes use-level-src-parameter-sets equal to 1 or the "fmtp" source attribute, the answerer MUST be prepared to use the parameter sets included in the sprop-parameter-sets for decoding the incoming NAL unit stream;  otherwise, the offerer MUST transmit parameter sets in-band.
+
+            When sprop-parameter-sets is not present in the offer, the offerer MUST transmit parameter sets in-band.
+
+            The answerer MUST ignore sprop-level-parameter-sets, when present (either included in the "a=fmtp" line or conveyed using the "fmtp" source attribute) in the offer.
+        - Otherwise, the level to use in the offerer-to-answerer direction is not equal to the default level in the offer, and the following applies.
+
+            The answerer MUST ignore sprop-parameter-sets, when present (either included in the "a=fmtp" line or conveyed using the "fmtp" source attribute) in the offer.
+
+            When neither use-level-src-parameter-sets is equal to 1 nor the "fmtp" source attribute is present in the answer, the answerer MUST ignore sprop-level-parameter-sets, when present in the offer, and the offerer MUST transmit parameter sets in-band.
+
+            When either use-level-src-parameter-sets is equal to 1 or the "fmtp" source attribute is present in the answer, the answerer MUST be prepared to use the parameter sets that are included in sprop-level-parameter-sets for the accepted level (i.e., the default level in the answer), when present in the offer, for decoding the incoming NAL unit stream, and ignore all other parameter sets included in sprop-level-parameter-sets.
+
+            When no parameter sets for the level to use in the offerer-to-answerer direction are present in sprop-level-parameter-sets in the offer, the offerer MUST transmit parameter sets in-band.
+
+    The following rules apply to the transport of parameter sets in the answerer-to-offerer direction.
+    - An answer MAY include either sprop-parameter-sets or sprop-level-parameter-sets but MUST NOT include both.  If neither sprop-parameter-sets nor sprop-level-parameter-sets is present in the answer, then only in-band transport of parameter sets is used.
+
+    - If the offer includes in-band-parameter-sets equal to 1, the answerer MUST NOT include sprop-parameter-sets or sprop-level-parameter-sets in the answer and MUST transmit parameter sets in-band.  Otherwise, the following applies.
+        - If the level to use in the answerer-to-offerer direction is equal to the default level in the answer, the following applies.
+
+            When there is a sprop-parameter-sets included in the "a=fmtp" line in the answer, the offerer MUST be prepared to use the parameter sets included in the sprop-parameter-sets for decoding the incoming NAL unit stream.
+
+            When there is a sprop-parameter-sets conveyed using the "fmtp" source attribute in the answer, the following applies.  If the offer includes use-level-src-parameter-sets equal to 1 or the "fmtp" source attribute, the offerer MUST be prepared to use the parameter sets included in the sprop-parameter-sets for decoding the incoming NAL unit stream;  otherwise, the answerer MUST transmit parameter sets in-band.
+
+            When sprop-parameter-sets is not present in the answer, the answerer MUST transmit parameter sets in-band.
+
+            The offerer MUST ignore sprop-level-parameter-sets, when present (either included in the "a=fmtp" line or conveyed using the "fmtp" source attribute) in the answer.
+        - Otherwise, the level to use in the answerer-to-offerer direction is not equal to the default level in the answer, and the following applies.
+
+            The offerer MUST ignore sprop-parameter-sets when present (either included in the "a=fmtp" line of SDP or conveyed using the "fmtp" source attribute) in the answer.
+
+            When neither use-level-src-parameter-sets is equal to 1 nor the "fmtp" source attribute is present in the offer, the offerer MUST ignore sprop-level-parameter-sets, when present, and the answerer MUST transmit parameter sets in-band.
+
+            When either use-level-src-parameter-sets is equal to 1 or the "fmtp" source attribute is present in the offer, the offerer MUST be prepared to use the parameter sets that are included in sprop-level-parameter-sets for the level to use in the answerer-to-offerer direction, when present in the answer, for decoding the incoming NAL unit stream, and ignore all other parameter sets included in sprop-level-parameter-sets in the answer.
+
+            When no parameter sets for the level to use in the answerer-to-offerer direction are present in sprop-level-parameter-sets in the answer, the answerer MUST transmit parameter sets in-band.
+
+    When sprop-parameter-sets or sprop-level-parameter-sets is conveyed using the "fmtp" source attribute as specified in Section 6.3 of [9], the receiver of the parameters MUST store the parameter sets included in the sprop-parameter-sets or sprop-level-parameter-sets for the accepted level and associate them with the source given as a part of the "fmtp" source attribute. Parameter sets associated with one source MUST only be used to decode NAL units conveyed in RTP packets from the same source. When this mechanism is in use, SSRC collision detection and resolution MUST be performed as specified in [9].
+
+    > Informative note: Conveyance of sprop-parameter-sets and sprop-level-parameter-sets using the "fmtp" source attribute may be used in topologies like Topo-Video-switch-MCU [29] to enable out-of-band transport of parameter sets.
+
+For streams being delivered over multicast, the following rules apply:
+- The media format configuration is identified by "profile-level-id", including the level part, and packetization-mode.  These media format configuration parameters (including the level part of profile-level-id) MUST be used symmetrically; that is, the answerer MUST either maintain all configuration parameters or remove the media format (payload type) completely.  Note that this implies that the level part of profile-level-id for Offer/Answer in multicast is not changeable.
+- To simplify the handling and matching of these configurations, the same RTP payload type number used in the offer SHOULD also be used in the answer, as specified in [8].  An answer MUST NOT contain a payload type number used in the offer unless the configuration is the same as in the offer.
+- Parameter sets received MUST be associated with the originating source and MUST only be used in decoding the incoming NAL unit stream from the same source.
+- The rules for other parameters are the same as above for unicast as long as the above rules are obeyed.
+
+Table 6 lists the interpretation of all the media type parameters that MUST be used for the different direction attributes.
+
+```
+    Table 6.  Interpretation of parameters for different direction
+                attributes
+
+                                            sendonly --+
+                                        recvonly --+  |
+                                    sendrecv --+  |  |
+                                                |  |  |
+            profile-level-id                   C  C  P
+            max-recv-level                     R  R  -
+            packetization-mode                 C  C  P
+            sprop-deint-buf-req                P  -  P
+            sprop-interleaving-depth           P  -  P
+            sprop-max-don-diff                 P  -  P
+            sprop-init-buf-time                P  -  P
+            max-mbps                           R  R  -
+            max-smbps                          R  R  -
+            max-fs                             R  R  -
+            max-cpb                            R  R  -
+            max-dpb                            R  R  -
+            max-br                             R  R  -
+            redundant-pic-cap                  R  R  -
+            deint-buf-cap                      R  R  -
+            max-rcmd-nalu-size                 R  R  -
+            sar-understood                     R  R  -
+            sar-supported                      R  R  -
+            in-band-parameter-sets             R  R  -
+            use-level-src-parameter-sets       R  R  -
+            level-asymmetry-allowed            O  -  -
+            sprop-parameter-sets               S  -  S
+            sprop-level-parameter-sets         S  -  S
+
+            Legend:
+
+            C: configuration for sending and receiving streams
+            O: offer/answer mode
+            P: properties of the stream to be sent
+            R: receiver capabilities
+            S: out-of-band parameter sets
+            -: not usable (when present, SHOULD be ignored)
+```
+
+Parameters used for declaring receiver capabilities are in general downgradable; that is, they express the upper limit for a sender's possible behavior.  Thus, a sender MAY select to set its encoder using only lower/less or equal values of these parameters.
+
+Parameters declaring a configuration point are not changeable, with the exception of the level part of the profile-level-id parameter for unicast usage.
+
+When a sender's capabilities are declared and non-downgradable parameters are used in this declaration, these parameters express a configuration that is acceptable for the sender to receive streams. In order to achieve high interoperability levels, it is often advisable to offer multiple alternative configurations, e.g., for the packetization mode.  It is impossible to offer multiple configurations in a single payload type.  Thus, when multiple configuration offers are made, each offer requires its own RTP payload type associated with the offer.
+
+A receiver SHOULD understand all media type parameters, even if it only supports a subset of the payload format's functionality.  This ensures that a receiver is capable of understanding when an offer to receive media can be downgraded to what is supported by the receiver of the offer.
+
+An answerer MAY extend the offer with additional media format configurations.  However, to enable their usage, in most cases, a second offer is required from the offerer to provide the stream property parameters that the media sender will use.  This also has the effect that the offerer has to be able to receive this media format configuration, not only to send it.
+
+If an offerer wishes to have non-symmetric capabilities between sending and receiving, the offerer can allow asymmetric levels via level-asymmetry-allowed being equal to 1.  Alternatively, the offerer could offer different RTP sessions, i.e., different media lines declared as "recvonly" and "sendonly", respectively.  This may have further implications on the system and may require additional external semantics to associate the two media lines.
+
+#### 8.2.3.  Usage in Declarative Session Descriptions
+
+When H.264 over RTP is offered with SDP in a declarative style, as in Real Time Streaming Protocol (RTSP) [27] or Session Announcement Protocol (SAP) [28], the following considerations are necessary.
+
+- All parameters capable of indicating both stream properties and receiver capabilities are used to indicate only stream properties. For example, in this case, the parameter profile-level-id declares only the values used by the stream, not the capabilities for receiving streams.  The result of this is that the following interpretation of the parameters MUST be used:
+
+    Declaring actual configuration or stream properties:
+    - profile-level-id
+    - packetization-mode
+    - sprop-interleaving-depth
+    - sprop-deint-buf-req
+    - sprop-max-don-diff
+    - sprop-init-buf-time
+
+    Out-of-band transporting of parameter sets:
+    - sprop-parameter-sets
+    - sprop-level-parameter-sets
+
+    Not usable (when present, they SHOULD be ignored):
+    - max-mbps
+    - max-smbps
+    - max-fs
+    - max-cpb
+    - max-dpb
+    - max-br
+    - max-recv-level
+    - redundant-pic-cap
+    - max-rcmd-nalu-size
+    - deint-buf-cap
+    - sar-understood
+    - sar-supported
+    - in-band-parameter-sets
+    - level-asymmetry-allowed
+    - use-level-src-parameter-sets
+- A receiver of the SDP is required to support all parameters and values of the parameters provided; otherwise, the receiver MUST reject (RTSP) or not participate in (SAP) the session.  It falls on the creator of the session to use values that are expected to be supported by the receiving application.
+
+### 8.3.  Examples
+
+An SDP Offer/Answer exchange wherein both parties are expected to both send and receive could look like the following.  Only the media- codec-specific parts of the SDP are shown.  Some lines are wrapped due to text constraints.
+
+Offerer -> Answerer SDP message:
+
+```
+    m=video 49170 RTP/AVP 100 99 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A01E; packetization-mode=0;
+    sprop-parameter-sets=<parameter sets data#0>
+    a=rtpmap:99 H264/90000
+    a=fmtp:99 profile-level-id=42A01E; packetization-mode=1;
+    sprop-parameter-sets=<parameter sets data#1>
+    a=rtpmap:100 H264/90000
+    a=fmtp:100 profile-level-id=42A01E; packetization-mode=2;
+    sprop-parameter-sets=<parameter sets data#2>;
+    sprop-interleaving-depth=45; sprop-deint-buf-req=64000;
+    sprop-init-buf-time=102478; deint-buf-cap=128000
+```
+
+The above offer presents the same codec configuration in three different packetization formats.  Payload type 98 represents single NALU mode, payload type 99 represents non-interleaved mode, and payload type 100 indicates the interleaved mode.  In the interleaved mode case, the interleaving parameters that the offerer would use if the answer indicates support for payload type 100 are also included. In all three cases, the parameter sprop-parameter-sets conveys the initial parameter sets that are required by the answerer when receiving a stream from the offerer when this configuration is accepted.  Note that the value for sprop-parameter-sets could be different for each payload type.
+
+Answerer -> Offerer SDP message:
+
+```
+    m=video 49170 RTP/AVP 100 99 97
+    a=rtpmap:97 H264/90000
+    a=fmtp:97 profile-level-id=42A01E; packetization-mode=0;
+    sprop-parameter-sets=<parameter sets data#3>
+    a=rtpmap:99 H264/90000
+    a=fmtp:99 profile-level-id=42A01E; packetization-mode=1;
+    sprop-parameter-sets=<parameter sets data#4>;
+    max-rcmd-nalu-size=3980
+    a=rtpmap:100 H264/90000
+    a=fmtp:100 profile-level-id=42A01E; packetization-mode=2;
+    sprop-parameter-sets=<parameter sets data#5>;
+    sprop-interleaving-depth=60;
+    sprop-deint-buf-req=86000; sprop-init-buf-time=156320;
+    deint-buf-cap=128000; max-rcmd-nalu-size=3980
+```
+
+As the Offer/Answer negotiation covers both sending and receiving streams, an offer indicates the exact parameters for what the offerer is willing to receive, whereas the answer indicates the same for what the answerer is willing to receive.  In this case, the offerer declared that it is willing to receive payload type 98.  The answerer accepts this by declaring an equivalent payload type 97; that is, it has identical values for the two parameters profile-level-id and packetization-mode (since packetization-mode is equal to 0 and sprop-deint-buf-req is not present).  As the offered payload type 98 is accepted, the answerer needs to store parameter sets included in sprop-parameter-sets=<parameter sets data#0> in case the offer finally decides to use this configuration.  In the answer, the answerer includes the parameter sets in sprop-parameter-sets=<parameter sets data#3> that the answerer would use in the stream sent from the answerer if this configuration is finally used.
+
+The answerer also accepts the reception of the two configurations that payload types 99 and 100 represent.  Again, the answerer needs to store parameter sets included in sprop-parameter-sets=<parameter sets data#1> and sprop-parameter-sets=<parameter sets data#2> in case the offer finally decides to use either of these two configurations. The answerer provides the initial parameter sets for the answerer-to-offerer direction, i.e., the parameter sets in sprop-parameter-sets=<parameter sets data#4> and sprop-parameter-sets=<parameter sets data#5>, for payload types 99 and 100, respectively, that it will use to send the payload types.  The answerer also provides the offerer with its memory limit for de-interleaving operations by providing a deint-buf-cap parameter.  This is only useful if the offerer decides on making a second offer, where it can take the new value into account.  The max-rcmd-nalu-size indicates that the answerer can efficiently process NALUs up to the size of 3980 bytes.  However, there is no guarantee that the network supports this size.
+
+In the following example, the offer is accepted without level downgrading (i.e., the default level, Level 3.0, is accepted), and both sprop-parameter-sets and sprop-level-parameter-sets are present in the offer.  The answerer must ignore sprop-level-parameter-sets=<parameter sets data#1> and store parameter sets in sprop-parameter-sets=<parameter sets data#0> for decoding the incoming NAL unit stream.  The offerer must store the parameter sets in sprop-parameter-sets=<parameter sets data#2> in the answer for decoding the incoming NAL unit stream.  Note that in this example, parameter sets in sprop-parameter-sets=<parameter sets data#2> must be associated with Level 3.0.
+
+Offer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
+    packetization-mode=1;
+    sprop-parameter-sets=<parameter sets data#0>;
+    sprop-level-parameter-sets=<parameter sets data#1>
+```
+
+Answer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
+    packetization-mode=1;
+    sprop-parameter-sets=<parameter sets data#2>
+```
+
+In the following example, the offer (Baseline profile, Level 1.1) is accepted with level downgrading (the accepted level is Level 1b), and both sprop-parameter-sets and sprop-level-parameter-sets are present in the offer.  The answerer must ignore sprop-parameter- sets=<parameter sets data#0> and all parameter sets not for the accepted level (Level 1b) in sprop-level-parameter-sets=<parameter sets data#1> and must store parameter sets for the accepted level (Level 1b) in sprop-level-parameter-sets=<parameter sets data#1> for decoding the incoming NAL unit stream.  The offerer must store the parameter sets in sprop-parameter-sets=<parameter sets data#2> in the answer for decoding the incoming NAL unit stream.  Note that in this example, parameter sets in sprop-parameter-sets=<parameter sets data#2> must be associated with Level 1b.
+
+Offer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A00B; //Baseline profile, Level 1.1
+    packetization-mode=1;
+    sprop-parameter-sets=<parameter sets data#0>;
+    sprop-level-parameter-sets=<parameter sets data#1>
+```
+
+Answer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42B00B; //Baseline profile, Level 1b
+    packetization-mode=1;
+    sprop-parameter-sets=<parameter sets data#2>;
+    use-level-src-parameter-sets=1
+```
+
+In the following example, the offer (Baseline profile, Level 1.1) is accepted with level downgrading (the accepted level is Level 1b), and both sprop-parameter-sets and sprop-level-parameter-sets are present in the offer.  However, the answerer is a legacy RFC 3984 implementation and does not understand sprop-level-parameter-sets; hence, it does not include use-level-src-parameter-sets (which the answerer does not understand either) in the answer.  Therefore, the answerer must ignore both sprop-parameter-sets=<parameter sets data#0> and sprop-level-parameter-sets=<parameter sets data#1>, and the offerer must transport parameter sets in-band.
+
+Offer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A00B; //Baseline profile, Level 1.1
+    packetization-mode=1;
+    sprop-parameter-sets=<parameter sets data#0>;
+    sprop-level-parameter-sets=<parameter sets data#1>
+```
+
+Answer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42B00B; //Baseline profile, Level 1b
+    packetization-mode=1
+```
+
+In the following example, the offer is accepted without level downgrading, and sprop-parameter-sets is present in the offer. Parameter sets in sprop-parameter-sets=<parameter sets data#0> must be stored and used by the encoder of the offerer and the decoder of the answerer, and parameter sets in sprop-parameter-sets=<parameter sets data#1> must be used by the encoder of the answerer and the decoder of the offerer.  Note that sprop-parameter-sets=<parameter sets data#0> is basically independent of sprop-parameter-sets=<parameter sets data#1>.
+
+Offer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
+    packetization-mode=1;
+    sprop-parameter-sets=<parameter sets data#0>
+```
+
+Answer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
+    packetization-mode=1;
+    sprop-parameter-sets=<parameter sets data#1>
+```
+
+In the following example, the offer is accepted without level downgrading, and neither sprop-parameter-sets nor sprop-level-parameter-sets is present in the offer, meaning that there is no out-of-band transmission of parameter sets, which then have to be transported in-band.
+
+Offer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
+    packetization-mode=1
+```
+
+Answer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
+    packetization-mode=1
+```
+
+In the following example, the offer is accepted with level downgrading and sprop-parameter-sets is present in the offer.  As sprop-parameter-sets=<parameter sets data#0> contains level_idc indicating Level 3.0, it therefore cannot be used, as the answerer wants Level 2.0, and must be ignored by the answerer, and in-band parameter sets must be used.
+
+Offer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
+    packetization-mode=1;
+    sprop-parameter-sets=<parameter sets data#0>
+```
+
+Answer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A014; //Baseline profile, Level 2.0
+    packetization-mode=1
+```
+
+In the following example, the offer is also accepted with level downgrading, and neither sprop-parameter-sets nor sprop-level-parameter-sets is present in the offer, meaning that there is no out-of-band transmission of parameter sets, which then have to be transported in-band.
+
+Offer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
+    packetization-mode=1
+```
+
+Answer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A014; //Baseline profile, Level 2.0
+    packetization-mode=1
+```
+
+In the following example, the offer is accepted with level upgrading, and neither sprop-parameter-sets nor sprop-level-parameter-sets is present in the offer or the answer, meaning that there is no out-of-band transmission of parameter sets, which then have to be transported in-band.  The level to use in the offerer-to-answerer direction is Level 3.0, and the level to use in the answerer-to-offerer direction is Level 2.0.  The answerer is allowed to send at any level up to and including Level 2.0, and the offerer is allowed to send at any level up to and including Level 3.0.
+
+Offer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A014; //Baseline profile, Level 2.0
+    packetization-mode=1; level-asymmetry-allowed=1
+```
+
+Answer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
+    packetization-mode=1; level-asymmetry-allowed=1
+```
+
+In the following example, the offerer is a Multipoint Control Unit (MCU) in a topology like Topo-Video-switch-MCU [29], offering parameter sets received (using out-of-band transport) from three other participants (B, C, and D) and receiving parameter sets from the participant A, which is the answerer.  The participants are identified by their values of canonical name (CNAME), which are mapped to different SSRC values.  The same codec configuration is used by all four participants.  The participant A stores and associates the parameter sets included in <parameter sets data#B>, <parameter sets data#C>, and <parameter sets data#D> to participants B, C, and D, respectively, and uses <parameter sets data#B> for decoding NAL units carried in RTP packets originating from participant B only, uses <parameter sets data#C> for decoding NAL units carried in RTP packets originating from participant C only, and uses <parameter sets data#D> for decoding NAL units carried in RTP packets originating from participant D only.
+
+Offer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=ssrc:SSRC-B cname:CNAME-B
+    a=ssrc:SSRC-C cname:CNAME-C
+    a=ssrc:SSRC-D cname:CNAME-D
+    a=ssrc:SSRC-B fmtp:98
+    sprop-parameter-sets=<parameter sets data#B>
+    a=ssrc:SSRC-C fmtp:98
+    sprop-parameter-sets=<parameter sets data#C>
+    a=ssrc:SSRC-D fmtp:98
+    sprop-parameter-sets=<parameter sets data#D>
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
+    packetization-mode=1
+```
+
+Answer SDP:
+
+```
+    m=video 49170 RTP/AVP 98
+    a=ssrc:SSRC-A cname:CNAME-A
+    a=ssrc:SSRC-A fmtp:98
+    sprop-parameter-sets=<parameter sets data#A>
+    a=rtpmap:98 H264/90000
+    a=fmtp:98 profile-level-id=42A01E; //Baseline profile, Level 3.0
+    packetization-mode=1
+```
+
+### 8.4.  Parameter Set Considerations
+
+The H.264 parameter sets are a fundamental part of the video codec and vital to its operation (see Section 1.2).  Due to their characteristics and their importance for the decoding process, lost or erroneously transmitted parameter sets can hardly be concealed locally at the receiver.  A reference to a corrupt parameter set normally has fatal results to the decoding process.  Corruption could occur, for example, due to the erroneous transmission or loss of a parameter set NAL unit but also due to the untimely transmission of a parameter set update.  A parameter set update refers to a change of at least one parameter in a picture parameter set or sequence parameter set for which the picture parameter set or sequence parameter set identifier remains unchanged.  Therefore, the following recommendations are provided as a guideline for the implementer of the RTP sender.
+
+Parameter set NALUs can be transported using three different principles:
+
+- A. Using a session control protocol (out-of-band) prior to the actual RTP session.
+- B. Using a session control protocol (out-of-band) during an ongoing RTP session.
+- C. Within the RTP packet stream in the payload (in-band) during an ongoing RTP session.
+
+It is recommended to implement principles A and B within a session control protocol.  SIP and SDP can be used as described in the SDP Offer/Answer model and in the previous sections of this memo. Section 8.2.2 includes a detailed discussion on transport of parameter sets in-band or out-of-band in SDP Offer/Answer using media type parameters sprop-parameter-sets, sprop-level-parameter-sets, use-level-src-parameter-sets, and in-band-parameter-sets.  This section contains guidelines on how principles A and B should be implemented within session control protocols.  It is independent of the particular protocol used.  Principle C is supported by the RTP payload format defined in this specification.  There are topologies like Topo-Video-switch-MCU [29] for which the use of principle C may be desirable.
+
+If in-band signaling of parameter sets is used, the picture and sequence parameter set NALUs SHOULD be transmitted in the RTP payload using a reliable method of delivering of RTP (see below), as a loss of a parameter set of either type will likely prevent decoding of a considerable portion of the corresponding RTP packet stream.
+
+If in-band signaling of parameter sets is used, the sender SHOULD take the error characteristics into account and use mechanisms to provide a high probability for delivering the parameter sets correctly.  Mechanisms that increase the probability for a correct reception include packet repetition, FEC, and retransmission.  The use of an unreliable, out-of-band control protocol has similar disadvantages as the in-band signaling (possible loss) and, in addition, may also lead to difficulties in the synchronization (see below).  Therefore, it is NOT RECOMMENDED.
+
+Parameter sets MAY be added or updated during the lifetime of a session using principles B and C.  It is required that parameter sets be present at the decoder prior to the NAL units that refer to them. Update or addition of parameter sets can result in further problems; therefore, the following recommendations should be considered.
+
+- When parameter sets are added or updated, care SHOULD be taken to ensure that any parameter set is delivered prior to its usage. When new parameter sets are added, previously unused parameter set identifiers are used.  It is common that no synchronization is present between out-of-band signaling and in-band traffic.  If out-of-band signaling is used, it is RECOMMENDED that a sender not start sending NALUs requiring the added or updated parameter sets prior to acknowledgement of delivery from the signaling protocol.
+- When parameter sets are updated, the following synchronization issue should be taken into account.  When overwriting a parameter set at the receiver, the sender has to ensure that the parameter set in question is not needed by any NALU present in the network or receiver buffers.  Otherwise, decoding with a wrong parameter set may occur.  To lessen this problem, it is RECOMMENDED either to overwrite only those parameter sets that have not been used for a sufficiently long time (to ensure that all related NALUs have been consumed) or to add a new parameter set instead (which may have negative consequences for the efficiency of the video coding).
+
+    > Informative note: In some topologies like Topo-Video-switch-MCU [29], the origin of the whole set of parameter sets may come from multiple sources that may use non-unique parameter set identifiers.  In this case, an offer may overwrite an existing parameter set if no other mechanism that enables uniqueness of the parameter sets in the out-of-band channel exists.
+- In a multiparty session, one participant MUST associate parameter sets coming from different sources with the source identification whenever possible, e.g., by conveying out-of-band transported parameter sets, as different sources typically use independent parameter set identifier value spaces.
+- Adding or modifying parameter sets by using both principles B and C in the same RTP session may lead to inconsistencies of the parameter sets because of the lack of synchronization between the control and the RTP channel.  Therefore, principles B and C MUST NOT both be used in the same session unless sufficient synchronization can be provided.
+
+In some scenarios (e.g., when only the subset of this payload format specification corresponding to H.241 is used) or topologies, it is not possible to employ out-of-band parameter set transmission.  In this case, parameter sets have to be transmitted in-band.  Here, the synchronization with the non-parameter-set-data in the bitstream is implicit, but the possibility of a loss has to be taken into account.
+
+The loss probability should be reduced using the mechanisms discussed above.  In case a loss of a parameter set is detected, recovery may be achieved using a Decoder Refresh Point procedure, for example, using RTCP feedback Full Intra Request (FIR) [30].  Two example Decoder Refresh Point procedures are provided in the informative Section 8.5.
+- When parameter sets are initially provided using principle A and then later added or updated in-band (principle C), there is a risk associated with updating the parameter sets delivered out-of-band. If receivers miss some in-band updates (for example, because of a loss or a late tune-in), those receivers attempt to decode the bitstream using outdated parameters.  It is therefore RECOMMENDED that parameter set IDs be partitioned between the out-of-band and in-band parameter sets.
+
+### 8.5.  Decoder Refresh Point Procedure Using In-Band Transport of Parameter Sets (Informative)
+
+When a sender with a video encoder according to [1] receives a request for a decoder refresh point, the encoder shall enter the fast update mode by using one of the procedures specified in Sections 8.5.1 or 8.5.2.  The procedure in Section 8.5.1 is the preferred response in a lossless transmission environment.  Both procedures satisfy the requirement to enter the fast update mode for H.264 video encoding.
+
+### 8.5.1.  IDR Procedure to Respond to a Request for a Decoder Refresh Point
+
+This section gives one possible way to respond to a request for a decoder refresh point.
+
+The encoder shall, in the order presented here:
+- Immediately prepare to send an IDR picture.
+- Send a sequence parameter set to be used by the IDR picture to be sent.  The encoder may optionally also send other sequence parameter sets.
+- Send a picture parameter set to be used by the IDR picture to be sent.  The encoder may optionally also send other picture parameter sets.
+- Send the IDR picture.
+- From this point forward in time, send any other sequence or picture parameter sets that have not yet been sent in this procedure, prior to their reference by any NAL unit, regardless of whether such parameter sets were previously sent prior to receiving the request for a decoder refresh point.  As needed, such parameter sets may be sent in a batch, one at a time, or in any combination of these two methods.  Parameter sets may be re-sent at any time for redundancy.  Caution should be taken when parameter set updates are present, as described above in Section 8.4.
+
+#### 8.5.2.  Gradual Recovery Procedure to Respond to a Request for a Decoder Refresh Point
+
+This section gives another possible way to respond to a request for a decoder refresh point.
+
+The encoder shall, in the order presented here:
+1. Send a recovery point SEI message (see Sections D.1.7 and D.2.7 of [1]).
+2. Repeat any sequence and picture parameter sets that were sent before the recovery point SEI message, prior to their reference by a NAL unit.
+
+The encoder shall ensure that the decoder has access to all reference pictures for inter prediction of pictures at or after the recovery point, which is indicated by the recovery point SEI message, in output order, assuming that the transmission from now on is error- free.
+
+The value of the recovery_frame_cnt syntax element in the recovery point SEI message should be small enough to ensure a fast recovery.
+
+As needed, such parameter sets may be re-sent in a batch, one at a time, or in any combination of these two methods.  Parameter sets may be re-sent at any time for redundancy.  Caution should be taken when parameter set updates are present, as described above in Section 8.4.
+
+## 9.  Security Considerations
+
+RTP packets using the payload format defined in this specification are subject to the security considerations discussed in the RTP specification [5] and in any appropriate RTP profile (for example, [16]).  This implies that confidentiality of the media streams is achieved by encryption, for example, through the application of SRTP [26].  Because the data compression used with this payload format is
