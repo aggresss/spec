@@ -37,7 +37,6 @@ SMPTE 2110 is intended to be used within broadcast production and distribution f
 SMPTE 2110 was based on the TR-03 and TR-04 work published by the **Video Services Forum** on 12 November 2015. The first four parts of SMPTE 2110, -10, -20, -21 and -30, were published by SMPTE on 27 November 2017. Other parts, including recommended practices, were added later, and several parts were updated in 2022.
 
 SMPTE 2110 is specified in several parts:
-
 - ST 2110-10 - System architecture and synchronization: essences, RTP, SDP and PTP
 - ST 2110-20 - Uncompressed video transport, based on SMPTE 2022-6
 - ST 2110-21 - Traffic shaping and network delivery timing
