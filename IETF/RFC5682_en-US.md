@@ -109,7 +109,7 @@ This section describes an alternative version of the F-RTO algorithm that uses t
 
 ### 3.1.  The Algorithm
 
-Given that the TCP Selective Acknowledgment Option [MMFR96] is enabled for a TCP connection, a TCP sender MAY apply the SACK- enhanced F-RTO algorithm.  If the sender applies the SACK-enhanced F-RTO algorithm, it MUST follow the steps below.  This algorithm SHOULD NOT be applied if the TCP sender is already in loss recovery when a retransmission timeout occurs.
+Given that the TCP Selective Acknowledgment Option [MMFR96] is enabled for a TCP connection, a TCP sender MAY apply the SACK-enhanced F-RTO algorithm.  If the sender applies the SACK-enhanced F-RTO algorithm, it MUST follow the steps below.  This algorithm SHOULD NOT be applied if the TCP sender is already in loss recovery when a retransmission timeout occurs.
 
 The steps of the SACK-enhanced version of the F-RTO algorithm are as follows.  If the retransmission timer expires again during the execution of the SACK-enhanced F-RTO algorithm, the TCP sender MUST re-start the algorithm processing from step 1.
 
@@ -121,8 +121,8 @@ The steps of the SACK-enhanced version of the F-RTO algorithm are as follows.  I
     It is also possible to apply some of the alternatives for handling window-limited cases discussed in Appendix A.
 
 3. The next acknowledgment arrives at the sender.  Either a duplicate ACK or a new cumulative ACK (advancing the window) applies in this step.  Other types of ACKs are ignored without any action.
-- (a) If the Cumulative Acknowledgment field or the SACK information covers more than "RecoveryPoint", set the congestion window to no more than 3 * MSS and proceed with the conventional RTO recovery, retransmitting unacknowledged segments.  Take this branch also when the acknowledgment is a duplicate ACK and it does not acknowledge any new, previously unacknowledged data below "RecoveryPoint" in the SACK information.  Leave SpuriousRecovery set to FALSE.
-- (b) If the Cumulative Acknowledgment field or a SACK information in the ACK does not cover more than "RecoveryPoint" AND it acknowledges data that was not acknowledged earlier (either with cumulative acknowledgment or using SACK information), declare the timeout spurious and set SpuriousRecovery to SPUR_TO.  The retransmission timeout can be declared spurious, because the segment acknowledged with this ACK was transmitted before the timeout.
+   - (a) If the Cumulative Acknowledgment field or the SACK information covers more than "RecoveryPoint", set the congestion window to no more than 3 * MSS and proceed with the conventional RTO recovery, retransmitting unacknowledged segments.  Take this branch also when the acknowledgment is a duplicate ACK and it does not acknowledge any new, previously unacknowledged data below "RecoveryPoint" in the SACK information.  Leave SpuriousRecovery set to FALSE.
+   - (b) If the Cumulative Acknowledgment field or a SACK information in the ACK does not cover more than "RecoveryPoint" AND it acknowledges data that was not acknowledged earlier (either with cumulative acknowledgment or using SACK information), declare the timeout spurious and set SpuriousRecovery to SPUR_TO.  The retransmission timeout can be declared spurious, because the segment acknowledged with this ACK was transmitted before the timeout.
 
 If there are unacknowledged holes between the received SACK information, those segments are retransmitted similarly to the conventional SACK recovery algorithm [BAFW03].  If the algorithm exits with SpuriousRecovery set to SPUR_TO, "RecoveryPoint" is set to SND.UNA, thus allowing fast recovery on incoming duplicate acknowledgments.
 
