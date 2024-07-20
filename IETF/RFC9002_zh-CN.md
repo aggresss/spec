@@ -73,7 +73,7 @@ QUIC ACK帧包含的信息与TCP选择性确认（SACKs，[RFC2018]）中的信�
 ## 4.5. More ACK Ranges
 
 QUIC支持很多ACK范围，相对于TCP的3个SACK范围。
-在高丢包的场景，这加速了重传，减少了伪重传，并保证了前向处理是不依赖超时。
+在高丢包的场景，这加速了重传，减少了伪重传，并保证了前向处理时不依赖超时。
 
 ## 4.6. Explicit Correction For Delayed Acknowledgements
 
