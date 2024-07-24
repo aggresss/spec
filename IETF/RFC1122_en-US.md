@@ -243,7 +243,7 @@ All Internet transport protocols use the Internet Protocol (IP) to carry data fr
 
 The datagram or connectionless nature of the IP protocol is a fundamental and characteristic feature of the Internet architecture.  Internet IP was the model for the OSI Connectionless Network Protocol [INTRO:12].
 
-ICMP is a control protocol that is considered to be an integral part of IP, although it is architecturally layered upon IP, i.e., it uses IP to carry its data end- to-end just as a transport protocol like TCP or UDP does. ICMP provides error reporting, congestion reporting, and first-hop gateway redirection.
+ICMP is a control protocol that is considered to be an integral part of IP, although it is architecturally layered upon IP, i.e., it uses IP to carry its data end-to-end just as a transport protocol like TCP or UDP does. ICMP provides error reporting, congestion reporting, and first-hop gateway redirection.
 
 IGMP is an Internet layer protocol used for establishing dynamic host groups for IP multicasting.
 
@@ -316,7 +316,7 @@ It would be ideal if a host implementation of the Internet protocol suite could 
 
 At many points in this document, you will find a requirement that a parameter be a configurable option.  There are several different reasons behind such requirements.  In a few cases, there is current uncertainty or disagreement about the best value, and it may be necessary to update the recommended value in the future.  In other cases, the value really depends on external factors -- e.g., the size of the host and the distribution of its communication load, or the speeds and topology of nearby networks -- and self-tuning algorithms are unavailable and may be insufficient.  In some cases, configurability is needed because of administrative requirements.
 
-Finally, some configuration options are required to communicate with obsolete or incorrect implementations of the protocols, distributed without sources, that unfortunately persist in many parts of the Internet.  To make correct systems coexist with these faulty systems, administrators often have to "mis- configure" the correct systems.  This problem will correct itself gradually as the faulty systems are retired, but it cannot be ignored by vendors.
+Finally, some configuration options are required to communicate with obsolete or incorrect implementations of the protocols, distributed without sources, that unfortunately persist in many parts of the Internet.  To make correct systems coexist with these faulty systems, administrators often have to "mis-configure" the correct systems.  This problem will correct itself gradually as the faulty systems are retired, but it cannot be ignored by vendors.
 
 When we say that a parameter must be configurable, we do not intend to require that its value be explicitly read from a configuration file at every boot time.  We recommend that implementors set up a default for each parameter, so a configuration file is only necessary to override those defaults that are inappropriate in a particular installation.  Thus, the configurability requirement is an assurance that it will be POSSIBLE to override the default when necessary, even in a binary-only or ROM-based product.
 
@@ -339,7 +339,7 @@ In general, each major section of this document is organized into the following 
 
 - (1)  Introduction
 - (2)  Protocol Walk-Through -- considers the protocol specification documents section-by-section, correcting errors, stating requirements that may be ambiguous or ill-defined, and providing further clarification or explanation.
-- (3)  Specific Issues -- discusses protocol design and implementation issues that were not included in the walk- through.
+- (3)  Specific Issues -- discusses protocol design and implementation issues that were not included in the walk-through.
 - (4)  Interfaces -- discusses the service interface to the next higher layer.
 - (5)  Summary -- contains a summary of the requirements of the section.
 
@@ -489,7 +489,7 @@ A mechanism to prevent ARP flooding (repeatedly sending an ARP Request for the s
 
 **DISCUSSION:**
 
-The ARP specification [LINK:2] suggests but does not require a timeout mechanism to invalidate cache entries when hosts change their Ethernet addresses.  The prevalence of proxy ARP (see Section 2.4 of [INTRO:2]) has significantly increased the likelihood that cache entries in hosts will become invalid, and therefore some ARP-cache invalidation mechanism is now required for hosts.  Even in the absence of proxy ARP, a long- period cache timeout is useful in order to automatically correct any bad ARP data that might have been cached.
+The ARP specification [LINK:2] suggests but does not require a timeout mechanism to invalidate cache entries when hosts change their Ethernet addresses.  The prevalence of proxy ARP (see Section 2.4 of [INTRO:2]) has significantly increased the likelihood that cache entries in hosts will become invalid, and therefore some ARP-cache invalidation mechanism is now required for hosts.  Even in the absence of proxy ARP, a long-period cache timeout is useful in order to automatically correct any bad ARP data that might have been cached.
 
 **IMPLEMENTATION:**
 
@@ -508,7 +508,7 @@ The link layer SHOULD save (rather than discard) at least one (the latest) packe
 
 **DISCUSSION:**
 
-Failure to follow this recommendation causes the first packet of every exchange to be lost.  Although higher- layer protocols can generally cope with packet loss by retransmission, packet loss does impact performance. For example, loss of a TCP open request causes the initial round-trip time estimate to be inflated.  UDP- based applications such as the Domain Name System are more seriously affected.
+Failure to follow this recommendation causes the first packet of every exchange to be lost.  Although higher-layer protocols can generally cope with packet loss by retransmission, packet loss does impact performance. For example, loss of a TCP open request causes the initial round-trip time estimate to be inflated.  UDP-based applications such as the Domain Name System are more seriously affected.
 
 #### 2.3.3  Ethernet and IEEE 802 Encapsulation
 
@@ -628,7 +628,7 @@ A host is said to be multihomed if it has multiple IP addresses. Multihoming int
 
 At present, remote multihoming MUST be handled at the application layer, as discussed in the companion RFC [INTRO:1].  A host MAY support local multihoming, which is discussed in this document, and in particular in Section 3.3.4.
 
-Any host that forwards datagrams generated by another host is acting as a gateway and MUST also meet the specifications laid out in the gateway requirements RFC [INTRO:2].  An Internet host that includes embedded gateway code MUST have a configuration switch to disable the gateway function, and this switch MUST default to the non-gateway mode.  In this mode, a datagram arriving through one interface will not be forwarded to another host or gateway (unless it is source-routed), regardless of whether the host is single- homed or multihomed.  The host software MUST NOT automatically move into gateway mode if the host has more than one interface, as the operator of the machine may neither want to provide that service nor be competent to do so.
+Any host that forwards datagrams generated by another host is acting as a gateway and MUST also meet the specifications laid out in the gateway requirements RFC [INTRO:2].  An Internet host that includes embedded gateway code MUST have a configuration switch to disable the gateway function, and this switch MUST default to the non-gateway mode.  In this mode, a datagram arriving through one interface will not be forwarded to another host or gateway (unless it is source-routed), regardless of whether the host is single-homed or multihomed.  The host software MUST NOT automatically move into gateway mode if the host has more than one interface, as the operator of the machine may neither want to provide that service nor be competent to do so.
 
 In the following, the action specified in certain cases is to "silently discard" a received datagram.  This means that the datagram will be discarded without further processing and that the host will not send any ICMP error message (see Section 3.2.2) as a result.  However, for diagnosis of problems a host SHOULD provide the capability of logging the error (see Section 1.2.3), including the contents of the silently-discarded datagram, and SHOULD record the event in a statistics counter.
 
@@ -722,7 +722,7 @@ A mis-addressed datagram might be caused by a link-layer broadcast of a unicast 
 
 An architectural goal for Internet hosts was to allow IP addresses to be featureless 32-bit numbers, avoiding algorithms that required a knowledge of the IP address format.  Otherwise, any future change in the format or interpretation of IP addresses will require host software changes.  However, validation of broadcast and multicast addresses violates this goal; a few other violations are described elsewhere in this document.
 
-Implementers should be aware that applications depending upon the all-subnets directed broadcast address (f) may be unusable on some networks.  All- subnets broadcast is not widely implemented in vendor gateways at present, and even when it is implemented, a particular network administration may disable it in the gateway configuration.
+Implementers should be aware that applications depending upon the all-subnets directed broadcast address (f) may be unusable on some networks.  All-subnets broadcast is not widely implemented in vendor gateways at present, and even when it is implemented, a particular network administration may disable it in the gateway configuration.
 
 ##### 3.2.1.4  Fragmentation and Reassembly: RFC-791 Section 3.2
 
@@ -766,7 +766,7 @@ The IP layer MUST provide a means for the transport layer to set the TTL field o
 
 **DISCUSSION:**
 
-The TTL field has two functions: limit the lifetime of TCP segments (see RFC-793 [TCP:1], p. 28), and terminate Internet routing loops.  Although TTL is a time in seconds, it also has some attributes of a hop- count, since each gateway is required to reduce the TTL field by at least one.
+The TTL field has two functions: limit the lifetime of TCP segments (see RFC-793 [TCP:1], p. 28), and terminate Internet routing loops.  Although TTL is a time in seconds, it also has some attributes of a hop-count, since each gateway is required to reduce the TTL field by at least one.
 
 The intent is that TTL expiration will cause a datagram to be discarded by a gateway but not by the destination host; however, hosts that act as gateways by forwarding datagrams must follow the gateway rules for TTL.
 
@@ -784,7 +784,7 @@ Later sections of this document discuss specific IP option support required by e
 
 **DISCUSSION:**
 
-Passing all received IP options to the transport layer is a deliberate "violation of strict layering" that is designed to ease the introduction of new transport- relevant IP options in the future.  Each layer must pick out any options that are relevant to its own processing and ignore the rest.  For this purpose, every IP option except NOP and END-OF-LIST will include a specification of its own length.
+Passing all received IP options to the transport layer is a deliberate "violation of strict layering" that is designed to ease the introduction of new transport-relevant IP options in the future.  Each layer must pick out any options that are relevant to its own processing and ignore the rest.  For this purpose, every IP option except NOP and END-OF-LIST will include a specification of its own length.
 
 This document does not define the order in which a receiver must process multiple options in the same IP header.  Hosts sending multiple options must be aware that this introduces an ambiguity in the meaning of certain options when combined with a source-route option.
 
@@ -806,7 +806,7 @@ Here are the requirements for specific IP options:
 
     If host receives a datagram containing a completed source route (i.e., the pointer points beyond the last field), the datagram has reached its final destination; the option as received (the recorded route) MUST be passed up to the transport layer (or to ICMP message processing).  This recorded route will be reversed and used to form a return source route for reply datagrams (see discussion of IP Options in Section 4).  When a return source route is built, it MUST be correctly formed even if the recorded route included the source host (see case (B) in the discussion below).
 
-    An IP header containing more than one Source Route option MUST NOT be sent; the effect on routing of multiple Source Route options is implementation- specific.
+    An IP header containing more than one Source Route option MUST NOT be sent; the effect on routing of multiple Source Route options is implementation-specific.
 
     Section 3.3.5 presents the rules for a host acting as an intermediate hop in a source route, i.e., forwarding a source-routed datagram.
 
@@ -1095,7 +1095,7 @@ A host generally needs to know at least one default gateway to get started.  Thi
 
 It has been suggested that a host can augment its list of default gateways by recording any new gateways it learns about.  For example, it can record every gateway to which it is ever redirected.  Such a feature, while possibly useful in some circumstances, may cause problems in other cases (e.g., gateways are not all equal), and it is not recommended.
 
-A static route is typically a particular preset mapping from destination host or network into a particular next-hop gateway; it might also depend on the Type-of- Service (see next section).  Static routes would be set up by system administrators to override the normal automatic routing mechanism, to handle exceptional situations.  However, any static routing information is a potential source of failure as configurations change or equipment fails.
+A static route is typically a particular preset mapping from destination host or network into a particular next-hop gateway; it might also depend on the Type-of-Service (see next section).  Static routes would be set up by system administrators to override the normal automatic routing mechanism, to handle exceptional situations.  However, any static routing information is a potential source of failure as configurations change or equipment fails.
 
 ##### 3.3.1.3  Route Cache
 
@@ -1134,7 +1134,7 @@ The cache needs to be large enough to include entries for the maximum number of 
 
 A route cache entry may also include control information used to choose an entry for replacement. This might take the form of a "recently used" bit, a use count, or a last-used timestamp, for example.  It is recommended that it include the time of last modification of the entry, for diagnostic purposes.
 
-An implementation may wish to reduce the overhead of scanning the route cache for every datagram to be transmitted.  This may be accomplished with a hash table to speed the lookup, or by giving a connection- oriented transport protocol a "hint" or temporary handle on the appropriate cache entry, to be passed to the IP layer with each subsequent datagram.
+An implementation may wish to reduce the overhead of scanning the route cache for every datagram to be transmitted.  This may be accomplished with a hash table to speed the lookup, or by giving a connection-oriented transport protocol a "hint" or temporary handle on the appropriate cache entry, to be passed to the IP layer with each subsequent datagram.
 
 Although we have described the route cache, the lists of default gateways, and a table of static routes as conceptually distinct, in practice they may be combined into a single "routing table" data structure.
 
@@ -1196,7 +1196,7 @@ If the failed gateway is not the current default, the IP layer can immediately s
 
 **DISCUSSION:**
 
-When a gateway does fail, the other gateways on the connected network will learn of the failure through some inter-gateway routing protocol.  However, this will not happen instantaneously, since gateway routing protocols typically have a settling time of 30-60 seconds.  If the host switches to an alternative gateway before the gateways have agreed on the failure, the new target gateway will probably forward the datagram to the failed gateway and send a Redirect back to the host pointing to the failed gateway (!).  The result is likely to be a rapid oscillation in the contents of the host's route cache during the gateway settling period.  It has been proposed that the dead- gateway logic should include some hysteresis mechanism to prevent such oscillations.  However, experience has not shown any harm from such oscillations, since service cannot be restored to the host until the gateways' routing information does settle down.
+When a gateway does fail, the other gateways on the connected network will learn of the failure through some inter-gateway routing protocol.  However, this will not happen instantaneously, since gateway routing protocols typically have a settling time of 30-60 seconds.  If the host switches to an alternative gateway before the gateways have agreed on the failure, the new target gateway will probably forward the datagram to the failed gateway and send a Redirect back to the host pointing to the failed gateway (!).  The result is likely to be a rapid oscillation in the contents of the host's route cache during the gateway settling period.  It has been proposed that the dead-gateway logic should include some hysteresis mechanism to prevent such oscillations.  However, experience has not shown any harm from such oscillations, since service cannot be restored to the host until the gateways' routing information does settle down.
 
 **IMPLEMENTATION:**
 
@@ -1304,7 +1304,7 @@ The Internet architects envisioned that each physical network would have a singl
 If a host connected to such a physical network is configured to handle traffic for each of N different logical networks, then the host will have N logical interfaces.  These could share a single physical interface, or might use N physical interfaces to the same network.
 - (b)  Multiple Logical Hosts
 
-When a host has multiple IP addresses that all have the same <Network-number> part (and the same <Subnet- number> part, if any), the logical interfaces are known as "logical hosts".  These logical interfaces might share a single physical interface or might use separate physical interfaces to the same physical network.
+When a host has multiple IP addresses that all have the same <Network-number> part (and the same <Subnet-number> part, if any), the logical interfaces are known as "logical hosts".  These logical interfaces might share a single physical interface or might use separate physical interfaces to the same physical network.
 - (c)  Simple Multihoming
 
 In this case, each logical interface is mapped into a separate physical interface and each physical interface is connected to a different physical network.  The term "multihoming" was originally applied only to this case, but it is now applied more generally.
@@ -1313,7 +1313,7 @@ A host with embedded gateway functionality will typically fall into the simple m
 
 This case presents the most difficult routing problems. The choice of interface (i.e., the choice of first-hop network) may significantly affect performance or even reachability of remote parts of the Internet.
 
-Finally, we note another possibility that is NOT multihoming:  one logical interface may be bound to multiple physical interfaces, in order to increase the reliability or throughput between directly connected machines by providing alternative physical paths between them.  For instance, two systems might be connected by multiple point-to-point links. We call this "link-layer multiplexing".  With link-layer multiplexing, the protocols above the link layer are unaware that multiple physical interfaces are present; the link- layer device driver is responsible for multiplexing and routing packets across the physical interfaces.
+Finally, we note another possibility that is NOT multihoming:  one logical interface may be bound to multiple physical interfaces, in order to increase the reliability or throughput between directly connected machines by providing alternative physical paths between them.  For instance, two systems might be connected by multiple point-to-point links. We call this "link-layer multiplexing".  With link-layer multiplexing, the protocols above the link layer are unaware that multiple physical interfaces are present; the link-layer device driver is responsible for multiplexing and routing packets across the physical interfaces.
 
 In the Internet protocol architecture, a transport protocol instance ("entity") has no address of its own, but instead uses a single Internet Protocol (IP) address.  This has implications for the IP, transport, and application layers, and for the interfaces between them.  In particular, the application software may have to be aware of the multiple IP addresses of a multihomed host; in other cases, the choice can be made within the network software.
 
@@ -1399,6 +1399,7 @@ However, in performing this gateway-like function, the host MUST obey all the re
 - (B)  ICMP Destination Unreachable (ref. Section 3.2.2.1)
 
     A host MUST be able to generate Destination Unreachable messages with the following codes:
+
     - 4 (Fragmentation Required but DF Set) when a source-routed datagram cannot be fragmented to fit into the target network;
     - 5 (Source Route Failed) when a source-routed datagram cannot be forwarded, e.g., because of a routing problem or because the next hop of a strict source route is not on a connected network.
 - (C)  IP Source Address (ref. Section 3.2.1.3)
