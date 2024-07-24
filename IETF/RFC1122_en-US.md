@@ -465,19 +465,19 @@ The trailer protocol [LINK:1] for link-layer encapsulation MAY be used, but only
 
 DISCUSSION:
 
-    The trailer protocol is a link-layer encapsulation technique that rearranges the data contents of packets sent on the physical network.  In some cases, trailers improve the throughput of higher layer protocols by reducing the amount of data copying within the operating system.  Higher layer protocols are unaware of trailer use, but both the sending and receiving host MUST understand the protocol if it is used.
+The trailer protocol is a link-layer encapsulation technique that rearranges the data contents of packets sent on the physical network.  In some cases, trailers improve the throughput of higher layer protocols by reducing the amount of data copying within the operating system.  Higher layer protocols are unaware of trailer use, but both the sending and receiving host MUST understand the protocol if it is used.
 
-    Improper use of trailers can result in very confusing symptoms.  Only packets with specific size attributes are encapsulated using trailers, and typically only a small fraction of the packets being exchanged have these attributes.  Thus, if a system using trailers exchanges packets with a system that does not, some packets disappear into a black hole while others are delivered successfully.
+Improper use of trailers can result in very confusing symptoms.  Only packets with specific size attributes are encapsulated using trailers, and typically only a small fraction of the packets being exchanged have these attributes.  Thus, if a system using trailers exchanges packets with a system that does not, some packets disappear into a black hole while others are delivered successfully.
 
 IMPLEMENTATION:
 
-    On an Ethernet, packets encapsulated with trailers use a distinct Ethernet type [LINK:1], and trailer negotiation is performed at the time that ARP is used to discover the link-layer address of a destination system.
+On an Ethernet, packets encapsulated with trailers use a distinct Ethernet type [LINK:1], and trailer negotiation is performed at the time that ARP is used to discover the link-layer address of a destination system.
 
-    Specifically, the ARP exchange is completed in the usual manner using the normal IP protocol type, but a host that wants to speak trailers will send an additional "trailer ARP reply" packet, i.e., an ARP reply that specifies the trailer encapsulation protocol type but otherwise has the format of a normal ARP reply.  If a host configured to use trailers receives a trailer ARP reply message from a remote machine, it can add that machine to the list of machines that understand trailers, e.g., by marking the corresponding entry in the ARP cache.
+Specifically, the ARP exchange is completed in the usual manner using the normal IP protocol type, but a host that wants to speak trailers will send an additional "trailer ARP reply" packet, i.e., an ARP reply that specifies the trailer encapsulation protocol type but otherwise has the format of a normal ARP reply.  If a host configured to use trailers receives a trailer ARP reply message from a remote machine, it can add that machine to the list of machines that understand trailers, e.g., by marking the corresponding entry in the ARP cache.
 
-    Hosts wishing to receive trailer encapsulations send trailer ARP replies whenever they complete exchanges of normal ARP messages for IP.  Thus, a host that received an ARP request for its IP protocol address would send a trailer ARP reply in addition to the normal IP ARP reply; a host that sent the IP ARP request would send a trailer ARP reply when it received the corresponding IP ARP reply. In this way, either the requesting or responding host in an IP ARP exchange may request that it receive trailer encapsulations.
+Hosts wishing to receive trailer encapsulations send trailer ARP replies whenever they complete exchanges of normal ARP messages for IP.  Thus, a host that received an ARP request for its IP protocol address would send a trailer ARP reply in addition to the normal IP ARP reply; a host that sent the IP ARP request would send a trailer ARP reply when it received the corresponding IP ARP reply. In this way, either the requesting or responding host in an IP ARP exchange may request that it receive trailer encapsulations.
 
-    This scheme, using extra trailer ARP reply packets rather than sending an ARP request for the trailer protocol type, was designed to avoid a continuous exchange of ARP packets with a misbehaving host that, contrary to any specification or common sense, responded to an ARP reply for trailers with another ARP reply for IP.  This problem is avoided by sending a trailer ARP reply in response to an IP ARP reply only when the IP ARP reply answers an outstanding request; this is true when the hardware address for the host is still unknown when the IP ARP reply is received.  A trailer ARP reply may always be sent along with an IP ARP reply responding to an IP ARP request.
+This scheme, using extra trailer ARP reply packets rather than sending an ARP request for the trailer protocol type, was designed to avoid a continuous exchange of ARP packets with a misbehaving host that, contrary to any specification or common sense, responded to an ARP reply for trailers with another ARP reply for IP.  This problem is avoided by sending a trailer ARP reply in response to an IP ARP reply only when the IP ARP reply answers an outstanding request; this is true when the hardware address for the host is still unknown when the IP ARP reply is received.  A trailer ARP reply may always be sent along with an IP ARP reply responding to an IP ARP request.
 
 #### 2.3.2  Address Resolution Protocol -- ARP
 
@@ -799,7 +799,7 @@ Here are the requirements for specific IP options:
     Some environments require the Security option in every datagram; such a requirement is outside the scope of this document and the IP standard specification.  Note, however, that the security options described in RFC-791 and RFC-1038 are obsolete.  For DoD applications, vendors should consult [IP:8] for guidance.
 - (b)  Stream Identifier Option
 
-This option is obsolete; it SHOULD NOT be sent, and it MUST be silently ignored if received.
+    This option is obsolete; it SHOULD NOT be sent, and it MUST be silently ignored if received.
 - (c)  Source Route Options
 
     A host MUST support originating a source route and MUST be able to act as the final destination of a source route.
@@ -1395,19 +1395,18 @@ However, in performing this gateway-like function, the host MUST obey all the re
 
 - (A)  TTL (ref. Section 3.2.1.7)
 
-The TTL field MUST be decremented and the datagram perhaps discarded as specified for a gateway in [INTRO:2].
+    The TTL field MUST be decremented and the datagram perhaps discarded as specified for a gateway in [INTRO:2].
 - (B)  ICMP Destination Unreachable (ref. Section 3.2.2.1)
 
-A host MUST be able to generate Destination Unreachable messages with the following codes:
-
-  - 4    (Fragmentation Required but DF Set) when a source-routed datagram cannot be fragmented to fit into the target network;
-  - 5    (Source Route Failed) when a source-routed datagram cannot be forwarded, e.g., because of a routing problem or because the next hop of a strict source route is not on a connected network.
+    A host MUST be able to generate Destination Unreachable messages with the following codes:
+    - 4 (Fragmentation Required but DF Set) when a source-routed datagram cannot be fragmented to fit into the target network;
+    - 5 (Source Route Failed) when a source-routed datagram cannot be forwarded, e.g., because of a routing problem or because the next hop of a strict source route is not on a connected network.
 - (C)  IP Source Address (ref. Section 3.2.1.3)
 
     A source-routed datagram being forwarded MAY (and normally will) have a source address that is not one of the IP addresses of the forwarding host.
 - (D)  Record Route Option (ref. Section 3.2.1.8d)
 
-A host that is forwarding a source-routed datagram containing a Record Route option MUST update that option, if it has room.
+    A host that is forwarding a source-routed datagram containing a Record Route option MUST update that option, if it has room.
 - (E)  Timestamp Option (ref. Section 3.2.1.8e)
 
 A host that is forwarding a source-routed datagram containing a Timestamp Option MUST add the current timestamp to that option, according to the rules for this option.
