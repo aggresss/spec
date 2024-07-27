@@ -34,6 +34,7 @@ RFC | 名称
 [RFC6582](https://datatracker.ietf.org/doc/html/rfc6582) | The NewReno Modification to TCP's Fast Recovery Algorithm
 [RFC6937](https://datatracker.ietf.org/doc/html/rfc6937) | Proportional Rate Reduction for TCP
 [RFC8985](https://datatracker.ietf.org/doc/html/rfc8985) | The RACK-TLP Loss Detection Algorithm for TCP
+[rfc9438](https://datatracker.ietf.org/doc/html/rfc9438) | CUBIC for Fast and Long-Distance Networks
 
 ### UDP
 
