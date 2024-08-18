@@ -1,5 +1,7 @@
 # RTP Payload for Redundant Audio Data
 
+> Origin [https://datatracker.ietf.org/doc/html/rfc2198](https://datatracker.ietf.org/doc/html/rfc2198)
+
 ## 摘要
 
 本文档描述了用于实时传输协议 (RTP) version 2 的有效负载格式，用于编码冗余音频数据。本文描述的方案的主要目的是开发用于有损分组网络 (如 Internet Mbone) 的音频会议工具，尽管该方案并不局限于这些应用程序。

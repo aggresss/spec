@@ -1,5 +1,7 @@
 # Requirements for Internet Hosts -- Communication Layers
 
+> Origin [https://datatracker.ietf.org/doc/html/rfc1122](https://datatracker.ietf.org/doc/html/rfc1122)
+
 ## Status of This Memo
 
 This RFC is an official specification for the Internet community.  It incorporates by reference, amends, corrects, and supplements the primary protocol standards documents relating to hosts.  Distribution of this document is unlimited.
