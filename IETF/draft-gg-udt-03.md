@@ -272,113 +272,118 @@ We explained the rationale of some of the UDT data sending/receiving schemes in 
 
 ## 6.1 The Sender's Algorithm
 
-```
-   Data Structures and Variables:
-   1) Sender's Loss List: The sender's loss list is used to store the sequence numbers of the lost packets fed back by the receiver through NAK packets or inserted in a timeout event. The numbers are stored in increasing order.
 
-   Data Sending Algorithm:
-   1) If the sender's loss list is not empty, retransmit the first packet in the list and remove it from the list. Go to 5).
-   2) In messaging mode, if the packets has been the loss list for a time more than the application specified TTL (time-to-live), send a message drop request and remove all related packets from the loss list. Go to 1).
-   3) Wait until there is application data to be sent.
-   4)
-        a. If the number of unacknowledged packets exceeds the flow/congestion window size, wait until an ACK comes. Go to 1).
-        b. Pack a new data packet and send it out.
-   5) If the sequence number of the current packet is 16n, where n is an integer, go to 2).
-   6) Wait (SND - t) time, where SND is the inter-packet interval updated by congestion control and t is the total time used by step 1 to step 5. Go to 1).
-```
+Data Structures and Variables:
+
+1) Sender's Loss List: The sender's loss list is used to store the sequence numbers of the lost packets fed back by the receiver through NAK packets or inserted in a timeout event. The numbers are stored in increasing order.
+
+Data Sending Algorithm:
+
+1) If the sender's loss list is not empty, retransmit the first packet in the list and remove it from the list. Go to 5).
+2) In messaging mode, if the packets has been the loss list for a time more than the application specified TTL (time-to-live), send a message drop request and remove all related packets from the loss list. Go to 1).
+3) Wait until there is application data to be sent.
+4)
+   - a. If the number of unacknowledged packets exceeds the flow/congestion window size, wait until an ACK comes. Go to 1).
+   - b. Pack a new data packet and send it out.
+5) If the sequence number of the current packet is 16n, where n is an integer, go to 2).
+6) Wait (SND - t) time, where SND is the inter-packet interval updated by congestion control and t is the total time used by step 1 to step 5. Go to 1).
+
 
 ## 6.2 The Receiver's Algorithm
 
-```
-   Data Structures and Variables:
+Data Structures and Variables:
 
-   1) Receiver's Loss List: It is a list of tuples whose values include: the sequence numbers of detected lost data packets, the latest feedback time of each tuple, and a parameter k that is the number of times each one has been fed back in NAK. Values are stored in the increasing order of packet sequence numbers.
-   2) ACK History Window: A circular array of each sent ACK and the time it is sent out. The most recent value will overwrite the oldest one if no more free space in the array.
-   3) PKT History Window: A circular array that records the arrival time of each data packet.
-   4) Packet Pair Window: A circular array that records the time interval between each probing packet pair.
-   5) LRSN: A variable to record the largest received data packet sequence number. LRSN is initialized to the initial sequence number minus 1.
-   6) ExpCount: A variable to record number of continuous EXP time-out events.
+1) Receiver's Loss List: It is a list of tuples whose values include: the sequence numbers of detected lost data packets, the latest feedback time of each tuple, and a parameter k that is the number of times each one has been fed back in NAK. Values are stored in the increasing order of packet sequence numbers.
+2) ACK History Window: A circular array of each sent ACK and the time it is sent out. The most recent value will overwrite the oldest one if no more free space in the array.
+3) PKT History Window: A circular array that records the arrival time of each data packet.
+4) Packet Pair Window: A circular array that records the time interval between each probing packet pair.
+5) LRSN: A variable to record the largest received data packet sequence number. LRSN is initialized to the initial sequence number minus 1.
+6) ExpCount: A variable to record number of continuous EXP time-out events.
 
-   Data Receiving Algorithm:
-   1) Query the system time to check if ACK, NAK, or EXP timer has expired. If there is any, process the event (as described below in this section) and reset the associated time variables. For ACK, also check the ACK packet interval.
-   2) Start time bounded UDP receiving. If no packet arrives, go to 1).
-   1) Reset the ExpCount to 1. If there is no unacknowledged data packet, or if this is an ACK or NAK control packet, reset the EXP timer.
-   3) Check the flag bit of the packet header. If it is a control packet, process it according to its type and go to 1).
-   4) If the sequence number of the current data packet is 16n + 1, where n is an integer, record the time interval between this packet and the last data packet in the Packet Pair Window.
-   5) Record the packet arrival time in PKT History Window.
-   6)
-        a. If the sequence number of the current data packet is greater than LRSN + 1, put all the sequence numbers between (but excluding) these two values into the receiver's loss list and send them to the sender in an NAK packet.
-        b. If the sequence number is less than LRSN, remove it from the receiver's loss list.
-   7) Update LRSN. Go to 1).
+Data Receiving Algorithm:
 
-   ACK Event Processing:
-   1) Find the sequence number prior to which all the packets have been received by the receiver (ACK number) according to the following rule: if the receiver's loss list is empty, the ACK number is LRSN + 1; otherwise it is the smallest sequence number in the receiver's loss list.
-   2) If (a) the ACK number equals to the largest ACK number ever acknowledged by ACK2, or (b) it is equal to the ACK number in the last ACK and the time interval between this two ACK packets is less than 2 RTTs, stop (do not send this ACK).
-   3) Assign this ACK a unique increasing ACK sequence number. Pack the ACK packet with RTT, RTT Variance, and flow window size (available receiver buffer size). If this ACK is not triggered by ACK timers, send out this ACK and stop.
-   4) Calculate the packet arrival speed according to the following
-      algorithm:
-         Calculate the median value of the last 16 packet arrival intervals (AI) using the values stored in PKT History Window. In these 16 values, remove those either greater than AI*8 or less than AI/8. If more than 8 values are left, calculate the average of the left values AI', and the packet arrival speed is 1/AI' (number of packets per second). Otherwise, return 0.
-   5) Calculate the estimated link capacity according to the following
-      algorithm:
-         Calculate the median value of the last 16 packet pair intervals (PI) using the values in Packet Pair Window, and the link capacity is 1/PI (number of packets per second).
-   6) Pack the packet arrival speed and estimated link capacity into the
-      ACK packet and send it out.
-   7) Record the ACK sequence number, ACK number and the departure time
-      of this ACK in the ACK History Window.
+1) Query the system time to check if ACK, NAK, or EXP timer has expired. If there is any, process the event (as described below in this section) and reset the associated time variables. For ACK, also check the ACK packet interval.
+2) Start time bounded UDP receiving. If no packet arrives, go to 1). 1) Reset the ExpCount to 1. If there is no unacknowledged data packet, or if this is an ACK or NAK control packet, reset the EXP timer.
+3) Check the flag bit of the packet header. If it is a control packet, process it according to its type and go to 1).
+4) If the sequence number of the current data packet is 16n + 1, where n is an integer, record the time interval between this packet and the last data packet in the Packet Pair Window.
+5) Record the packet arrival time in PKT History Window.
+6)
+   - a. If the sequence number of the current data packet is greater than LRSN + 1, put all the sequence numbers between (but excluding) these two values into the receiver's loss list and send them to the sender in an NAK packet.
+   - b. If the sequence number is less than LRSN, remove it from the receiver's loss list.
+7) Update LRSN. Go to 1).
 
-   NAK Event Processing:
-   Search the receiver's loss list, find out all those sequence numbers whose last feedback time is k*RTT before, where k is initialized as 2 and increased by 1 each time the number is fed back. Compress (according to section 6.4) and send these numbers back to the sender in an NAK packet.
+ACK Event Processing:
 
-   EXP Event Processing:
-   1) Put all the unacknowledged packets into the sender's loss list.
-   2) If (ExpCount > 16) and at least 3 seconds has elapsed since that last time when ExpCount is reset to 1, or, 3 minutes has elapsed, close the UDT connection and exit.
-   3) If the sender's loss list is empty, send a keep-alive packet to the peer side.
-   4) Increase ExpCount by 1.
+1) Find the sequence number prior to which all the packets have been received by the receiver (ACK number) according to the following rule: if the receiver's loss list is empty, the ACK number is LRSN + 1; otherwise it is the smallest sequence number in the receiver's loss list.
+2) If (a) the ACK number equals to the largest ACK number ever acknowledged by ACK2, or (b) it is equal to the ACK number in the last ACK and the time interval between this two ACK packets is less than 2 RTTs, stop (do not send this ACK).
+3) Assign this ACK a unique increasing ACK sequence number. Pack the ACK packet with RTT, RTT Variance, and flow window size (available receiver buffer size). If this ACK is not triggered by ACK timers, send out this ACK and stop.
+4) Calculate the packet arrival speed according to the following algorithm:
 
-   On ACK packet received:
-   1) Update the largest acknowledged sequence number.
-   2) Send back an ACK2 with the same ACK sequence number in this ACK.
-   3) Update RTT and RTTVar.
-   4) Update both ACK and NAK period to 4 * RTT + RTTVar + SYN.
-   5) Update flow window size.
-   6) If this is a Light ACK, stop.
-   7) Update packet arrival rate: A = (A * 7 + a) / 8, where a is the value carried in the ACK.
-   8) Update estimated link capacity: B = (B * 7 + b) / 8, where b is the value carried in the ACK.
-   9) Update sender's buffer (by releasing the buffer that has been acknowledged).
-   10) Update sender's loss list (by removing all those that has been acknowledged).
+   Calculate the median value of the last 16 packet arrival intervals (AI) using the values stored in PKT History Window. In these 16 values, remove those either greater than AI*8 or less than AI/8. If more than 8 values are left, calculate the average of the left values AI', and the packet arrival speed is 1/AI' (number of packets per second). Otherwise, return 0.
+5) Calculate the estimated link capacity according to the following algorithm:
 
-   On NAK packet received:
-   1) Add all sequence numbers carried in the NAK into the sender's loss list.
-   2) Update the SND period by rate control (see section 3.6).
-   3) Reset the EXP time variable.
+   Calculate the median value of the last 16 packet pair intervals (PI) using the values in Packet Pair Window, and the link capacity is 1/PI (number of packets per second).
+6) Pack the packet arrival speed and estimated link capacity into the ACK packet and send it out.
+7) Record the ACK sequence number, ACK number and the departure time of this ACK in the ACK History Window.
 
-   On ACK2 packet received:
-   1) Locate the related ACK in the ACK History Window according to the ACK sequence number in this ACK2.
-   2) Update the largest ACK number ever been acknowledged.
-   3) Calculate new rtt according to the ACK2 arrival time and the ACK departure time, and update the RTT value as: RTT = (RTT * 7 + rtt) / 8.
-   4) Update RTTVar by: RTTVar = (RTTVar * 3 + abs(RTT - rtt)) / 4.
-   5) Update both ACK and NAK period to 4 * RTT + RTTVar + SYN.
+NAK Event Processing:
 
-   On message drop request received:
-   1) Tag all packets belong to the message in the receiver buffer so that they will not be read.
-   2) Remove all corresponding packets in the receiver's loss list.
+Search the receiver's loss list, find out all those sequence numbers whose last feedback time is k*RTT before, where k is initialized as 2 and increased by 1 each time the number is fed back. Compress (according to section 6.4) and send these numbers back to the sender in an NAK packet.
 
-   On Keep-alive packet received:
-   Do nothing.
+EXP Event Processing:
 
-   On Handshake/Shutdown packet received:
-   See Section 5.
-```
+1) Put all the unacknowledged packets into the sender's loss list.
+2) If (ExpCount > 16) and at least 3 seconds has elapsed since that last time when ExpCount is reset to 1, or, 3 minutes has elapsed, close the UDT connection and exit.
+3) If the sender's loss list is empty, send a keep-alive packet to the peer side.
+4) Increase ExpCount by 1.
+
+On ACK packet received:
+
+1) Update the largest acknowledged sequence number.
+2) Send back an ACK2 with the same ACK sequence number in this ACK.
+3) Update RTT and RTTVar.
+4) Update both ACK and NAK period to 4 * RTT + RTTVar + SYN.
+5) Update flow window size.
+6) If this is a Light ACK, stop.
+7) Update packet arrival rate: A = (A * 7 + a) / 8, where a is the value carried in the ACK.
+8) Update estimated link capacity: B = (B * 7 + b) / 8, where b is the value carried in the ACK.
+9) Update sender's buffer (by releasing the buffer that has been acknowledged).
+10) Update sender's loss list (by removing all those that has been acknowledged).
+
+On NAK packet received:
+
+1) Add all sequence numbers carried in the NAK into the sender's loss list.
+2) Update the SND period by rate control (see section 3.6).
+3) Reset the EXP time variable.
+
+On ACK2 packet received:
+1) Locate the related ACK in the ACK History Window according to the ACK sequence number in this ACK2.
+2) Update the largest ACK number ever been acknowledged.
+3) Calculate new rtt according to the ACK2 arrival time and the ACK departure time, and update the RTT value as: RTT = (RTT * 7 + rtt) / 8.
+4) Update RTTVar by: RTTVar = (RTTVar * 3 + abs(RTT - rtt)) / 4.
+5) Update both ACK and NAK period to 4 * RTT + RTTVar + SYN.
+
+On message drop request received:
+
+1) Tag all packets belong to the message in the receiver buffer so that they will not be read.
+2) Remove all corresponding packets in the receiver's loss list.
+
+On Keep-alive packet received:
+
+Do nothing.
+
+On Handshake/Shutdown packet received:
+
+See Section 5.
+
 
 ### 6.3 Flow Control
 
 The flow control window size is 16 initially.
 
-```
-   On ACK packet received:
-   The flow window size is updated to the receiver's available buffer
-   size.
-```
+On ACK packet received:
+
+The flow window size is updated to the receiver's available buffer size.
 
 ### 6.4 Loss Information Compression Scheme
 
@@ -439,19 +444,21 @@ UDT's native algorithm is a hybrid congestion control algorithm, hence it adjust
 
 The initial congestion window size is 16 packets and the initial inter-packet interval is 0. The algorithm start with Slow Start phase until the first ACK or NAK arrives.
 
-```
-   On ACK packet received:
-   1) If the current status is in the slow start phase, set the congestion window size to the product of packet arrival rate and (RTT + SYN). Slow Start ends. Stop.
-   2) Set the congestion window size (CWND) to: CWND = A * (RTT + SYN) + 16.
-   3) The number of sent packets to be increased in the next SYN period
+
+On ACK packet received:
+
+1) If the current status is in the slow start phase, set the congestion window size to the product of packet arrival rate and (RTT + SYN). Slow Start ends. Stop.
+2) Set the congestion window size (CWND) to: CWND = A * (RTT + SYN) + 16.
+3) The number of sent packets to be increased in the next SYN period
       (inc) is calculated as:
          if (B <= C)
             inc = 1/PS;
          else
             inc = max(10^(ceil(log10((B-C)*PS*8))) * Beta/PS, 1/PS);
       where B is the estimated link capacity and C is the current sending speed. All are counted as packets per second. PS is the fixed size of UDT packet counted in bytes. Beta is a constant value of 0.0000015.
-   4) The SND period is updated as:
-         SND = (SND * SYN) / (SND * inc + SYN).
+4) The SND period is updated as:
+
+   SND = (SND * SYN) / (SND * inc + SYN).
 
    These four parameters are used in rate decrease, and their initial values are in the parentheses: AvgNAKNum (1), NAKCount (1), DecCount(1), LastDecSeq (initial sequence number - 1).
 
@@ -459,17 +466,16 @@ The initial congestion window size is 16 packets and the initial inter-packet in
 
    AvgNAKNum is the average number of NAKs in a congestion period. NAKCount is the current number of NAKs in the current period.
 
-   On NAK packet received:
-   1) If it is in slow start phase, set inter-packet interval to 1/recvrate. Slow start ends. Stop.
-   2) If this NAK starts a new congestion period, increase inter-packet interval (snd) to snd = snd * 1.125; Update AvgNAKNum, reset NAKCount to 1, and compute DecRandom to a random (average distribution) number between 1 and AvgNAKNum. Update LastDecSeq. Stop.
-   3) If DecCount <= 5, and NAKCount == DecCount * DecRandom:
-        a. Update SND period: SND = SND * 1.125;
-        b. Increase DecCount by 1;
-        c. Record the current largest sent sequence number (LastDecSeq).
-```
+On NAK packet received:
+
+1) If it is in slow start phase, set inter-packet interval to 1/recvrate. Slow start ends. Stop.
+2) If this NAK starts a new congestion period, increase inter-packet interval (snd) to snd = snd * 1.125; Update AvgNAKNum, reset NAKCount to 1, and compute DecRandom to a random (average distribution) number between 1 and AvgNAKNum. Update LastDecSeq. Stop.
+3) If DecCount <= 5, and NAKCount == DecCount * DecRandom:
+   - a. Update SND period: SND = SND * 1.125;
+   - b. Increase DecCount by 1;
+   - c. Record the current largest sent sequence number (LastDecSeq).
 
 The native UDT control algorithm is designed for bulk data transfer over high BDP networks. [GHG04a]
-
 
 ## Security Considerations
 
