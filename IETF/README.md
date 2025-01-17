@@ -149,3 +149,4 @@ RFC | 名称
 RFC | 名称
 ---|---
 [RFC5869](https://datatracker.ietf.org/doc/html/rfc5869) | HMAC-based Extract-and-Expand Key Derivation Function (HKDF)
+[RFC5116](https://datatracker.ietf.org/doc/html/rfc5869) | An Interface and Algorithms for Authenticated Encryption (AEAD)
