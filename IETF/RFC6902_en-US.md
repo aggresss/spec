@@ -114,7 +114,7 @@ Note that the ordering of members in JSON objects is not significant; therefore,
 
 Operations are applied to the data structures represented by a JSON document, i.e., after any unescaping (see [RFC4627], Section 2.5) takes place.
 
-## 4.1. add
+### 4.1. add
 
 The "add" operation performs one of the following functions, depending upon what the target location references:
 - If the target location specifies an array index, a new value is inserted into the array at the specified index.
@@ -150,7 +150,7 @@ is not an error, because "a" exists, and "b" will be added to its value.  It is 
 
 because "a" does not exist.
 
-## 4.2. remove
+### 4.2. remove
 
 The "remove" operation removes the value at the target location.
 
@@ -164,7 +164,7 @@ For example:
 
 If removing an element from an array, any elements above the specified index are shifted one position to the left.
 
-## 4.3. replace
+### 4.3. replace
 
 The "replace" operation replaces the value at the target location with a new value.  The operation object MUST contain a "value" member whose content specifies the replacement value.
 
@@ -178,7 +178,7 @@ For example:
 
 This operation is functionally identical to a "remove" operation for a value, followed immediately by an "add" operation at the same location with the replacement value.
 
-## 4.4.  move
+### 4.4. move
 
 The "move" operation removes the value at a specified location and adds it to the target location.
 
@@ -196,7 +196,7 @@ This operation is functionally identical to a "remove" operation on the "from" l
 
 The "from" location MUST NOT be a proper prefix of the "path" location; i.e., a location cannot be moved into one of its children.
 
-## 4.5. copy
+### 4.5. copy
 
 The "copy" operation copies the value at a specified location to the target location.
 
@@ -212,7 +212,7 @@ For example:
 
 This operation is functionally identical to an "add" operation at the target location using the value specified in the "from" member.
 
-## 4.6. test
+### 4.6. test
 
 The "test" operation tests that a value at the target location is equal to a specified value.
 
